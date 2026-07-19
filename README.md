@@ -1,6 +1,6 @@
 # Buildpad Agent Skills
 
-Agent skills for building **Buildpad DaaS (Data-as-a-Service)** applications with AI coding agents. Each skill is a folder with a [`SKILL.md`](https://agentskills.io) following the open Agent Skills standard, so they work in Claude Code, GitHub Copilot, Kiro, Antigravity, Cursor, and any other agent that supports the format.
+Agent skills for building **Buildpad Apss** with AI coding agents. Each skill is a folder with a [`SKILL.md`](https://agentskills.io) following the open Agent Skills standard, so they work in Claude Code, GitHub Copilot, Kiro, Antigravity, and any other agent that supports the format.
 
 This repository is the **source of truth** for the skills bundled in Buildpad project starters. Starters ship with the skills pre-installed; use the CLI below to update them or to add them to an existing project.
 
