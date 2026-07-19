@@ -41,7 +41,7 @@ Defined in `.github/copilot-instructions.md`:
 - Two-tier architecture (Frontend → DaaS → Supabase)
 - Server-side proxy pattern
 - Backend-first logic
-- Phased development
+- Spec-driven development
 
 ### 2. Skills (On-Demand)
 
@@ -70,7 +70,7 @@ Buildpad MCP Server:
 ```
 High-value context files:
   ├── .env.local → Actual credentials and URLs
-  ├── PHASES.md → Current project progress
+  ├── .kiro/specs/ → Feature specs and progress (requirements, design, tasks)
   ├── package.json → Dependencies and scripts
   ├── next.config.ts → Build configuration
   └── app/ → Existing code patterns
@@ -81,7 +81,7 @@ High-value context files:
 ### Session Start
 
 1. Read `.env.local` for environment configuration
-2. Check `PHASES.md` for current project state
+2. Check `.kiro/specs/` for active specs and task progress
 3. Scan `app/` directory structure for existing patterns
 4. Load relevant background skills based on task
 
@@ -111,7 +111,7 @@ Output quality dropping?
 1. **Progressive disclosure** — Load skills only when needed, not all at once
 2. **MCP over assumptions** — Query live data instead of guessing schema/state
 3. **Verify before acting** — Read existing code before modifying
-4. **Explicit context** — Tell the agent what you're working on and what phase you're in
+4. **Explicit context** — Tell the agent what you are working on and which spec/task it belongs to
 5. **Reference, don't duplicate** — Point to skill files instead of pasting content
 
 ## Common Rationalizations

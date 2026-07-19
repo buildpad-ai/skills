@@ -76,17 +76,17 @@ Each task should be:
 - [ ] API tests pass
 ```
 
-## DaaS Phase Alignment
+## DaaS Layer Ordering
 
-Tasks should align with the DaaS phased development model:
+This skill feeds the `tasks.md` stage of spec-driven development (`/buildpad-spec-tasks`, or Kiro's native specs). Order tasks along DaaS dependency layers — each layer builds on the one before:
 
-| Phase | Task Types |
+| Layer | Task Types |
 |-------|-----------|
-| Phase 1 (Data) | Migrations, API routes, types, API tests |
-| Phase 2 (UI) | List pages, form pages, navigation, page tests |
-| Phase 3 (Logic) | Validation hooks, RBAC setup, workflow definitions |
-| Phase 4 (Relations) | Junction tables, relational fields, file uploads |
-| Phase 5 (Polish) | Error handling, performance, a11y, docs, E2E tests |
+| Data | Migrations, API routes, types, API tests |
+| UI | List pages, form pages, navigation, page tests |
+| Logic | Validation hooks, RBAC setup, workflow definitions |
+| Relations | Junction tables, relational fields, file uploads |
+| Hardening | Error handling, performance, a11y, docs, E2E tests |
 
 ## Task Size Guidelines
 
@@ -102,13 +102,13 @@ Tasks should align with the DaaS phased development model:
 ```markdown
 ## Implementation Plan: [Feature Name]
 
-### Phase 1: Data Foundation
+### Data Foundation
 - [ ] Task 1.1: Create migration — [acceptance criteria]
 - [ ] Task 1.2: Create API route — [acceptance criteria]
 - [ ] Task 1.3: Define TypeScript types — [acceptance criteria]
 - [ ] Task 1.4: Write API tests — [acceptance criteria]
 
-### Phase 2: Core UI
+### Core UI
 - [ ] Task 2.1: Create list page — [acceptance criteria]
 - [ ] Task 2.2: Create form page — [acceptance criteria]
 - [ ] Task 2.3: Add navigation — [acceptance criteria]
@@ -142,7 +142,7 @@ Once tasks are ordered, independent branches of the dependency graph can run as 
 - Tasks estimated at more than 4 hours
 - No dependency ordering (just a flat list)
 - Tasks that can't be independently tested
-- Mixing different phases in a single task
+- Mixing different layers in a single task
 - No risk identification
 
 ## Verification
@@ -154,4 +154,4 @@ After planning:
 - [ ] Dependencies are identified and ordered
 - [ ] No task exceeds ~4 hours of estimated work
 - [ ] Each task can be independently verified
-- [ ] Tasks align with DaaS development phases
+- [ ] Tasks follow DaaS layer ordering and land in the spec's `tasks.md`

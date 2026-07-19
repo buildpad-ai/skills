@@ -66,7 +66,7 @@ Bootstrap creates a complete project skeleton:
 - API proxy routes
 - Supabase auth utilities
 
-### Correct Phase 0 Sequence
+### Correct Foundation Sequence
 
 **Step 0: Prerequisites Check (ALWAYS FIRST)**
 

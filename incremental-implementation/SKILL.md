@@ -124,17 +124,17 @@ New code should default to safe, conservative behavior.
 
 Each increment should be independently revertable.
 
-## DaaS Phased Alignment
+## DaaS Layer Alignment
 
-Incremental slicing aligns with the DaaS phased development:
+Incremental slicing follows the DaaS dependency layers used in the spec's `tasks.md`:
 
-| Phase | Typical Slices |
+| Layer | Typical Slices |
 |-------|---------------|
-| Phase 1 (Data) | Migration → API route → Types → API tests |
-| Phase 2 (UI) | List page → Form page → Navigation |
-| Phase 3 (Logic) | Validation → Permissions → Workflow |
-| Phase 4 (Relations) | M2O → M2M → File fields |
-| Phase 5 (Polish) | Error handling → Performance → A11y → Docs |
+| Data | Migration → API route → Types → API tests |
+| UI | List page → Form page → Navigation |
+| Logic | Validation → Permissions → Workflow |
+| Relations | M2O → M2M → File fields |
+| Hardening | Error handling → Performance → A11y → Docs |
 
 ## Common Rationalizations
 
