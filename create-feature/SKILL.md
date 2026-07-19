@@ -1,26 +1,25 @@
 ---
 name: create-feature
-description: Plan and implement a complete feature using phased development approach. Analyzes requirements, designs data model, selects Buildpad components, and creates a phased implementation plan with testing strategy. Use when the user wants to add a new feature, module, or capability to an existing DaaS project.
+description: Plan and implement a complete feature using spec-driven development. Analyzes requirements, designs data model, selects Buildpad components, and produces spec artifacts (requirements.md, design.md, tasks.md) with a testing strategy. Use when the user wants to add a new feature, module, or capability to an existing DaaS project.
 argument-hint: "[feature name] [description]"
 ---
 
 # Create Feature
 
-Plan and coordinate implementation of a complete feature using **phased development**.
+Plan and coordinate implementation of a complete feature using **spec-driven development** (see the `spec-driven-development` skill).
 
 > **BEFORE generating ANY `.tsx` files** (pages, components, forms, lists), you MUST `read_file` the Buildpad component reference at `.github/skills/buildpad-reference/SKILL.md`. This loads the full 40+ component catalog with import paths and usage patterns. Skipping this step leads to raw Mantine usage violations.
 
-## Feature Mini-Phases
+## Spec Workflow
 
-Even individual features follow a phased approach:
+Every feature gets spec artifacts in `.kiro/specs/<feature-name>/` before implementation. In Kiro, use native specs; in other IDEs, run `/buildpad-spec-init` → `/buildpad-spec-requirements` → `/buildpad-spec-design` → `/buildpad-spec-tasks` → `/buildpad-impl`. The DaaS-specific planning below feeds those artifacts:
 
-| Phase      | Focus                        | Deliverables      |
-| ---------- | ---------------------------- | ----------------- |
-| **Design** | Requirements, data model, UI | Design document   |
-| **Schema** | Migration, API, types        | API + tests       |
-| **UI**     | Pages, forms, components     | Pages + tests     |
-| **Logic**  | Validation, business rules   | Integration tests |
-| **Polish** | Error handling, docs         | Documentation     |
+| Stage           | Focus                        | Artifact          |
+| --------------- | ---------------------------- | ----------------- |
+| **Requirements**| Problem, users, acceptance criteria (EARS) | `requirements.md` |
+| **Design**      | Data model, API, UI, Buildpad components   | `design.md`       |
+| **Tasks**       | Ordered, verifiable tasks with tests       | `tasks.md`        |
+| **Implement**   | Task-by-task with review                   | Working code      |
 
 ## Planning Process
 
@@ -35,7 +34,7 @@ Even individual features follow a phased approach:
 
 ### Feature Planning Checklist
 
-For each collection in the feature, answer these questions during the Design phase:
+For each collection in the feature, answer these questions during the design stage:
 
 - [ ] **Audit fields included?** → ALWAYS yes (Group A: user_created, date_created, user_updated, date_updated)
 - [ ] **Needs workflow/approval?** → Add Group B fields + plan `create-workflow` skill invocation
@@ -66,7 +65,7 @@ Custom components allowed ONLY for: app-specific layouts, dashboards, specialize
 
 ## CollectionList Usage (MANDATORY for list pages)
 
-When the UI phase includes a list page, you MUST use `CollectionList` with the full-featured pattern.
+When the design includes a list page, you MUST use `CollectionList` with the full-featured pattern.
 Do NOT create custom tables with Mantine `<Table>` or raw HTML for collection records.
 
 ```tsx
@@ -94,7 +93,7 @@ pagination (25/50/100/250), field-type-aware cell rendering, column management.
 
 ## VForm Usage (CRITICAL)
 
-When the UI phase includes a form page, you MUST follow the VForm controlled component pattern.
+When the design includes a form page, you MUST follow the VForm controlled component pattern.
 See [VForm usage reference](references/vform-usage.instructions.md) for the required pattern.
 
 **Key rules:**
@@ -140,16 +139,16 @@ Provide a structured plan with:
   - granted policies
   - UI guard points (`hasModuleAccess`)
   - API guard points (policy module_access OR-merge)
-- Phased implementation tasks
-- Testing strategy per phase
+- Implementation tasks in `tasks.md`, ordered by dependency layer
+- Testing strategy per layer
 - Time estimates
 
-## Testing Strategy (per phase)
+## Testing Strategy (per layer)
 
-- **Schema Phase**: API tests for all endpoints
-- **UI Phase**: Page tests for all pages
-- **Logic Phase**: Integration tests for business rules
-- **Polish Phase**: E2E tests for user flows
+- **Schema**: API tests for all endpoints
+- **UI**: Page tests for all pages
+- **Logic**: Integration tests for business rules
+- **Hardening**: E2E tests for user flows
 
 ## Post-Generation Validation (MANDATORY)
 

@@ -1,12 +1,12 @@
 ---
 name: create-project
-description: Initialize a new DaaS (Data-as-a-Service) application with Next.js, Supabase, and Buildpad UI. Creates Phase 0 foundation including project scaffolding, authentication proxy, test infrastructure, and phased development plan. Use when the user wants to start a new project, create a new app, or bootstrap a DaaS application.
+description: Initialize a new DaaS (Data-as-a-Service) application with Next.js, Supabase, and Buildpad UI. Creates the project foundation including scaffolding, authentication proxy, and test infrastructure, ready for spec-driven feature development. Use when the user wants to start a new project, create a new app, or bootstrap a DaaS application.
 argument-hint: "[project name] [description]"
 ---
 
 # Create DaaS Project
 
-Initialize a new Data-as-a-Service application with **phased development plan**.
+Initialize a new Data-as-a-Service application, ready for **spec-driven development**.
 
 > **BEFORE generating ANY `.tsx` files** (pages, layouts, components), you MUST `read_file` the Buildpad component reference at `.github/skills/buildpad-reference/SKILL.md`. This loads the full 40+ component catalog with import paths and usage patterns. Skipping this step leads to raw Mantine usage violations.
 
@@ -58,18 +58,11 @@ cd /path/to/my-project && pnpm install
 
 **Never mix both approaches.**
 
-## Phased Development (MANDATORY)
+## Spec-Driven Development (MANDATORY)
 
-| Phase | Name            | Focus                                    |
-| ----- | --------------- | ---------------------------------------- |
-| **0** | Foundation      | Project setup, auth, test infrastructure |
-| **1** | Data Foundation | Schema, API routes, types                |
-| **2** | Core UI         | List/detail pages, forms, navigation     |
-| **3** | Business Logic  | Validation, workflows, permissions       |
-| **4** | Relations       | M2O, M2M, O2M, files, search             |
-| **5** | Polish          | Errors, performance, a11y, docs, E2E     |
+This skill delivers the project **foundation**. Every feature after that follows the spec workflow (see the `spec-driven-development` skill): `requirements.md` → `design.md` → `tasks.md` in `.kiro/specs/<feature>/`, implemented task by task. In Kiro use native specs; in other IDEs use the `/buildpad-spec-*` skills.
 
-## Phase 0 Deliverables
+## Foundation Deliverables
 
 1. Project scaffolding (Next.js + TypeScript + Mantine v8)
 2. Environment config (`.env.local` with Supabase + DaaS URLs)
@@ -80,8 +73,7 @@ cd /path/to/my-project && pnpm install
 7. **DaaS CORS** configured with explicit origins + `cors_allow_credentials: true` + `X-Resource-Uri` in allowed headers
 8. Base layout and navigation with Mantine provider
 9. Test infrastructure (Playwright + Vitest)
-10. `PHASES.md` tracking file
-11. README with setup instructions
+10. README with setup instructions
 
 ## Post-Bootstrap Steps (MANDATORY — run after `bootstrap` every time)
 
@@ -199,7 +191,7 @@ Run **immediately after project creation**, before wiring any frontend:
 
 Never leave `cors_origins: ["*"]` in place — the browser will block every API call.
 
-## Buildpad-First Component Rule (MANDATORY — applies to ALL code generated during and after Phase 0)
+## Buildpad-First Component Rule (MANDATORY — applies to ALL code generated during and after foundation setup)
 
 **EVERY form, input, list, and filter component MUST use Buildpad.** The CLI bootstrap installs 40+ components — use them. Never fall back to raw Mantine form/input components.
 
@@ -275,9 +267,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 NEXT_PUBLIC_BUILDPAD_DAAS_URL=http://localhost:3000
 ```
 
-## After Phase 0
+## After the Foundation
 
-Use `/start-phase` with phase 1 to continue building.
+Start the first feature spec: `/buildpad-discovery "<idea>"` or `/buildpad-spec-init "<feature description>"` (in Kiro, create a spec from the Specs panel).
 
 ## References
 

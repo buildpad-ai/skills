@@ -1,6 +1,6 @@
 # Buildpad Agent Skills
 
-Agent skills for building **Buildpad Apss** with AI coding agents. Each skill is a folder with a [`SKILL.md`](https://agentskills.io) following the open Agent Skills standard, so they work in Claude Code, GitHub Copilot, Kiro, Antigravity, and any other agent that supports the format.
+Agent skills for building **Buildpad Apps** with AI coding agents. Each skill is a folder with a [`SKILL.md`](https://agentskills.io) following the open Agent Skills standard, so they work in Claude Code, GitHub Copilot, Kiro, Antigravity, and any other agent that supports the format.
 
 This repository is the **source of truth** for the skills bundled in Buildpad project starters. Starters ship with the skills pre-installed; use the CLI below to update them or to add them to an existing project.
 
@@ -28,6 +28,31 @@ npx skills update   # update installed skills
 
 ## Catalog
 
+### Spec-driven development
+
+The core methodology: every feature is specified as `requirements.md` (EARS) → `design.md` → `tasks.md` in `.kiro/specs/<feature>/`, then implemented task by task. The artifact format is compatible with Kiro IDE's native specs — **Kiro users should use native specs instead of these skills**; all other agents (Claude Code, Copilot, Antigravity, Cursor, …) use them as slash commands. Adapted from [gotalab/cc-sdd](https://github.com/gotalab/cc-sdd) v3.0.2 (MIT), renamed under the `buildpad-` prefix.
+
+| Skill | What it does |
+|---|---|
+| [spec-driven-development](spec-driven-development) | Methodology overview: when to spec, DaaS-specific spec rules, review gates |
+| [buildpad-discovery](buildpad-discovery) | Entry point: decide whether work is one spec, many specs, or no spec |
+| [buildpad-spec-init](buildpad-spec-init) | Initialize a new specification structure |
+| [buildpad-spec-requirements](buildpad-spec-requirements) | Generate EARS-format requirements (review gate) |
+| [buildpad-spec-design](buildpad-spec-design) | Generate technical design from requirements (review gate) |
+| [buildpad-spec-tasks](buildpad-spec-tasks) | Generate implementation tasks with dependencies (review gate) |
+| [buildpad-impl](buildpad-impl) | Implement approved tasks with TDD and per-task review |
+| [buildpad-spec-quick](buildpad-spec-quick) | Fast path for a single small spec |
+| [buildpad-spec-batch](buildpad-spec-batch) | Create specs for a whole roadmap in parallel |
+| [buildpad-spec-status](buildpad-spec-status) | Show spec status and progress |
+| [buildpad-steering](buildpad-steering) | Maintain `.kiro/steering/` as persistent project memory |
+| [buildpad-steering-custom](buildpad-steering-custom) | Create domain-specific steering documents |
+| [buildpad-validate-design](buildpad-validate-design) | Design quality review before implementation |
+| [buildpad-validate-gap](buildpad-validate-gap) | Gap analysis between requirements and existing code |
+| [buildpad-validate-impl](buildpad-validate-impl) | Feature-level integration validation after all tasks |
+| [buildpad-review](buildpad-review) | Review a task implementation against the approved spec |
+| [buildpad-debug](buildpad-debug) | Root-cause-first debugging when implementation is blocked |
+| [buildpad-verify-completion](buildpad-verify-completion) | Verify completion claims with fresh evidence |
+
 ### Scaffolding
 
 | Skill | What it does |
@@ -42,9 +67,8 @@ npx skills update   # update installed skills
 | [create-workflow](create-workflow) | Workflow state machines, content versioning, multi-stage approvals |
 | [create-rbac](create-rbac) | Role-based access control: roles, policies, permissions, dynamic filters |
 | [create-tests](create-tests) | Playwright E2E and Vitest unit tests for features, APIs, RLS, permissions |
-| [create-feature](create-feature) | Plan and implement a complete feature with phased development |
+| [create-feature](create-feature) | Plan and implement a complete feature via the spec workflow |
 | [create-form-builder](create-form-builder) | Visual drag-and-drop form authoring plus runtime renderer |
-| [start-phase](start-phase) | Begin or continue a development phase (0–5) with phase gates |
 
 ### Add-on modules
 
@@ -74,7 +98,6 @@ npx skills update   # update installed skills
 
 | Skill | What it does |
 |---|---|
-| [spec-driven-development](spec-driven-development) | Write specifications before code |
 | [idea-refine](idea-refine) | Refine vague ideas into concrete proposals |
 | [planning-and-task-breakdown](planning-and-task-breakdown) | Decompose specs into small, verifiable tasks |
 | [incremental-implementation](incremental-implementation) | Deliver multi-file changes incrementally |
