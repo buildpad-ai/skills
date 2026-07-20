@@ -125,7 +125,7 @@ Each Main App route can point to a **different** micro-app deployment. All micro
 // config/app-urls.ts (committed to git, auto-generated from get_project_detail)
 // Hardcoded defaults are ACTUAL deployed Amplify URLs from get_project_detail.
 // Env vars are optional overrides for local development only.
-export const MICROSERVICE_URLS = {
+export const MICROAPP_URLS = {
   "users-app":
     process.env.NEXT_PUBLIC_USERS_APP_URL ||
     "https://main.d1234users.amplifyapp.com",
@@ -142,12 +142,12 @@ export const MICROSERVICE_URLS = {
 
 ```typescript
 // app/admin/users/page.tsx
-import { MICROSERVICE_URLS } from '@/config/app-urls';
-<MicroappIframe src={MICROSERVICE_URLS['users-app']} path="/users" ... />
+import { MICROAPP_URLS } from '@/config/app-urls';
+<MicroappIframe src={MICROAPP_URLS['users-app']} path="/users" ... />
 
 // app/admin/billing/page.tsx
-import { MICROSERVICE_URLS } from '@/config/app-urls';
-<MicroappIframe src={MICROSERVICE_URLS['billing-app']} path="/invoices" ... />
+import { MICROAPP_URLS } from '@/config/app-urls';
+<MicroappIframe src={MICROAPP_URLS['billing-app']} path="/invoices" ... />
 ```
 
 ## Performance Considerations

@@ -9,19 +9,18 @@ description: Manage AWS Amplify environment variables for the project's main app
 
 Amplify environment variables can now be managed **directly by AI agents** using the Buildpad platform MCP tools. You no longer need to set them manually in the Amplify Console.
 
-> **Old limitation (no longer applies):** Previously this skill stated "AI Agents cannot set Amplify Console environment variables for you." That restriction is removed — use the tools below.
 
 ---
 
 ## MCP Tools for Amplify Management
 
-All tools are project-scoped (authenticated by MCP bearer token). Use `microserviceId` to target a specific microservice; omit it for the project's main Amplify app.
+All tools are project-scoped (authenticated by MCP bearer token). Use `microappId` to target a specific microapp; omit it for the project's main Amplify app.
 
 ### 1. `amplify_get_env_vars`
 Returns the **key names** (not values) currently set on the Amplify app.
 
 ```json
-{ "name": "amplify_get_env_vars", "arguments": { "microserviceId": "<uuid>" } }
+{ "name": "amplify_get_env_vars", "arguments": { "microappId": "<uuid>" } }
 ```
 
 Returns: `{ keys: string[], totalCount: number }`
@@ -33,7 +32,7 @@ Sets, updates, or removes environment variables. The Amplify API replaces the fu
 {
   "name": "amplify_set_env_vars",
   "arguments": {
-    "microserviceId": "<uuid>",
+    "microappId": "<uuid>",
     "vars": { "EXTERNAL_BUCKET_NAME": "my-bucket", "EXTERNAL_BUCKET_REGION": "ap-southeast-1" },
     "removeKeys": ["OLD_VAR_NAME"]
   }
@@ -50,7 +49,7 @@ Triggers a new build on the `main` branch.
 ```json
 {
   "name": "amplify_redeploy",
-  "arguments": { "microserviceId": "<uuid>", "reason": "Updated EXTERNAL_BUCKET_NAME" }
+  "arguments": { "microappId": "<uuid>", "reason": "Updated EXTERNAL_BUCKET_NAME" }
 }
 ```
 
@@ -62,7 +61,7 @@ Returns: `{ jobId, jobStatus }` — save the `jobId` to track progress.
 Gets the build job status and per-phase breakdown.
 
 ```json
-{ "name": "amplify_get_status", "arguments": { "microserviceId": "<uuid>", "jobId": "<jobId>" } }
+{ "name": "amplify_get_status", "arguments": { "microappId": "<uuid>", "jobId": "<jobId>" } }
 ```
 
 Returns: `{ status, steps[] }` — each step includes `stepName`, `status`, and a `logUrl` (pre-signed S3 URL, valid ~10 minutes) that links directly to that step's CI build log.
@@ -76,7 +75,7 @@ Fetches the CI build log (pnpm/next build output) for a specific job.
 {
   "name": "amplify_get_build_log",
   "arguments": {
-    "microserviceId": "<uuid>",
+    "microappId": "<uuid>",
     "jobId": "<jobId>",
     "phase": "build",
     "tailLines": 50
@@ -98,7 +97,7 @@ Fetches HTTP access log lines (method, path, status, latency).
 {
   "name": "amplify_get_access_log",
   "arguments": {
-    "microserviceId": "<uuid>",
+    "microappId": "<uuid>",
     "statusCodeFilter": "5xx",
     "maxLines": 50
   }
@@ -112,7 +111,7 @@ Searches SSR/Lambda runtime logs using CloudWatch `FilterLogEvents`.
 {
   "name": "amplify_get_compute_log",
   "arguments": {
-    "microserviceId": "<uuid>",
+    "microappId": "<uuid>",
     "filter": "Error",
     "maxLines": 50
   }
@@ -159,7 +158,7 @@ Searches SSR/Lambda runtime logs using CloudWatch `FilterLogEvents`.
 
 Amplify env vars are available at **build time** by default. For Next.js **API routes** (server-side runtime), you must write them to `.env.production` during the build phase.
 
-Update `amplify.yml` in the microservice repo:
+Update `amplify.yml` in the microapp repo:
 
 ```yaml
 version: 1
@@ -199,5 +198,3 @@ const region = process.env.EXTERNAL_BUCKET_REGION;
 - All MCP tool calls are project-scoped and audit-logged on the Buildpad platform.
 - Do NOT commit secrets to git. Use Amplify env vars + the `echo` pattern above.
 
-
-> **Reminder:** AI Agents cannot set Amplify Console environment variables for you. You must do this step manually.

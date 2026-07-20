@@ -3,11 +3,11 @@
 
 ## Overview
 
-Before creating or configuring any microservice, the agent MUST discover the full project context automatically using the `get_project_detail` platform MCP tool. This eliminates manual user input for URLs, credentials, and deployment targets.
+Before creating or configuring any microapp, the agent MUST discover the full project context automatically using the `get_project_detail` platform MCP tool. This eliminates manual user input for URLs, credentials, and deployment targets.
 
 ## Step 0: Call `get_project_detail` (MANDATORY)
 
-This is the **first action** in every microservice or microfrontend operation. The tool returns all project context from the authenticated MCP session:
+This is the **first action** in every microapp or microfrontend operation. The tool returns all project context from the authenticated MCP session:
 
 ```json
 // Call the platform MCP tool — no arguments needed
@@ -41,11 +41,11 @@ interface ProjectDetail {
     createdAt: string;
     updatedAt: string;
   };
-  microservices: Array<{
+  microapps: Array<{
     id: string; // UUID
     name: string; // e.g., "users-app"
     description: string | null;
-    gitUrl: string | null; // Git repo URL for this microservice
+    gitUrl: string | null; // Git repo URL for this microapp
     gitToken: string | null; // Git token (same as project token)
     amplifyUrl: string | null; // Resolved Amplify URL (e.g., https://main.d5678fghij.amplifyapp.com)
     createdAt: string;
@@ -61,7 +61,7 @@ Configuration is split into two categories:
 | Category                                                                        | Where It Lives                          | Why                                                                                    |
 | ------------------------------------------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------- |
 | **Infrastructure secrets** (Supabase URL, anon key, service role key, DaaS URL) | `.env.local` + Amplify console env vars | Sensitive credentials — never committed to git                                         |
-| **Application URLs** (Main App URL, microservice URLs)                          | `config/app-urls.ts` committed to git   | Dynamic URLs that must be available at Amplify build time without manual env var setup |
+| **Application URLs** (Main App URL, microapp URLs)                          | `config/app-urls.ts` committed to git   | Dynamic URLs that must be available at Amplify build time without manual env var setup |
 
 ### Infrastructure Environment Variables (`.env.local` + Amplify Console)
 
@@ -95,7 +95,7 @@ NEXT_PUBLIC_BUILDPAD_DAAS_URL={{project.daasUrl}}
 
 ### Application URL Config (Committed to Git — `config/app-urls.ts`)
 
-App URLs (Main App + microservice Amplify URLs) are stored in a **committed TypeScript config file** rather than environment variables. This ensures URLs are available at Amplify build time without manual env var setup in the Amplify console.
+App URLs (Main App + microapp Amplify URLs) are stored in a **committed TypeScript config file** rather than environment variables. This ensures URLs are available at Amplify build time without manual env var setup in the Amplify console.
 
 Environment variables serve as **optional overrides** for local development (e.g., `localhost` URLs).
 
@@ -116,14 +116,14 @@ Environment variables serve as **optional overrides** for local development (e.g
 export const MAIN_APP_URL =
   process.env.NEXT_PUBLIC_HOST_ORIGIN || '{{project.mainAmplifyUrl}}';
 
-/** Microservice deployed URLs (used as iframe src in the Main App) */
-export const MICROSERVICE_URLS = {
-  {{#each microservices}}
+/** Microapp deployed URLs (used as iframe src in the Main App) */
+export const MICROAPP_URLS = {
+  {{#each microapps}}
   '{{name}}': process.env.NEXT_PUBLIC_{{UPPERCASE(name)}}_URL || '{{amplifyUrl}}',
   {{/each}}
 } as const;
 
-export type MicroserviceKey = keyof typeof MICROSERVICE_URLS;
+export type MicroappKey = keyof typeof MICROAPP_URLS;
 ```
 
 #### Micro-App `config/app-urls.ts`
@@ -158,20 +158,20 @@ export const HOST_ORIGIN =
 > 'users-app': process.env.NEXT_PUBLIC_USERS_APP_URL || 'https://main.d5678fghij.amplifyapp.com',
 > ```
 
-> **Why this pattern?** Infrastructure variables (Supabase, DaaS) are static and set once when the Amplify app is created. But app URLs change whenever a microservice is added — storing them in committed code means a `git push` is all that's needed to propagate URL changes through Amplify builds.
+> **Why this pattern?** Infrastructure variables (Supabase, DaaS) are static and set once when the Amplify app is created. But app URLs change whenever a microapp is added — storing them in committed code means a `git push` is all that's needed to propagate URL changes through Amplify builds.
 
 ### Service Registry (Auto-Generated `lib/services.ts`)
 
-Generate the service registry from the microservices list, importing URLs from the committed config:
+Generate the service registry from the microapps list, importing URLs from the committed config:
 
 ```typescript
 // lib/services.ts — auto-generated from get_project_detail response
-import { MICROSERVICE_URLS, type MicroserviceKey } from '@/config/app-urls';
+import { MICROAPP_URLS, type MicroappKey } from '@/config/app-urls';
 
 export const MICRO_APPS = {
-  {{#each microservices}}
+  {{#each microapps}}
   '{{name}}': {
-    url: MICROSERVICE_URLS['{{name}}'],
+    url: MICROAPP_URLS['{{name}}'],
     label: '{{titleCase(name)}}',
   },
   {{/each}}
@@ -182,14 +182,14 @@ export type MicroAppKey = keyof typeof MICRO_APPS;
 
 ### Git Operations (Auto-Configured)
 
-Clone microservice repos using the discovered git URL and token:
+Clone microapp repos using the discovered git URL and token:
 
 ```bash
-# Clone microservice — URL includes credentials from get_project_detail
-git clone {{microservice.gitUrl}} /path/to/{{microservice.name}}
+# Clone microapp — URL includes credentials from get_project_detail
+git clone {{microapp.gitUrl}} /path/to/{{microapp.name}}
 
 # Or if gitUrl doesn't include token, construct authenticated URL:
-# git clone https://oauth2:{{project.mainGitToken}}@github.com/org/{{microservice.name}}.git
+# git clone https://oauth2:{{project.mainGitToken}}@github.com/org/{{microapp.name}}.git
 ```
 
 ## Amplify URL Resolution
@@ -198,7 +198,7 @@ The `get_project_detail` tool resolves Amplify URLs from AWS Amplify app IDs sto
 
 ```
 project.main_amplify_app_id → AWS Amplify API → https://main.{defaultDomain}
-microservice.amplify_app_id → AWS Amplify API → https://main.{defaultDomain}
+microapp.amplify_app_id → AWS Amplify API → https://main.{defaultDomain}
 ```
 
 **Important:**
@@ -216,13 +216,13 @@ The complete automated workflow uses context discovery at every decision point:
 1. Call get_project_detail
    ├── Extract project.daasUrl, project.supabaseUrl, etc. (shared infra)
    ├── Extract project.mainAmplifyUrl (Main App URL for HOST_ORIGIN)
-   ├── Extract microservices[] (existing micro-apps)
+   ├── Extract microapps[] (existing micro-apps)
    └── Extract mainGitUrl, mainGitToken (for git operations)
 
 2. Determine what exists vs. what needs creation
-   ├── Check if requested microservice name already exists in microservices[]
+   ├── Check if requested microapp name already exists in microapps[]
    ├── If exists: clone its gitUrl, configure env, continue development
-   └── If new: bootstrap project, register microservice, set up Amplify
+   └── If new: bootstrap project, register microapp, set up Amplify
 
 3. Auto-generate all configuration
    ├── .env.local for infrastructure vars (Supabase, DaaS — no user input)
@@ -231,9 +231,9 @@ The complete automated workflow uses context discovery at every decision point:
    └── amplify.yml (standard build spec)
 
 4. Deploy via git push
-   ├── Commit changes to microservice repo (includes config/app-urls.ts)
+   ├── Commit changes to microapp repo (includes config/app-urls.ts)
    ├── Push to main branch → triggers Amplify build
-   └── Update Main App's config/app-urls.ts with new microservice URL → push → rebuild
+   └── Update Main App's config/app-urls.ts with new microapp URL → push → rebuild
 ```
 
 ## Validation Checklist
@@ -244,7 +244,7 @@ After context discovery, verify:
 - [ ] `project.supabaseUrl` is not null (Supabase must be configured)
 - [ ] `project.supabaseAnonKey` is not null
 - [ ] `project.mainAmplifyUrl` is not null (Main App must be deployed)
-- [ ] Microservice `amplifyUrl` is resolved (or marked as pending if new)
+- [ ] Microapp `amplifyUrl` is resolved (or marked as pending if new)
 - [ ] `project.mainGitToken` is available for git operations
 
 If any critical value is missing, report it to the user with a specific remediation step rather than proceeding with placeholders.

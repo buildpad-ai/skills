@@ -18,8 +18,8 @@ The response provides:
 
 - `project.mainAmplifyUrl` — Main App's deployed Amplify URL
 - `project.mainGitUrl` — Git repo URL for Main App (with credentials)
-- `microservices[].amplifyUrl` — Each micro-app's deployed Amplify URL
-- `microservices[].gitUrl` — Each micro-app's Git repo URL
+- `microapps[].amplifyUrl` — Each micro-app's deployed Amplify URL
+- `microapps[].gitUrl` — Each micro-app's Git repo URL
 - `project.mainGitToken` — Shared git token for all repos
 
 ## Deployment Architecture
@@ -134,7 +134,7 @@ Configuration is split into two categories:
 | Category                                           | Where It Lives                          | Available At Build Time?                                      |
 | -------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------- |
 | **Infrastructure secrets** (Supabase, DaaS, keys)  | `.env.local` + Amplify console env vars | Yes — set once when Amplify app is created                    |
-| **Application URLs** (Main App, microservice URLs) | `config/app-urls.ts` committed to git   | Yes — baked into the codebase, no manual Amplify setup needed |
+| **Application URLs** (Main App, microapp URLs) | `config/app-urls.ts` committed to git   | Yes — baked into the codebase, no manual Amplify setup needed |
 
 ### Infrastructure Env Vars (`.env.local` + Amplify Console)
 
@@ -171,14 +171,14 @@ App URLs are NOT stored as Amplify env vars. Instead, they are committed to the 
 export const MAIN_APP_URL =
   process.env.NEXT_PUBLIC_HOST_ORIGIN || '{{project.mainAmplifyUrl}}';
 
-/** Microservice deployed URLs (used as iframe src in the Main App) */
-export const MICROSERVICE_URLS = {
-  {{#each microservices}}
+/** Microapp deployed URLs (used as iframe src in the Main App) */
+export const MICROAPP_URLS = {
+  {{#each microapps}}
   '{{name}}': process.env.NEXT_PUBLIC_{{UPPERCASE(name)}}_URL || '{{amplifyUrl}}',
   {{/each}}
 } as const;
 
-export type MicroserviceKey = keyof typeof MICROSERVICE_URLS;
+export type MicroappKey = keyof typeof MICROAPP_URLS;
 ```
 
 #### Each Micro-App `config/app-urls.ts`
@@ -211,9 +211,9 @@ export const HOST_ORIGIN =
 > 'users-app': process.env.NEXT_PUBLIC_USERS_APP_URL || 'https://main.d5678fghij.amplifyapp.com',
 > ```
 >
-> When generating `config/app-urls.ts`, substitute actual resolved values from the `get_project_detail` response as the default fallbacks. The env var override name for microservices follows the pattern `NEXT_PUBLIC_` + name uppercased with hyphens as underscores + `_URL` (e.g., `users-app` → `NEXT_PUBLIC_USERS_APP_URL`).
+> When generating `config/app-urls.ts`, substitute actual resolved values from the `get_project_detail` response as the default fallbacks. The env var override name for microapps follows the pattern `NEXT_PUBLIC_` + name uppercased with hyphens as underscores + `_URL` (e.g., `users-app` → `NEXT_PUBLIC_USERS_APP_URL`).
 
-> **Why committed to git?** Infrastructure variables (Supabase, DaaS) are static — set once in the Amplify console when the app is created. But app URLs change whenever a microservice is added. Storing URLs in committed code means adding a new microservice only requires: (1) update `config/app-urls.ts`, (2) `git push` → Amplify rebuilds with the new URL. No manual Amplify console env var changes needed.
+> **Why committed to git?** Infrastructure variables (Supabase, DaaS) are static — set once in the Amplify console when the app is created. But app URLs change whenever a microapp is added. Storing URLs in committed code means adding a new microapp only requires: (1) update `config/app-urls.ts`, (2) `git push` → Amplify rebuilds with the new URL. No manual Amplify console env var changes needed.
 
 ## CI/CD Pipeline (Automated via Git Push)
 
@@ -232,9 +232,9 @@ A change in one micro-app triggers only that app's deployment:
 
 ```
 users-app/ code change
-  → git push to {{microservice.gitUrl}}
+  → git push to {{microapp.gitUrl}}
   → Amplify builds users-app
-  → Deployed at {{microservice.amplifyUrl}}
+  → Deployed at {{microapp.amplifyUrl}}
   → Main App unchanged (only iframe src URL matters)
   → DaaS backend unchanged (no deployment needed)
 ```

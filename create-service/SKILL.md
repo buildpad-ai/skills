@@ -269,6 +269,12 @@ Services can depend on other services:
 
 ### API Wrapper
 
+This env var → auth header → `services.fetch` pattern applies to most connected third-party providers, not just Stripe — but not all: a provider that ships an official SDK (e.g. Chocolate Factory) can't be called this way, since custom services run sandboxed JS with no `import`/`require` support — that provider is called from a server-side Next.js API route instead. Before writing the call: confirm the provider is connected and get its exact `envVarNames`, `apiBaseUrl`, and `authHeaderStyle` from `get_project_detail`'s `connectors[]` — do not assume an env var name. Note `apiBaseUrl` may be absent for a self-hosted provider (e.g. Chocolate Factory); in that case the base URL is itself one of the connector's env vars, per that provider's `references/<key>.instructions.md`. Always check `references/<provider-key>.instructions.md` if one exists (e.g. `references/stripe.instructions.md`) first — it covers both the request/response shape *and* which execution context (custom service vs. API route) that provider actually needs.
+
+**Local dev:** `connectors[]` entries also include `envVars` (env var name → actual decrypted value) alongside `envVarNames`. These are real secrets, not just names — use them to populate `.env.local` when a feature that reads a connector's env var(s) needs to run locally (`pnpm dev`), then restart the dev server (Next.js only reads `.env.local` at process start). Don't print these values to logs, commit them, or write them anywhere other than `.env.local`.
+
+**Deploying:** connecting a provider on the Connectors page only stores its credential in Buildpad — it does **not** push anything to the deployed app's Amplify environment. The first time a feature actually reads a connector's env var(s), also push that same `envVars` map with `amplify_set_env_vars` (see the `amplify-env-vars` skill) and follow with `amplify_redeploy`, or the deployed app will have the code but no value to read — it'll work locally (from `.env.local`) and silently fail once deployed.
+
 ```javascript
 const { services, env } = context;
 

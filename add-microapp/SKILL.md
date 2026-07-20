@@ -1,12 +1,12 @@
 ---
-name: add-microservice
-description: Set up a microservice architecture where one Main App and multiple micro-apps all share a single DaaS backend. Each micro-app owns a domain of collections within the shared DaaS, has its own API proxy routes, and is composed via iframe in the Main App. Use when the user says add-microservice, microservice, service boundary, or needs to split a large app into domain-focused micro-apps.
+name: add-microapp
+description: Set up a microapp architecture where one Main App and multiple micro-apps all share a single DaaS backend. Each micro-app owns a domain of collections within the shared DaaS, has its own API proxy routes, and is composed via iframe in the Main App. Use when the user says add-microapp, microapp, service boundary, or needs to split a large app into domain-focused micro-apps.
 argument-hint: "[service name] [domain, e.g. users, billing, analytics]"
 ---
 
-# Add Microservice
+# Add Microapp
 
-Set up a **microservice architecture** where one **Main App** and multiple **micro-apps** all share a **single DaaS backend**. Each micro-app is a standalone Next.js application that owns a domain of collections within the shared DaaS. Micro-apps are composed at the client level via the iframe micro-frontend pattern.
+Set up a **microapp architecture** where one **Main App** and multiple **micro-apps** all share a **single DaaS backend**. Each micro-app is a standalone Next.js application that owns a domain of collections within the shared DaaS. Micro-apps are composed at the client level via the iframe micro-frontend pattern.
 
 ## Critical Rules
 
@@ -81,7 +81,7 @@ This returns:
 - **`project.supabaseUrl`**, **`project.supabaseAnonKey`**, **`project.supabaseServiceRoleKey`** — shared auth credentials
 - **`project.daasUrl`** — shared DaaS backend URL
 - **`project.mainGitUrl`**, **`project.mainGitToken`** — git credentials for cloning/pushing
-- **`microservices[]`** — list of existing micro-apps with `name`, `gitUrl`, `amplifyUrl`
+- **`microapps[]`** — list of existing micro-apps with `name`, `gitUrl`, `amplifyUrl`
 
 **Validation:** If any critical value (`daasUrl`, `supabaseUrl`, `mainAmplifyUrl`) is null, report it to the user with a specific remediation step. Do NOT proceed with placeholder values.
 
@@ -102,17 +102,17 @@ Before creating any code, map out which collections belong to which app's domain
 
 ### Step 2: Create or Clone the Micro-App Project
 
-Check if the microservice already exists in the `microservices[]` array from Step 0:
+Check if the microapp already exists in the `microapps[]` array from Step 0:
 
-**If the microservice exists** (has `gitUrl`):
+**If the microapp exists** (has `gitUrl`):
 ```bash
 # Clone using the discovered git URL (includes credentials)
-git clone {{microservice.gitUrl}} /path/to/{{microservice.name}}
-cd /path/to/{{microservice.name}}
+git clone {{microapp.gitUrl}} /path/to/{{microapp.name}}
+cd /path/to/{{microapp.name}}
 pnpm install
 ```
 
-**If the microservice is new** — bootstrap it:
+**If the microapp is new** — bootstrap it:
 ```bash
 # Create the micro-app project
 mkdir -p /path/to/{{serviceName}}-app
@@ -184,14 +184,14 @@ Main App `config/app-urls.ts` (**committed to git**):
 export const MAIN_APP_URL =
   process.env.NEXT_PUBLIC_HOST_ORIGIN || '{{project.mainAmplifyUrl}}';
 
-/** Microservice deployed URLs (used as iframe src in the Main App) */
-export const MICROSERVICE_URLS = {
-  {{#each microservices}}
+/** Microapp deployed URLs (used as iframe src in the Main App) */
+export const MICROAPP_URLS = {
+  {{#each microapps}}
   '{{name}}': process.env.NEXT_PUBLIC_{{UPPERCASE(name)}}_URL || '{{amplifyUrl}}',
   {{/each}}
 } as const;
 
-export type MicroserviceKey = keyof typeof MICROSERVICE_URLS;
+export type MicroappKey = keyof typeof MICROAPP_URLS;
 ```
 
 > **⚠️ CRITICAL — `config/app-urls.ts` Generation Rules:**
@@ -212,11 +212,11 @@ export type MicroserviceKey = keyof typeof MICROSERVICE_URLS;
 > 'users-app': process.env.NEXT_PUBLIC_USERS_APP_URL || 'https://main.d5678fghij.amplifyapp.com',
 > ```
 >
-> Write the actual resolved values into `config/app-urls.ts` as the default fallbacks, and write the actual infrastructure values into `.env.local`. For example, if `project.daasUrl` is `https://acme.buildpad-daas.xtremax.com`, write exactly that string. The env var override name for microservices is `NEXT_PUBLIC_` + the service name uppercased with hyphens as underscores + `_URL` (e.g., `users-app` → `NEXT_PUBLIC_USERS_APP_URL`).
+> Write the actual resolved values into `config/app-urls.ts` as the default fallbacks, and write the actual infrastructure values into `.env.local`. For example, if `project.daasUrl` is `https://acme.buildpad-daas.xtremax.com`, write exactly that string. The env var override name for microapps is `NEXT_PUBLIC_` + the service name uppercased with hyphens as underscores + `_URL` (e.g., `users-app` → `NEXT_PUBLIC_USERS_APP_URL`).
 
 ### Step 4: Auth Bridge for Cross-Domain Sessions (ALWAYS Required on Amplify)
 
-Microservices are composed via iframes in the Main App. On Amplify, each app has a different `*.amplifyapp.com` subdomain — these are treated as completely separate origins by browsers, so **Supabase cookies from the Main App are invisible to the micro-app**. Without the auth bridge the user sees a login prompt every time they navigate to a micro-app section, even though they are already logged in to the Main App.
+Microapps are composed via iframes in the Main App. On Amplify, each app has a different `*.amplifyapp.com` subdomain — these are treated as completely separate origins by browsers, so **Supabase cookies from the Main App are invisible to the micro-app**. Without the auth bridge the user sees a login prompt every time they navigate to a micro-app section, even though they are already logged in to the Main App.
 
 **In every micro-app, implement these three pieces:**
 
@@ -382,19 +382,19 @@ export function OrdersList() {
 
 ### Step 6: Main App with Service Routing (Auto-Generated from Context)
 
-Generate the service registry from the `microservices[]` returned by `get_project_detail`. **Do not hardcode service entries** — derive them dynamically. The registry imports URLs from the committed `config/app-urls.ts`:
+Generate the service registry from the `microapps[]` returned by `get_project_detail`. **Do not hardcode service entries** — derive them dynamically. The registry imports URLs from the committed `config/app-urls.ts`:
 
 ```typescript
 // my-app/lib/services.ts
-// Auto-generated from get_project_detail → microservices[]
+// Auto-generated from get_project_detail → microapps[]
 // URLs come from config/app-urls.ts (committed to git)
 
-import { MICROSERVICE_URLS } from '@/config/app-urls';
+import { MICROAPP_URLS } from '@/config/app-urls';
 
 export const MICRO_APPS = {
-  // Example: if microservices[] contains { name: 'users-app', amplifyUrl: 'https://main.d123.amplifyapp.com' }
+  // Example: if microapps[] contains { name: 'users-app', amplifyUrl: 'https://main.d123.amplifyapp.com' }
   'users-app': {
-    url: MICROSERVICE_URLS['users-app'],
+    url: MICROAPP_URLS['users-app'],
     label: 'Users',
     icon: 'users',
     routes: [
@@ -403,7 +403,7 @@ export const MICRO_APPS = {
     ],
   },
   'billing-app': {
-    url: MICROSERVICE_URLS['billing-app'],
+    url: MICROAPP_URLS['billing-app'],
     label: 'Billing',
     icon: 'credit-card',
     routes: [
@@ -414,7 +414,7 @@ export const MICRO_APPS = {
 } as const;
 ```
 
-**Agent rule:** When generating `lib/services.ts`, iterate over the actual `microservices[]` array from context — do not use example entries. Import URLs from `config/app-urls.ts` rather than reading `process.env` directly.
+**Agent rule:** When generating `lib/services.ts`, iterate over the actual `microapps[]` array from context — do not use example entries. Import URLs from `config/app-urls.ts` rather than reading `process.env` directly.
 
 ```typescript
 // my-app/app/admin/users/page.tsx
@@ -685,7 +685,7 @@ workspace/
 
 ### Automated Deploy via Git Push
 
-After scaffolding and configuring a microservice, deploy it by pushing to git. Amplify triggers a build on push to `main`:
+After scaffolding and configuring a microapp, deploy it by pushing to git. Amplify triggers a build on push to `main`:
 
 ```bash
 # Inside the micro-app directory
@@ -693,18 +693,18 @@ cd /path/to/{{serviceName}}-app
 
 # Initialize git if not already a repo
 git init
-git remote add origin {{microservice.gitUrl}}
+git remote add origin {{microapp.gitUrl}}
 
 # Commit and push to trigger Amplify deployment
 git add .
-git commit -m "feat: initial {{serviceName}} microservice scaffold"
+git commit -m "feat: initial {{serviceName}} microapp scaffold"
 git push -u origin main
 ```
 
-### Update Main App After New Microservice
+### Update Main App After New Microapp
 
-When adding a new microservice, the Main App needs:
-1. A new entry in `config/app-urls.ts` with the microservice's Amplify URL as default
+When adding a new microapp, the Main App needs:
+1. A new entry in `config/app-urls.ts` with the microapp's Amplify URL as default
 2. An entry in `lib/services.ts` for the new service (importing from config)
 3. A new page under `app/admin/{{route}}/page.tsx` with `MicroappIframe`
 
@@ -712,17 +712,17 @@ When adding a new microservice, the Main App needs:
 # Update Main App
 cd /path/to/main-app
 
-# 1. config/app-urls.ts already updated with the new microservice URL
+# 1. config/app-urls.ts already updated with the new microapp URL
 # 2. lib/services.ts already updated with the new service entry
 # 3. New page already created
 
 # Commit and push — Amplify builds with URLs baked into codebase
 git add .
-git commit -m "feat: add {{serviceName}} microservice integration"
+git commit -m "feat: add {{serviceName}} microapp integration"
 git push origin main
 ```
 
-**Agent rule:** After pushing, note that Amplify deployments take 2-5 minutes. No manual Amplify console env var changes are needed — the microservice URL is baked into `config/app-urls.ts` in the codebase.
+**Agent rule:** After pushing, note that Amplify deployments take 2-5 minutes. No manual Amplify console env var changes are needed — the microapp URL is baked into `config/app-urls.ts` in the codebase.
 
 ### Amplify Environment Variables
 
@@ -735,7 +735,7 @@ SUPABASE_SERVICE_ROLE_KEY       — set once at app creation (Main App only)
 NEXT_PUBLIC_BUILDPAD_DAAS_URL   — set once at app creation
 ```
 
-App URLs (Main App URL, microservice URLs) live in committed `config/app-urls.ts` — NOT as Amplify env vars.
+App URLs (Main App URL, microapp URLs) live in committed `config/app-urls.ts` — NOT as Amplify env vars.
 
 ```yaml
 # amplify.yml (included in every micro-app)
@@ -764,9 +764,9 @@ frontend:
 The complete agent workflow with zero user input for URLs/credentials:
 
 ```
-1.  get_project_detail → discover all context (URLs, credentials, microservices)
+1.  get_project_detail → discover all context (URLs, credentials, microapps)
 2.  Validate critical values exist (daasUrl, supabaseUrl, mainAmplifyUrl)
-3.  Check if microservice already exists in context
+3.  Check if microapp already exists in context
     ├── Exists → clone gitUrl, configure, continue development
     └── New → bootstrap project
 4.  Auto-generate .env.local for infrastructure vars (no placeholders)

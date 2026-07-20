@@ -92,11 +92,11 @@ This returns:
 - **`project.supabaseUrl`**, **`project.supabaseAnonKey`**, **`project.supabaseServiceRoleKey`** — shared auth credentials
 - **`project.daasUrl`** — shared DaaS backend URL
 - **`project.mainGitUrl`**, **`project.mainGitToken`** — git credentials for cloning/pushing
-- **`microservices[]`** — list of existing micro-apps with `name`, `gitUrl`, `amplifyUrl`
+- **`microapps[]`** — list of existing micro-apps with `name`, `gitUrl`, `amplifyUrl`
 
 **Validation:** If any critical value (`daasUrl`, `supabaseUrl`, `mainAmplifyUrl`) is null, report it to the user with a specific remediation step. Do NOT proceed with placeholder values.
 
-The `microservices[].amplifyUrl` values are the iframe `src` URLs — these are the deployed Amplify URLs for each micro-app. The `project.mainAmplifyUrl` is the host origin for postMessage security.
+The `microapps[].amplifyUrl` values are the iframe `src` URLs — these are the deployed Amplify URLs for each micro-app. The `project.mainAmplifyUrl` is the host origin for postMessage security.
 
 See [Context Discovery reference](references/context-discovery.instructions.md) for the full response schema and derivation rules.
 
@@ -313,17 +313,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
 ### Step 3: Create Host Route Pages (Main App)
 
-Each admin route page renders the iframe. Use the Amplify URL from `config/app-urls.ts` (committed to git, auto-generated from `get_project_detail` → `microservices[].amplifyUrl`):
+Each admin route page renders the iframe. Use the Amplify URL from `config/app-urls.ts` (committed to git, auto-generated from `get_project_detail` → `microapps[].amplifyUrl`):
 
 ```typescript
 // app/admin/users/page.tsx
 import { MicroappIframe } from '@/components/MicroappIframe';
-import { MICROSERVICE_URLS } from '@/config/app-urls';
+import { MICROAPP_URLS } from '@/config/app-urls';
 
 export default function AdminUsersPage() {
   return (
     <MicroappIframe
-      src={MICROSERVICE_URLS['users-app']}
+      src={MICROAPP_URLS['users-app']}
       path="/users"
       title="Users Management"
       allowedParams={['search', 'page', 'sort', 'status']}
@@ -333,7 +333,7 @@ export default function AdminUsersPage() {
 }
 ```
 
-**Agent rule:** When generating these pages, iterate over the actual `microservices[]` array from context. For each microservice, create a page under `app/admin/{{route}}/page.tsx` with the iframe pointing to that microservice's Amplify URL via env var.
+**Agent rule:** When generating these pages, iterate over the actual `microapps[]` array from context. For each microapp, create a page under `app/admin/{{route}}/page.tsx` with the iframe pointing to that microapp's Amplify URL via env var.
 
 ### Step 4: Create useQueryParamSync Hook (Micro-App)
 
@@ -644,14 +644,14 @@ NEXT_PUBLIC_BUILDPAD_DAAS_URL={{project.daasUrl}}
 export const MAIN_APP_URL =
   process.env.NEXT_PUBLIC_HOST_ORIGIN || '{{project.mainAmplifyUrl}}';
 
-/** Microservice deployed URLs (used as iframe src in the Main App) */
-export const MICROSERVICE_URLS = {
-  {{#each microservices}}
+/** Microapp deployed URLs (used as iframe src in the Main App) */
+export const MICROAPP_URLS = {
+  {{#each microapps}}
   '{{name}}': process.env.NEXT_PUBLIC_{{UPPERCASE(name)}}_URL || '{{amplifyUrl}}',
   {{/each}}
 } as const;
 
-export type MicroserviceKey = keyof typeof MICROSERVICE_URLS;
+export type MicroappKey = keyof typeof MICROAPP_URLS;
 ```
 
 **Micro-app (`.env.local`)** — infrastructure secrets only:
@@ -698,7 +698,7 @@ export const HOST_ORIGIN =
 > 'users-app': process.env.NEXT_PUBLIC_USERS_APP_URL || 'https://main.d5678fghij.amplifyapp.com',
 > ```
 >
-> Write the actual resolved values into `config/app-urls.ts` as the default fallbacks, and write the actual infrastructure values into `.env.local`. The env var override name for microservices is `NEXT_PUBLIC_` + name uppercased with hyphens as underscores + `_URL` (e.g., `users-app` → `NEXT_PUBLIC_USERS_APP_URL`).
+> Write the actual resolved values into `config/app-urls.ts` as the default fallbacks, and write the actual infrastructure values into `.env.local`. The env var override name for microapps is `NEXT_PUBLIC_` + name uppercased with hyphens as underscores + `_URL` (e.g., `users-app` → `NEXT_PUBLIC_USERS_APP_URL`).
 
 ### Step 7: API Proxy Routes (Both Apps)
 
@@ -871,7 +871,7 @@ cd /path/to/{{microappName}}
 
 # Initialize git if not already a repo
 git init
-git remote add origin {{microservice.gitUrl}}
+git remote add origin {{microapp.gitUrl}}
 
 # Commit and push to trigger Amplify deployment
 git add .
@@ -927,14 +927,14 @@ frontend:
 The complete agent workflow with zero user input for URLs/credentials:
 
 ```
-1. get_project_detail → discover all context (URLs, credentials, microservices)
+1. get_project_detail → discover all context (URLs, credentials, microapps)
 2. Validate critical values exist (daasUrl, supabaseUrl, mainAmplifyUrl)
-3. Check if micro-app already exists in microservices[]
+3. Check if micro-app already exists in microapps[]
    ├── Exists → clone gitUrl, configure, continue development
    └── New → bootstrap project
 4. Auto-generate .env.local from context (no placeholders)
 5. Create MicroappIframe component (with MICROAPP_NEEDS_AUTH handler — always include)
-6. Create host route pages in Main App for each microservice
+6. Create host route pages in Main App for each microapp
 7. Implement auth bridge in every micro-app (set-session route + iframe-aware login page)
 8. Set up URL syncing, API proxy routes
 9. Write tests
