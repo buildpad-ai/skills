@@ -76,6 +76,7 @@ The core methodology: every feature is specified as `requirements.md` (EARS) →
 |---|---|
 | [add-buildpad](add-buildpad) | Install Buildpad UI Copy & Own components via CLI |
 | [add-files](add-files) | Scaffold the Files module: library, detail view, drag-and-drop upload |
+| [add-users](add-users) | Scaffold the Users module: /users, /roles, /policies admin pages with permissions matrix |
 | [add-microservice](add-microservice) | Microservice architecture: Main App + micro-apps on one DaaS backend |
 | [add-microfrontend](add-microfrontend) | Micro-frontend architecture via client-side iframe composition |
 | [add-multitenancy](add-multitenancy) | Multi-tenancy (delegates to manage-scope) |
