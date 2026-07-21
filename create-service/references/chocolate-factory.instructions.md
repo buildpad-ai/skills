@@ -70,9 +70,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   );
 
   // Stream the SSE response straight through — the browser only ever talks to this route.
+  // X-Conversation-Id must survive the hop (see the Observability section below) — the
+  // SDK reads it off the first turn's response and echoes it back on every later turn so
+  // the server threads the whole exchange into one conversation record. Dropping it here
+  // makes every message look like a new, un-threaded conversation in Chocolate Factory's
+  // monitoring dashboard, even though the chat UI itself still looks fine.
+  const responseHeaders: Record<string, string> = {
+    'Content-Type': upstream.headers.get('Content-Type') ?? 'text/event-stream',
+  };
+  const conversationId = upstream.headers.get('X-Conversation-Id');
+  if (conversationId) responseHeaders['X-Conversation-Id'] = conversationId;
+
   return new Response(upstream.body, {
     status: upstream.status,
-    headers: { 'Content-Type': upstream.headers.get('Content-Type') ?? 'text/event-stream' },
+    headers: responseHeaders,
   });
 }
 ```
@@ -261,7 +272,7 @@ export function CustomChat() {
 }
 ```
 
-`send({ text, vars, conversationId })`: `vars` injects Handlebars template variables into the agent's system prompt, same as `agent.run`'s `vars` above; `conversationId` persists the conversation server-side across sends instead of only in the client's in-memory `chat.messages`. Also available: `clearHistory()`, `loadHistory(messages)` (restore from `localStorage` on mount), `setSessionId(id)`.
+`send({ text, vars, conversationId })`: `vars` injects Handlebars template variables into the agent's system prompt, same as `agent.run`'s `vars` above. Server-side persistence is automatic on every send now (see Observability below) — pass `conversationId` only when you want to resume a *specific* existing conversation instead of the one `ChatClient` is already tracking (e.g. reopening a past thread by ID). Also available: `clearHistory()`, `loadHistory(messages)` (restore from `localStorage` on mount), `setSessionId(id)`.
 
 ### Tool call visibility (`ChatClient`/widget only)
 
@@ -292,6 +303,14 @@ for (const part of message.parts) {
 `state` moves through `input-streaming` → `input-available` → one of `output-available` / `output-error` / `output-denied`. Only trust `input`/`output` once state has reached one of those three terminal values — treat earlier states as still-arriving.
 
 For the server-side `AgentClient` calls above, `apiKey` is the right field to pass the real credential as, regardless of whether the connected key is an org-level `cf_...` key or an agent-scoped `agk_...` key — the SDK sends it as `cf-api-key`, matching how this connector's credential is used everywhere else in this project. `AgentClient` needs no proxy in the first place: it only ever runs from a Next.js API route (never `'use client'`), so the real key never leaves the server to begin with — the proxy pattern in step 2 exists specifically because `ChatClient`/the widget run in the browser. Import it from `@the-chocolate-factory/sdk/server` there, not the main entry point (see the callout right after step 1) — same reasoning, `AgentClient`'s only job is running server-side, and the `/server` entry point is the one build of the SDK that's actually safe to load in Node.
+
+## Observability — conversation history in Chocolate Factory's `/monitoring` dashboard
+
+`ChatClient` (and therefore the pre-built widget) persists every conversation server-side automatically — no opt-in needed. On the first `send()`, the request carries no id; Chocolate Factory creates a conversation record and returns its id via the `X-Conversation-Id` response header. `ChatClient` reads that header and stores it internally (`chat.sessionId`, `string | undefined` — `undefined` until that first response lands), then echoes it back as `id` on every later turn so the server appends to the same record instead of starting a new one. This is what makes a user's whole exchange show up as one threaded conversation in Chocolate Factory's own `/monitoring` module, instead of one row per message. `userId` (constructor config) is optional and only affects attribution — which end-user a conversation is tagged with — it has no effect on whether persistence happens.
+
+**This is why the `X-Conversation-Id` header must survive the proxy hop unmodified.** The proxy route in step (a) above forwards it explicitly for this exact reason — if a proxy route strips response headers down to just `Content-Type` (e.g. by copy-pasting an older version of this pattern, or a hand-rolled streaming proxy), the header never reaches the browser, `chat.sessionId` stays `undefined` forever, and every message sent through the widget lands as its own disconnected, un-threaded conversation server-side. The chat UI itself keeps working fine (its own `chat.messages` array is unaffected) — this failure is only visible in Chocolate Factory's monitoring dashboard or if the agent's later turns lose context of earlier ones, so it's easy to ship without noticing. If a user reports "the agent doesn't remember what I said two messages ago" or "monitoring shows every message as a new conversation," check the proxy's response headers first.
+
+`AgentClient.run()` (step 3, one-off/backend calls) is a stateless function call, not a chat conversation — it has no `conversationId`/`sessionId` concept and nothing here applies to it; each call is independent by design.
 
 ## Errors
 
