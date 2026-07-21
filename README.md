@@ -26,6 +26,19 @@ npx skills check    # see what's outdated
 npx skills update   # update installed skills
 ```
 
+## Repository Layout
+
+- **Skill folders (root)** — one folder per skill (`<name>/SKILL.md`), installable via the skills CLI.
+- **`agents/`** — subagent personas (flat `.md` files with `name`/`description` frontmatter). Buildpad starters mirror them to `.kiro/agents/` (Kiro) and `.claude/agents/` (Claude Code), where they run as subagents in isolated context. The skills CLI does not install these — they ship with starters and starter agent-file downloads.
+
+## Agents
+
+| Agent | Role |
+|---|---|
+| [code-reviewer](agents/code-reviewer.md) | Five-axis code review (correctness, readability, architecture, security, performance) + DaaS/Buildpad compliance |
+| [test-engineer](agents/test-engineer.md) | Test strategy, coverage-gap analysis, Playwright/Vitest authoring |
+| [security-auditor](agents/security-auditor.md) | Auth, CORS/RLS, input handling, and secret review |
+
 ## Catalog
 
 ### Spec-driven development
