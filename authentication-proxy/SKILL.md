@@ -15,6 +15,26 @@ user-invokable: false
 ✅ Browser → /api/items/* → DaaS Backend (proxied server-side)
 ```
 
+### Exception: Buildpad components in direct mode
+
+Apps wrapped in `DaaSProvider` (what `buildpad init` scaffolds via
+`DaaSProviderWrapper`) run Buildpad's own components in **direct mode** — their
+`apiRequest` calls go straight to `NEXT_PUBLIC_BUILDPAD_DAAS_URL` with a Bearer
+token, not through a proxy route. This is supported and works because DaaS
+allows the app's origin via its `CORS_ORIGINS` setting.
+
+The rule above still governs **code you write**: your own fetches, and anything
+touching auth, go through proxy routes. Two practical consequences of direct
+mode:
+
+- DaaS must list the app's origin in `CORS_ORIGINS`. The default `["*"]` is
+  **incompatible** with credentialed requests — the browser blocks every
+  preflight. Set explicit origins.
+- Cookies do not ride cross-origin requests, so scope must travel as a header.
+  `DaaSProviderWrapper` reads the `daas_resource_uri` cookie and injects
+  `X-Resource-Uri` for exactly this reason — without it, scope-aware endpoints
+  like `/api/permissions/me` resolve at the wrong scope.
+
 ## Auth Routes
 
 | Action         | Route                        | Method                                         |

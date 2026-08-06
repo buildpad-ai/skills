@@ -114,17 +114,33 @@ DaaS provides scheduled background task execution with cron expressions, timezon
 
 DaaS provides a complete role-based access control system: Roles → Policies → Permissions with field-level and item-level filtering, all enforced at the database level via RLS.
 
+There are **two independent permission dimensions**, both fully built-in:
+
+| Dimension | Stored on | Answers |
+|---|---|---|
+| **Record-Level Access** | `daas_permissions` rows | "Can this user CRUD collection X, on which fields, matching which filter?" |
+| **Module-Level Access** | `daas_policies.module_access` (JSONB), keyed by the `daas_module_access_keys` registry | "Does this user hold capability `reports:export`?" — gates buttons, pages, nav items, workflow transitions |
+
 | What | How |
 |------|-----|
 | Create role | `mcp_daas_roles` |
 | Create policy | `mcp_daas_policies` |
-| Assign permissions | `mcp_daas_permissions` |
-| Check current user permissions | `GET /api/permissions/me` |
-| UI permission gating | `usePermissions` hook, `CollectionList` built-in permission gates |
+| Assign permissions (collection CRUD) | `mcp_daas_permissions` |
+| Register a capability key | `mcp_daas_module_access_keys` (admin only) |
+| Grant a capability key | `mcp_daas_policies` → `data.module_access` |
+| Check current user permissions | `GET /api/permissions/me` (returns `data`, `isAdmin`, `moduleAccess`) |
+| UI permission gating | `usePermissions` hook — `canPerform()` for collections, `hasModuleAccess()` for capabilities; `CollectionList` gates itself |
+
+Both dimensions resolve against the **active scope** (Resource URI), so grants
+respect multi-tenant boundaries.
 
 **Lifecycle events:** Access/role assignment operations emit events: `daas_access.items.create/update/delete` (policy assignments), `daas_user_roles.items.create/delete` (role assignments). Use these to react to permission changes (e.g., sending a notification when a user is granted a new role, or invalidating permission caches when access records change).
 
-**DO NOT build:** custom permission tables, manual `isAdmin` checks against a custom field, custom role assignment UI, manual access control middleware.
+**DO NOT build:** custom permission tables, custom capability-flag columns on `daas_policies` (use `module_access`), manual `isAdmin` checks against a custom field, role-name checks like `user.role === 'manager'`, custom role assignment UI, manual access control middleware.
+
+For a capability gate that collection CRUD cannot express, use the
+[grant-module-access](../../grant-module-access/SKILL.md) skill — never invent
+your own flag storage.
 
 ---
 

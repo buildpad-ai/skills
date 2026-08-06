@@ -103,7 +103,7 @@ Alternatively, toggle the key in the **Module-Level Access** tab of the Policy e
 `hasModuleAccess` is already wired into `PermissionsContext` — no code changes needed:
 
 ```tsx
-import { usePermissions } from '@/lib/hooks';
+import { usePermissions } from '@/lib/buildpad/hooks';
 
 function ReportsPage() {
   const { hasModuleAccess } = usePermissions();
@@ -180,7 +180,7 @@ For pages that should be entirely inaccessible without the key, add a guard at t
 ```tsx
 // app/reports/page.tsx
 'use client';
-import { usePermissions } from '@/lib/hooks';
+import { usePermissions } from '@/lib/buildpad/hooks';
 
 export default function ReportsPage() {
   const { hasModuleAccess } = usePermissions();
