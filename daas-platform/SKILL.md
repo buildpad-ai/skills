@@ -182,6 +182,7 @@ Before writing any API route or page that queries a collection:
 | Auto timestamps                | Special fields: `date-created`, `date-updated`       | Manual `new Date()` in API routes                    |
 | Auto user tracking             | Special fields: `user-created`, `user-updated`       | Manual `req.user.id` assignment                      |
 | Permissions / access control   | DaaS Permission system (RBAC)                        | Custom permission tables, `isAdmin` fields           |
+| Capability gates (buttons, pages, workflow steps) | Module-Level Access keys (`grant-module-access` skill) | Role-name checks, custom capability columns |
 | Content versioning / drafts    | DaaS Versions API (`POST /api/versions`)             | Custom version/draft tables                          |
 | File upload / storage          | DaaS Files API (`POST /api/files`)                   | Custom upload endpoints, storage logic               |
 | Multi-tenancy / scoping        | DaaS Scope system (`manage-scope` skill)             | Custom `tenant_id` columns, manual filtering         |

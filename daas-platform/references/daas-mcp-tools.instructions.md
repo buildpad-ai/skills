@@ -155,6 +155,7 @@ AI agents authenticate using **static tokens**:
 | `policies`    | Manage permission policies (CRUD)                                                    |
 | `access`      | Link policies to roles/users (CRD)                                                   |
 | `permissions` | Manage permission rules (CRUD)                                                       |
+| `module_access_keys` | Manage the registry of application capability flags — Module-Level Access (CRUD, admin only) |
 | `extensions`  | Manage runtime hooks                                                                 |
 | `cron`        | Manage scheduled background jobs                                                     |
 | `scope`       | Manage hierarchical scopes for multi-tenancy and org-level partitioning (admin only) |
