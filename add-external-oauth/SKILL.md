@@ -1,6 +1,6 @@
 ---
 name: add-external-oauth
-description: Add external OAuth/OIDC identity provider integration where Next.js acts as the OAuth client. Creates OAuth proxy flow with PKCE, user provisioning via Supabase Admin API, and session management. Required for self-hosted Supabase without deployment access.
+description: Add external OAuth/OIDC identity provider integration where Next.js acts as the OAuth client. Creates OAuth proxy flow with PKCE, user provisioning via Supabase Admin API with default DaaS role assignment, and session management. Required for self-hosted Supabase without deployment access.
 user-invokable: true
 ---
 
@@ -12,9 +12,25 @@ Implements external OAuth2/OIDC identity provider integration where **Next.js ac
 
 Use this skill when:
 - Adding SSO/OAuth login to a DaaS application
-- Integrating with Azure AD, Okta, Auth0, Google, or any OAuth2/OIDC provider
+- Integrating with My Apps, Azure AD, Okta, Auth0, Google, or any OAuth2/OIDC provider
 - Self-hosted Supabase without access to deployment configuration
 - Need JIT (Just-In-Time) user provisioning from external IDP
+
+> **Login = auth + role.** JIT provisioning alone is not enough in a DaaS
+> app: a user without a role gets deny-all from the permission enforcer, so
+> the integration is not done until Step 6 (default role assignment) is
+> implemented and verified with a brand-new IDP account.
+
+> **Naming note**: "My Apps" here refers to a separate OIDC identity
+> provider — not a Microsoft product. Do not confuse it with Microsoft's
+> "My Apps" portal (`myapplications.microsoft.com`, part of Entra ID/Azure
+> AD app assignment). If asked to integrate "SSO via MyApps" or "the IDP
+> from MyApps" with no mention of Azure/Entra ID/Microsoft, treat it as
+> this My Apps IDP and go to **Step 0** below — do not default to Azure
+> AD/Entra ID.
+
+My Apps is the only IDP here with a fully automated registration path —
+see **Step 0** below before doing any manual setup.
 
 ## Architecture Overview
 
@@ -54,6 +70,7 @@ sequenceDiagram
     else User not found
         NextJS->>Supabase: Admin API: Create user
     end
+    NextJS->>Supabase: Assign default DaaS role (daas_user_roles)
     NextJS->>Supabase: Admin API: Generate magic link
     NextJS->>Supabase: Verify OTP to get session
     Supabase-->>NextJS: { access_token, refresh_token }
@@ -143,6 +160,15 @@ await supabase.auth.setSession({ access_token, refresh_token });
 
 **Implementation**: Check all variants in `normalizeUserClaims()`.
 
+### 7. Default DaaS Role Assignment on JIT Provisioning (Required)
+
+**Critical Learning**: `findOrCreateUser()` creates the Supabase **auth** user only. In a DaaS application, permissions are resolved from `daas_user_roles` → access → policies → permissions. A JIT-provisioned user with no role has no policies, and the permission enforcer resolves every request to deny-all — so the first SSO login "succeeds" at the IDP but the user cannot actually use (or even finish logging into) the app.
+
+**Solution**: Default role assignment is part of this skill, not an optional extra. Two pieces:
+
+1. **Setup time (you, the agent)**: resolve the default role's UUID with the DaaS MCP `roles` tool. If the app has no suitable non-admin role with policies attached, create one via `/create-rbac` first. Store the UUID in the `OAUTH_DEFAULT_ROLE_ID` env var.
+2. **Runtime (callback flow)**: after `findOrCreateUser()`, assign the default role to users that have no role assignment yet — see **Step 6** below.
+
 ## Issues Encountered & Solutions
 
 ### Issue 1: "no_email_claim" Error
@@ -183,6 +209,52 @@ while (!existingUser) {
 }
 ```
 
+### Issue 4: SSO Login Succeeds but User Is Denied Everything
+
+**Problem**: A first-time SSO user authenticated at the IDP and received a Supabase session, but the app rejected them afterwards — empty data, permission errors on every request, or an immediate bounce back to the login page.
+
+**Root Cause**: JIT provisioning created the auth user but nothing assigned a DaaS role. No `daas_user_roles` row → no policies → the DaaS permission enforcer denies everything.
+
+**Solution**: Assign the app's default role right after provisioning (see Step 6). Verify a given user's assignment with:
+
+```sql
+select role_id from daas_user_roles where user_id = '<auth-user-uuid>';
+```
+
+## Step 0: Check Connectors for an Existing IDP First
+
+**Do this before Step 2/Step 3 below, regardless of whether you use the CLI or
+manual path.** Buildpad's Connectors system can auto-provision an OIDC client
+(e.g. for My Apps) before you're even asked to build this
+feature — if that already happened, the credentials exist and you don't need
+to ask the user for anything or register a redirect URI yourself.
+
+1. Call the `get_project_detail` MCP tool.
+2. Look at the `connectors` array in the response for a `status: "connected"`
+   entry whose `envVarNames` includes `OAUTH_CLIENT_ID` — that's the signal a
+   connector is IDP-shaped (as opposed to a plain API-key connector like
+   Stripe), regardless of its `provider` name. Don't match on provider name or
+   on how the user phrased their request — check the data.
+3. If found, use its `envVars` directly — they're already the exact
+   `OAUTH_*` values this skill needs (`OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`,
+   `OAUTH_AUTHORIZATION_URL`, `OAUTH_TOKEN_URL`, `OAUTH_USERINFO_URL`,
+   `OAUTH_JWKS_URI`, `OAUTH_ISSUER`). Write them into `.env.local` for local
+   dev, and call the `amplify_set_env_vars` + `amplify_redeploy` MCP tools to
+   push them to the deployed app. **Skip Step 3** (redirect URI registration)
+   entirely — the connector already registered the deployed app's
+   `/api/auth/callback` URL with the IDP at provision time.
+
+   > **Not covered by the connector**: `OAUTH_DEFAULT_ROLE_ID` (Step 6). The
+   > connector only knows about the IDP; the default role lives in this app's
+   > DaaS backend. Resolve it via the DaaS MCP `roles` tool yourself and push
+   > it alongside the connector env vars — SSO logins fail without it.
+4. If no such connector is `connected` yet, tell the user they may be able to
+   enable one from the project's Connectors settings page (auto-provision,
+   one click — e.g. for My Apps) instead of manually registering with an
+   IDP — then fall back to the fully manual Steps 2–3 below only if they want
+   to proceed without it, or are integrating a provider with no Connectors
+   auto-provision option (Azure/Google/Okta/Auth0/other).
+
 ## CLI Installation (Recommended)
 
 The entire OAuth implementation is registered as the `external-oauth` lib module in the **microbuild-ui** CLI registry. Install it with one command:
@@ -207,6 +279,11 @@ This copies:
 - `app/api/auth/callback/route.ts` — Enhanced dual-mode callback (replaces basic version)
 - `components/auth/OAuthLoginButtons.tsx` — Login button component
 
+> **The CLI module does NOT include default role assignment.** After
+> installing, you must still do **Step 6** (resolve `OAUTH_DEFAULT_ROLE_ID`,
+> add `ensureDefaultRole()`, and call it from the callback) — otherwise
+> JIT-provisioned users are denied everything on first login.
+
 ---
 
 ## Manual Implementation Steps
@@ -221,6 +298,9 @@ pnpm add jose
 
 ### Step 2: Add Environment Variables
 
+Skip this if **Step 0** already found a connected My Apps connector — use its
+`envVars` instead of the placeholder values below.
+
 ```env
 # ═══════════════════════════════════════════════════════════════════════
 # External OAuth Provider Configuration (Next.js as OAuth Client)
@@ -228,6 +308,11 @@ pnpm add jose
 
 # Required: OAuth State Encryption Secret — generate with: openssl rand -base64 32
 OAUTH_STATE_SECRET=your-32-byte-random-secret-here
+
+# Required: default DaaS role assigned to JIT-provisioned SSO users (Step 6).
+# Resolve the UUID via the DaaS MCP `roles` tool; create a role with
+# /create-rbac if none exists. Never point this at an admin role.
+OAUTH_DEFAULT_ROLE_ID=uuid-of-default-role
 
 # Generic / Custom OIDC Provider
 OAUTH_CLIENT_ID=your_client_id
@@ -262,6 +347,10 @@ OAUTH_SCOPES=openid email profile
 ```
 
 ### Step 3: Register Redirect URI with IDP
+
+Skip this for My Apps if **Step 0** found a connected connector — the
+redirect URI was already registered automatically when the connector was
+provisioned.
 
 | Setting | Value |
 |---------|-------|
@@ -355,6 +444,7 @@ Admin client singleton + JIT user provisioning.
 - `createSupabaseAdmin()` — singleton using `SUPABASE_SERVICE_ROLE_KEY`
 - `findOrCreateUser(options)` — paginates `listUsers()` to find by email (no `getUserByEmail` exists!), then creates/updates, generates session via magic link + OTP verification
 - `generateUserSession(supabase, user)` — uses `admin.generateLink('magiclink')` + `verifyOtp()` to get real `access_token` / `refresh_token`
+- `ensureDefaultRole(userId)` — assigns `OAUTH_DEFAULT_ROLE_ID` in `daas_user_roles` if the user has no role yet (Step 6 — required, or SSO users are denied everything)
 
 ```typescript
 export async function findOrCreateUser(options: FindOrCreateUserOptions): Promise<UserSessionResult>
@@ -386,8 +476,11 @@ export async function GET(request) {
   // 3. Merge claims from: decodeTokenUnsafe(access_token) + validateIdToken(id_token) + userinfo endpoint
   // 4. normalizeUserClaims() → email, name, etc.
   // 5. findOrCreateUser() → Supabase user + session
-  // 6. createServerClient() + supabase.auth.setSession() → sets cookies in correct format
-  // 7. NextResponse.redirect(oauthState.returnTo)
+  // 6. ensureDefaultRole(user.id) → REQUIRED: assign default DaaS role (Step 6);
+  //    on failure redirect with ?error=role_assignment_failed — do not continue,
+  //    the session would be deny-all anyway
+  // 7. createServerClient() + supabase.auth.setSession() → sets cookies in correct format
+  // 8. NextResponse.redirect(oauthState.returnTo)
 
   // Supabase native fallback (no cookie):
   // supabase.auth.exchangeCodeForSession(code)
@@ -417,6 +510,103 @@ import { OAuthLoginButtons } from '@/components/auth/OAuthLoginButtons';
 // Show only specific providers:
 <OAuthLoginButtons providers={['azure', 'google']} returnTo="/dashboard" />
 ```
+
+### Step 6: Assign a Default Role to JIT-Provisioned Users (Required)
+
+**Do this for both the CLI and manual paths.** Without it, first-time SSO
+users have no DaaS role → no policies → the permission enforcer denies every
+request, and login effectively fails even though the IDP round trip succeeded.
+
+#### 6a. Resolve the default role (setup time, via MCP)
+
+1. List the app's roles with the DaaS MCP `roles` tool:
+
+   ```json
+   { "name": "roles", "arguments": { "action": "read" } }
+   ```
+
+2. Pick the role meant for regular signed-in users (e.g. "Member",
+   "Authenticated", "User") — **never an admin role**. Confirm it has at
+   least one policy attached (check with the `access` tool) that grants the
+   collections the app needs; if the app has no such role yet, create the
+   role + policy + permissions with `/create-rbac` first.
+3. Set `OAUTH_DEFAULT_ROLE_ID=<role-uuid>` in `.env.local`, and push it to
+   the deployed app with `amplify_set_env_vars` + `amplify_redeploy`
+   (together with the other `OAUTH_*` vars).
+
+#### 6b. Assign at runtime (in `lib/supabase/admin.ts`)
+
+```typescript
+/**
+ * Assign the app's default DaaS role to a user that has no role yet.
+ * Without a role the DaaS permission enforcer denies every request,
+ * so JIT-provisioned SSO users cannot use the app.
+ */
+export async function ensureDefaultRole(userId: string): Promise<void> {
+  const roleId = process.env.OAUTH_DEFAULT_ROLE_ID;
+  if (!roleId) {
+    throw new Error(
+      'OAUTH_DEFAULT_ROLE_ID is not set — SSO users provisioned without a role cannot log in'
+    );
+  }
+
+  const supabase = createSupabaseAdmin();
+
+  // Idempotent: skip if the user already has any role assignment
+  // (also covers users provisioned before this step existed).
+  const { data: existing, error: readError } = await supabase
+    .from('daas_user_roles')
+    .select('role_id')
+    .eq('user_id', userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (readError) {
+    throw new Error(`Failed to check existing role assignments: ${readError.message}`);
+  }
+  if (existing) return;
+
+  const { error: insertError } = await supabase
+    .from('daas_user_roles')
+    .insert({ user_id: userId, role_id: roleId });
+
+  if (insertError) {
+    throw new Error(`Failed to assign default role: ${insertError.message}`);
+  }
+}
+```
+
+Call it in the callback route for **every** external OAuth login (the
+idempotency check makes repeat calls free), and treat failure as fatal:
+
+```typescript
+const { user, session, isNewUser } = await findOrCreateUser({ /* ... */ });
+
+try {
+  await ensureDefaultRole(user.id);
+} catch (roleError) {
+  console.error('Default role assignment failed:', roleError);
+  return NextResponse.redirect(
+    new URL('/login?error=role_assignment_failed', request.url)
+  );
+}
+```
+
+> **If the insert fails with a foreign-key violation on `daas_users`**: the
+> auth-user → `daas_users` sync hasn't produced a profile row for this user
+> yet. Insert one first (`{ id: userId, email, status: 'active' }`) with the
+> admin client, then retry the role insert.
+
+#### 6c. Verify
+
+Log in with a brand-new IDP account, then check:
+
+```sql
+select role_id from daas_user_roles where user_id = '<new-auth-user-uuid>';
+```
+
+The row must exist and the user must be able to reach the app's main pages —
+an authenticated session alone is not a passing test.
 
 ## Security Considerations
 
@@ -471,6 +661,19 @@ Production cookies:
 2. Middleware not recognizing session
 
 **Solution**: Ensure using `supabase.auth.setSession()` not manual cookie setting.
+
+### "role_assignment_failed" / Authenticated but Denied Everything
+
+**Causes**:
+1. `OAUTH_DEFAULT_ROLE_ID` not set (locally or in the Amplify environment)
+2. The env var points at a deleted role, or a role with no policies attached
+3. `ensureDefaultRole()` never wired into the callback (e.g. CLI install
+   without Step 6)
+4. FK violation because no `daas_users` profile row exists yet (see Step 6b)
+
+**Debug**: Query `daas_user_roles` for the user's UUID. No row → runtime
+assignment is broken. Row present but still denied → the role's policies/
+permissions are the problem, not this skill; fix with `/create-rbac`.
 
 ## References
 

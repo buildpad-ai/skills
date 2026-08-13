@@ -15,8 +15,7 @@ Six screens ship together:
 - **`RolesManager`** — the `/roles` list with member counts.
 - **`RoleDetail`** — the `/roles/[id]` page: icon, parent role hierarchy, scope-assignment rules, plus Users and Policies tabs.
 - **`PoliciesManager`** — the `/policies` list with user/role attachment counts.
-- **`PolicyDetail`** — the `/policies/[id]` page: access flags (`app_access`, `admin_access`, `delegate_access`) and both permission dimensions as tabs — **Record-Level Access** (the per-collection permissions matrix) and **Module-Level Access** (capability-key toggles, via `ModuleAccessPanel`).
-- **`ModuleAccessKeysManager`** — the `/module-access-keys` page: the registry of capability keys that policies can grant. See [grant-module-access](../grant-module-access/SKILL.md).
+- **`PolicyDetail`** — the `/policies/[id]` page: access flags (`app_access`, `admin_access`, `delegate_access`) and a per-collection permissions matrix with a custom-permission editor.
 
 ## CRITICAL: Never Create These Manually
 
