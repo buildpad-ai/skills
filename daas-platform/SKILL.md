@@ -148,7 +148,9 @@ Aggregate queries respect collection-level read permissions and item-level RLS f
 
 > **All MCP tools** use top-level parameters in `arguments` — do NOT wrap in a `data` object.
 >
-> **Delete restriction:** The `delete` action on most tools is blocked by default. The platform setting `mcp_allow_deletes` (env: `MCP_ALLOW_DELETES`) must be `true` for delete to work. RBAC tools (`roles`, `policies`, `permissions`, `access`) are exempt from this restriction.
+> **Delete restriction (expected, not a bug):** The `delete` action on most tools is blocked by default — this is an intentional safety gate, not an error condition to work around. The platform setting `mcp_allow_deletes` (env: `MCP_ALLOW_DELETES`) must be `true` for delete to work. RBAC tools (`roles`, `policies`, `permissions`, `access`) are exempt from this restriction.
+>
+> If a delete call errors with `"Delete operations are disabled"`, **do not** retry, switch tools, use raw SQL, or attempt any other workaround. Tell the user this is expected and that they need to enable it in the DaaS Admin dashboard under Settings → AI (`mcp_allow_deletes`), then stop.
 
 ### MCP Pitfalls
 
