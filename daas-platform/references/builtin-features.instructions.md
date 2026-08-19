@@ -72,19 +72,21 @@ DaaS supports named content versions with delta-based storage. Versions can be p
 
 **Status: Fully built-in. NEVER build custom file upload/storage.**
 
-DaaS provides comprehensive file management with Supabase Storage backend, including upload, metadata, thumbnails, and hierarchical folders.
+DaaS provides comprehensive file management with Supabase Storage backend, including presigned direct uploads, metadata management, thumbnails, and hierarchical folders.
 
 | What | How |
 |------|-----|
-| Upload file | `POST /api/files` (multipart) |
+| Get presigned upload URL | `POST /api/files/signed-url` |
+| Direct upload to storage | `PUT <signed_url>` (direct to Supabase Storage) |
+| Register file metadata | `POST /api/files` with JSON metadata & UUID |
 | List/search files | `GET /api/files` with filters |
 | Create folders | `POST /api/folders` |
 | MCP tool | `mcp_daas_files` |
 | UI components | `FileInterface`, `FileImage`, `Files`, `Upload` from Buildpad |
 
-**Lifecycle events:** Folder CRUD operations emit `daas_folders.items.create/update/delete` events. File operations already emitted events via `FilesService`.
+**Lifecycle events:** Folder CRUD operations emit `daas_folders.items.create/update/delete` events. File operations emit events via `FilesService`.
 
-**DO NOT build:** custom upload API routes, custom file storage logic, custom thumbnail generation, custom folder management.
+**DO NOT build:** custom storage backends or separate database tables for file metadata (use DaaS `daas_files` and presigned URLs).
 
 ---
 

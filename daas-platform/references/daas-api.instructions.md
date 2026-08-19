@@ -340,15 +340,16 @@ Aggregate responses use a nested format (no pagination meta):
 | DELETE | `/api/relations/:id`                | Delete relation (admin)       |
 
 ### Files
-
-| Method | Endpoint            | Description          |
-| ------ | ------------------- | -------------------- |
-| GET    | `/api/files`        | List files           |
-| POST   | `/api/files`        | Upload file(s)       |
-| GET    | `/api/files/:id`    | Get file metadata    |
-| PATCH  | `/api/files/:id`    | Update file metadata |
-| DELETE | `/api/files/:id`    | Delete file          |
-| POST   | `/api/files/import` | Import from URL      |
+ 
+ | Method | Endpoint                 | Description                                  |
+ | ------ | ------------------------ | -------------------------------------------- |
+ | GET    | `/api/files`             | List files                                   |
+ | POST   | `/api/files/signed-url`  | Request presigned upload URL & UUID          |
+ | POST   | `/api/files`             | Register uploaded file metadata (or upload)  |
+ | GET    | `/api/files/:id`         | Get file metadata                            |
+ | PATCH  | `/api/files/:id`         | Update file metadata                         |
+ | DELETE | `/api/files/:id`         | Delete file                                  |
+ | POST   | `/api/files/import`      | Import from URL                              |
 
 ### Assets (File Content)
 

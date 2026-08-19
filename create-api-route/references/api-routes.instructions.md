@@ -725,10 +725,21 @@ export async function PATCH(request: NextRequest) {
 
 ## Files API Endpoints
 
-### Upload Files
+### Presigned URL File Upload Flow
+
+File upload follows a 2-step direct-to-storage pattern to bypass Next.js API binary limits and optimize transfer performance:
+
+1. **Client requests signed upload URL** (`POST /api/files/signed-url`) with metadata (filename, type, size).
+2. **Next.js API validates permissions**, generates a unique file UUID/path, and requests a temporary signed upload URL from Supabase Storage.
+3. **Client uploads binary directly to Supabase Storage** using the signed URL (`PUT /...`).
+4. **Client registers file metadata** (`POST /api/files`) with the generated UUID, inserting the record into `daas_files`.
 
 ```typescript
-// app/api/files/route.ts
+// app/api/files/signed-url/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import crypto from "crypto";
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const {
@@ -740,40 +751,86 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const formData = await request.formData();
-  const file = formData.get("file") as File;
-  const folder = formData.get("folder") as string | null;
-  const title = formData.get("title") as string | null;
-
-  if (!file) {
-    return NextResponse.json({ error: "No file provided" }, { status: 400 });
+  // 1. Parse metadata
+  const { filename, type, size } = await request.json();
+  if (!filename) {
+    return NextResponse.json({ error: "Filename is required" }, { status: 400 });
   }
 
-  // Upload to Supabase Storage
-  const filename = `${Date.now()}-${file.name}`;
-  const { data: uploadData, error: uploadError } = await supabase.storage
+  // 2. Validate permissions & generate unique file path/UUID
+  const fileId = crypto.randomUUID();
+  const extension = filename.split(".").pop();
+  const storagePath = `${fileId}${extension ? `.${extension}` : ""}`;
+
+  // 3. Request temporary signed upload URL from Supabase Storage
+  const { data: signedData, error: signError } = await supabase.storage
     .from("files")
-    .upload(filename, file);
+    .createSignedUploadUrl(storagePath);
 
-  if (uploadError) throw uploadError;
+  if (signError) {
+    return NextResponse.json({ error: signError.message }, { status: 500 });
+  }
 
-  // Create metadata record
+  // 4 & 5. Return signed URL and fileId (UUID) to client
+  return NextResponse.json({
+    data: {
+      signedUrl: signedData.signedUrl,
+      token: signedData.token,
+      path: signedData.path,
+      id: fileId,
+    },
+  });
+}
+```
+
+### Register Uploaded File Metadata
+
+```typescript
+// app/api/files/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+
+export async function POST(request: NextRequest) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  const { id, filename_disk, filename_download, title, type, filesize, folder } =
+    await request.json();
+
+  if (!filename_disk) {
+    return NextResponse.json(
+      { error: "filename_disk is required" },
+      { status: 400 }
+    );
+  }
+
+  // Insert metadata record into daas_files
   const { data, error: dbError } = await supabase
     .from("daas_files")
     .insert({
-      filename_disk: uploadData.path,
-      filename_download: file.name,
-      title: title || file.name,
-      type: file.type,
-      filesize: file.size,
-      folder,
+      id,
+      filename_disk,
+      filename_download: filename_download || filename_disk,
+      title: title || filename_download || filename_disk,
+      type: type || "application/octet-stream",
+      filesize: filesize || 0,
+      folder: folder || null,
       uploaded_by: user.id,
       uploaded_on: new Date().toISOString(),
     })
     .select()
     .single();
 
-  if (dbError) throw dbError;
+  if (dbError) {
+    return NextResponse.json({ error: dbError.message }, { status: 500 });
+  }
 
   return NextResponse.json({ data }, { status: 201 });
 }
