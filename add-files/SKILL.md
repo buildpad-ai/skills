@@ -44,7 +44,14 @@ npx @buildpad/cli@latest add api-routes --cwd /path/to/project
 
 > **If the CLI command fails, `@buildpad/cli` IS published to npm** — verify with `npm view @buildpad/cli version` before assuming otherwise or reaching for a local clone. The CLI fetches its registry from `raw.githubusercontent.com`, so confirm the environment can reach **both** npm and the GitHub raw CDN. A local clone is only needed for CLI development, never to consume components.
 
-`api-routes` includes exactly the routes this module needs: `app/api/files/route.ts`, `app/api/files/[id]/route.ts`, `app/api/files/import/route.ts`, `app/api/folders/route.ts`, `app/api/folders/[id]/route.ts`, and `app/api/assets/[id]/route.ts`.
+`api-routes` includes the routes this module needs: `app/api/files/signed-url/route.ts` (generates presigned upload URL & UUID), `app/api/files/route.ts` (registers metadata in `daas_files` / list files), `app/api/files/[id]/route.ts`, `app/api/files/import/route.ts`, `app/api/folders/route.ts`, `app/api/folders/[id]/route.ts`, and `app/api/assets/[id]/route.ts`.
+
+### Upload Architecture (Direct-to-Storage Presigned URLs)
+
+File uploads bypass Next.js API binary limits:
+1. **Request presigned URL** via `POST /api/files/signed-url` with file metadata (filename, size, type).
+2. **Upload directly** from the browser to Supabase Storage via `PUT` using the signed URL.
+3. **Register file** via `POST /api/files` with the generated UUID and metadata to insert the record into `daas_files`.
 
 ## The Routes
 
