@@ -12,7 +12,7 @@ Set up a **microapp architecture** where one **Main App** and multiple **micro-a
 
 1. **Single Shared DaaS Backend**: All apps (Main App + micro-apps) connect to the **same** DaaS backend instance via the same `NEXT_PUBLIC_BUILDPAD_DAAS_URL`. There is only ONE DaaS backend. Collections for all domains live in this single instance.
 2. **Shared Auth, Shared Data Layer**: All apps share the same Supabase Auth project AND the same DaaS backend. Authentication and data access go through the same infrastructure.
-3. **Direct DaaS Calls**: Each app (Main App and micro-apps) calls DaaS **directly** from the browser using `Authorization: Bearer <supabase-jwt>` headers. CORS is handled on the DaaS side via `CORS_ORIGINS` env var. No Next.js proxy routes are needed for DaaS data.
+3. **Direct Calls for Components, Proxy Routes for Your Own Code**: Buildpad UI components (`CollectionList`, `VForm`) call DaaS **directly** from the browser through `DaaSProvider`, which supplies the `Authorization: Bearer <supabase-jwt>` and `X-Resource-Uri` headers. Hand-written fetches go through a Next.js proxy route in the same app. Do not generate `/api/items/[collection]/route.ts` unless the app has hand-written data calls. CORS for the direct path is handled on the DaaS side via `CORS_ORIGINS`. See [authentication-proxy](../authentication-proxy/SKILL.md).
 4. **Collection-Based Domain Boundaries**: Each micro-app "owns" a logical domain of collections (e.g., Users service owns `profiles`, `roles`; Billing service owns `invoices`, `payments`). Ownership is a team/code convention — all collections physically live in the same DaaS instance.
 5. **Independent Deployment**: Each micro-app deploys independently as a Next.js application. Schema changes in DaaS are shared — coordinate collection/field changes via the DaaS admin or MCP tools.
 6. **Main App Is a Full App**: The Main App handles authentication, navigation, iframe composition, AND can have its own pages and collection data. It is not a thin shell.
@@ -33,7 +33,7 @@ Set up a **microapp architecture** where one **Main App** and multiple **micro-a
 │  - Auth (login/logout)                                         │
 │  - Navigation & iframe composition                             │
 │  - Own pages (dashboard, settings, etc.)                       │
-│  - /api/items/* → shared DaaS                                  │
+│  - Components → shared DaaS directly                           │
 └─────────┬──────────────────────┬───────────────────┬───────────┘
           │                      │                   │
           ▼                      ▼                   ▼
@@ -42,7 +42,7 @@ Set up a **microapp architecture** where one **Main App** and multiple **micro-a
 │  (micro-app)     │  │  (micro-app)     │  │  (micro-app)     │
 │  ┌─────────────┐ │  │  ┌─────────────┐ │  │  ┌─────────────┐ │
 │  │ Next.js App │ │  │  │ Next.js App │ │  │  │ Next.js App │ │
-│  │ /api/items  │ │  │  │ /api/items  │ │  │  │ /api/items  │ │
+│  │ own cookie  │ │  │  │ own cookie  │ │  │  │ own cookie  │ │
 │  └──────┬──────┘ │  │  └──────┬──────┘ │  │  └──────┬──────┘ │
 └─────────┼────────┘  └─────────┼────────┘  └─────────┼────────┘
           │                     │                     │
@@ -342,7 +342,7 @@ if (event.data?.type === 'MICROAPP_NEEDS_AUTH') {
 
 ### Step 5: Configure Direct DaaS Access (Both Apps)
 
-All apps call DaaS directly from the browser — no Next.js proxy routes needed for data. Wrap the root layout with `DaaSProvider` to supply the DaaS URL and Supabase JWT:
+Buildpad UI components call DaaS directly from the browser. Hand-written fetches use a proxy route in the same app (Rule 3). Supply the DaaS URL and the Supabase JWT with `DaaSProvider`:
 
 ```typescript
 // app/layout.tsx (in every app)
@@ -689,7 +689,7 @@ workspace/
 | Navigation         | Sidebar, header, tabs      | Internal routes only       |
 | Layout             | AppShell wrapper           | Page content only          |
 | Data collections   | Own domain collections     | Own domain collections     |
-| API routes         | `/api/auth/*`, `/api/items/*` | `/api/items/*`, `/api/auth/*` |
+| API routes         | `/api/auth/*` (+ `/api/items/*` only for hand-written fetches) | `/api/auth/*` (+ `/api/items/*` only for hand-written fetches) |
 | DaaS backend       | Shared (same URL)          | Shared (same URL)          |
 | Deployment         | Independent (Amplify)      | Independent (Amplify)      |
 | Testing            | Integration + E2E          | Unit + API + E2E           |
