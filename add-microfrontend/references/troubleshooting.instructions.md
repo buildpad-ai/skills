@@ -116,6 +116,15 @@ deliberately. Replace the call with a Mantine `Modal`. The CLI's
 
 `allow-downloads` is missing from the sandbox attribute.
 
+## The frame shows its own sidebar, header, and profile menu (chrome inside chrome)
+
+Pinned edit E1 is missing: the micro-app's `app/(authenticated)/layout.tsx` still
+wraps every page in `AuthenticatedShell`. Inside the host frame that renders a second
+shell — and its nav lets the user move the frame to a page the host section does not
+match (the host says Files while the frame shows the micro-app's Home). Apply E1: the
+layout skips the shell when the document request carries `Sec-Fetch-Dest: iframe`
+(bridge-cookie fallback), and keeps it for direct visits.
+
 ## Two scrollbars
 
 The host page and the frame both scroll. Set `overflow: hidden` on the host container

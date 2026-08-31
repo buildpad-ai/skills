@@ -79,9 +79,11 @@ complexity is not low. `add-microapp` without iframes is often the better answer
 14. Micro-app pages must not call `window.confirm`, `window.alert`, or
     `window.prompt` — including calls shipped by the CLI (audit for them in Step 4).
     Use Mantine `Modal` or `modals.openConfirmModal`.
-15. Micro-apps must not render their own login form inside the frame — and not their
-    own sign-out control either: it clears only this app's cookies, the host stays
-    signed in, and `SET_AUTH` instantly signs the user back in.
+15. A framed micro-app renders **content only**. The host owns all chrome, so the
+    frame must show no sidebar, no header, no login form, and no sign-out control —
+    double chrome also lets the user navigate the frame away from the section the
+    host thinks is open. Pinned edit E1 skips `AuthenticatedShell` when the request
+    arrives inside a frame; opened directly, the micro-app keeps its full shell.
 16. All apps must use the same `NEXT_PUBLIC_BUILDPAD_DAAS_URL`,
     `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 17. `NEXT_PUBLIC_HOST_ORIGIN` / `HOST_ORIGIN` are **reserved by the CLI's
@@ -118,7 +120,8 @@ Files this skill touches, and how:
 | `app/api/auth/logout/route.ts` | CLI | **Merge** — pinned edit L1 (expire the three bridge cookies with `framedCookieOptions(0, …)`, never `delete()`). It has a GET handler the shell navigates to; never drop it |
 | `app/login/page.tsx` | CLI | **Merge** — pinned edit P1 (wrap the form in `LoginBridge`) |
 | `components/DaaSProviderWrapper.tsx` | CLI | **Merge** — pinned edit W1 (`useMfeToken` as second token source) |
-| `components/layout/AuthenticatedShell.tsx` | CLI | **Merge** — host: pinned edit S1 (`await logoutAllMicroapps()`); micro-app: pinned edit S2 (hide the in-frame sign-out) |
+| `components/layout/AuthenticatedShell.tsx` | CLI | **Merge** (host only) — pinned edit S1 (`await logoutAllMicroapps()`). Micro-apps leave it untouched: E1 keeps it out of the frame entirely |
+| `app/(authenticated)/layout.tsx` | CLI | **Merge** (micro-app) — pinned edit E1 (skip the shell when framed; content only inside the frame) |
 | `lib/api/auth-headers.ts` | CLI | **Merge** — pinned edit H1 (read `mfe_access_token` before the session) |
 | everything under `lib/bridge/`, `components/Microapp*`, `components/LoginBridge.tsx`, `config/app-urls.ts`, `next.config.ts`, the three bridge auth routes | this skill | **New files** — copy from `assets/` |
 
@@ -290,8 +293,11 @@ Merges into CLI-owned files — exact hunks in
    token source alongside the Supabase path.
 5. **H1** `lib/api/auth-headers.ts` — read `mfe_access_token` first, fall back to the
    Supabase session (Rule 12; this single edit fixes all ~16 CLI proxy routes).
-6. **S2** `components/layout/AuthenticatedShell.tsx` — hide the shell's own sign-out
-   control when framed (Rule 15's implementation path; standalone keeps it).
+6. **E1** `app/(authenticated)/layout.tsx` — render content only when framed
+   (Rule 15's implementation path): skip `AuthenticatedShell`, keep
+   `DaaSProviderWrapper`. Standalone keeps the full shell. Without this, the frame
+   shows a second sidebar, header, and profile menu inside the host's — and its nav
+   lets the user move the frame to a different page than the host section.
 
 Then:
 
@@ -447,8 +453,8 @@ main-app/
 ├── app/api/auth/logout/route.ts           # CLI-owned — pinned edit L1
 ├── app/api/auth/{set-session,token}/route.ts  # NEW
 ├── components/{MicroappBridgeProvider,LoginBridge}.tsx  # NEW
+├── app/(authenticated)/layout.tsx         # CLI-owned — pinned edit E1 (no shell in frame)
 ├── components/DaaSProviderWrapper.tsx     # CLI-owned — pinned edit W1
-├── components/layout/AuthenticatedShell.tsx  # CLI-owned — pinned edit S2
 ├── config/app-urls.ts                     # committed: HOST_ORIGIN + DEFAULT_AUTHENTICATED_ROUTE
 ├── hooks/useQueryParamSync.ts             # NEW — and WIRED on the default route
 ├── lib/api/auth-headers.ts                # CLI-owned — pinned edit H1
@@ -466,6 +472,8 @@ Each item names its procedure — a box without evidence is not ticked.
       unchanged, and the input keeps focus (spec: *search reaches the host URL*).
 - [ ] A signed-in user reaches a micro-app section with no login form and no extra
       click (spec: *auth bridge signs the frame in*).
+- [ ] Inside the frame the micro-app shows **no** sidebar, header, or profile menu;
+      opened directly on its own origin it still shows the full shell (E1).
 - [ ] Renewal works without waiting an hour: overwrite `mfe_expires_at` to now+70 s
       and observe a second `set-session` round trip (spec: *token renewal*).
 - [ ] Sign-out: `mfe_access_token` is present on the frame origin **before** the

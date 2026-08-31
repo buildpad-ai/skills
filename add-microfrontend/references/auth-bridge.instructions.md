@@ -227,20 +227,52 @@ const token = mfeToken ?? session?.access_token;
 `supabase.auth.getUser()` directly — apply the same fallback there if the project uses
 module access or the shell's profile fetch.
 
-### S2 · `components/layout/AuthenticatedShell.tsx` (micro-app)
+### E1 · `app/(authenticated)/layout.tsx` (micro-app)
 
-The CLI shell renders its own Sign out menu item, which Rule 15 forbids inside the
-frame — clicking it clears only this app's cookies and `SET_AUTH` signs the user
-straight back in. Do not delete it (standalone mode needs it): render it
-conditionally. In the component body add
+Rule 15: a framed micro-app renders **content only** — the host already provides the
+sidebar, header, breadcrumb, and profile menu. Without this edit the frame shows a
+second copy of all of them, and the inner nav can move the frame to a different page
+than the section the host has open.
 
-```ts
-const [framed, setFramed] = useState(false);
-useEffect(() => { setFramed(window.parent !== window); }, []);
+The framed/standalone decision is made **server-side, per document load**, so there
+is no client flash and no hydration mismatch. Browsers send `Sec-Fetch-Dest: iframe`
+on document requests inside a frame; the bridge cookie is the fallback for browsers
+that do not send the header. (Client-side navigations send RSC fetches, not document
+loads — the layout persists across them, so the initial decision holds.)
+
+Make the CLI layout's default export `async` and wrap the shell conditionally —
+`DaaSProviderWrapper` stays for both modes:
+
+```tsx
+import { cookies, headers } from 'next/headers';
+import { MFE_TOKEN_COOKIE } from '@/lib/bridge/mfe-cookies';
+
+export default async function AuthenticatedLayout({
+  children,
+}: Readonly<{ children: ReactNode }>) {
+  // Pinned edit E1 (add-microfrontend Rule 15): content only inside the frame.
+  const dest = (await headers()).get('sec-fetch-dest');
+  const framed =
+    dest === 'iframe' ||
+    (dest === null && (await cookies()).has(MFE_TOKEN_COOKIE));
+  return (
+    <DaaSProviderWrapper>
+      {framed ? children : <AuthenticatedShell>{children}</AuthenticatedShell>}
+    </DaaSProviderWrapper>
+  );
+}
 ```
 
-and wrap the sign-out `Menu.Item` in `{!framed && ( … )}`. Standalone keeps the
-control; the frame hides it.
+Notes:
+- `headers()` makes these routes render dynamically. They already sit behind auth
+  middleware, so nothing cacheable is lost.
+- The cookie fallback fires only when the header is absent (older browsers). On
+  localhost, ports share one site, so after a framed session the bridge cookie can
+  also reach a direct visit — with the header present that visit still gets the
+  shell, which is why the header is the primary signal.
+- E1 supersedes the earlier S2 edit (hiding just the sign-out item): with no shell
+  in the frame, there is no in-frame sign-out to hide. Micro-apps leave
+  `AuthenticatedShell.tsx` itself untouched.
 
 ### S1 · `components/layout/AuthenticatedShell.tsx` (host)
 
@@ -287,8 +319,11 @@ expected, and none of the scope checks apply (SKILL Rule 11).
 - [ ] `set-session` rejects cross-site callers *before* validating the token.
 - [ ] All bridge cookies use `SameSite=None; Secure; Partitioned` via
       `framedCookieOptions`.
-- [ ] M1–M3, L1, P1, W1, S2, H1 applied; every merged file carries the
+- [ ] M1–M3, L1, P1, W1, E1, H1 applied; every merged file carries the
       LOCAL MODIFICATION banner; no `@buildpad-origin` file was replaced.
+- [ ] Framed: no sidebar/header/profile chrome inside the frame. Standalone: the
+      full shell renders. (Compare the same route with and without
+      `Sec-Fetch-Dest: iframe`.)
 - [ ] L1 expires cookies via `framedCookieOptions(0, …)` — grep the logout route for
       `cookieStore.delete(MFE` and fail on any hit.
 - [ ] W1's config memo lists `mfeToken` in its dependency array.
