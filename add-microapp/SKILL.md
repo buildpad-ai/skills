@@ -23,7 +23,7 @@ Set up a **microapp architecture** where one **Main App** and multiple **micro-a
 11. **No Native Browser Dialogs in Micro-Apps**: Since micro-apps run inside iframes, `window.confirm()`, `window.alert()`, and `window.prompt()` are **blocked by the browser sandbox**. Use Mantine `Modal` (or `modals.openConfirmModal`) for all confirmation dialogs.
 12. **No Function Props from Server Components (React 19)**: In Next.js 16 / React 19, you cannot pass functions as props from Server Components to Client Components. Avoid patterns like `<Anchor component={Link}>` in Server Components — use plain `<Link>` from `next/link` instead.
 13. **Verify Field Names Against DaaS Schema**: Before writing any query, sort, or filter parameter, **always check the actual field names** in the DaaS schema using `mcp_daas_schema` or `mcp_daas_fields`. Do NOT assume field names — they may differ from common conventions (e.g., `created_at` vs `date_created`). Using a non-existent field in `sort` or `filter` causes a DaaS **500 error** with no helpful message, which is hard to debug through the proxy layer.
-14. **Cross-Domain Auth Bridge (Amplify — always required)**: On AWS Amplify, every app gets a random subdomain like `main.dXXXX.amplifyapp.com`. Because `amplifyapp.com` is a public suffix, **Supabase cookies cannot be shared between apps** — the micro-app sees no session and redirects to `/login`, forcing users to log in again. Fix: implement the postMessage token bridge in every micro-app — the login page sends `MICROAPP_NEEDS_AUTH`, the Main App's `MicroappIframe` responds with `SET_AUTH { access_token, refresh_token }`, and the micro-app calls `/api/auth/set-session` to establish local cookies. See [add-microfrontend auth-syncing](../add-microfrontend/references/auth-syncing.instructions.md) for the full implementation.
+14. **Cross-Domain Auth Bridge (Amplify — always required)**: On AWS Amplify, every app gets a random subdomain like `main.dXXXX.amplifyapp.com`. Because `amplifyapp.com` is a public suffix, **Supabase cookies cannot be shared between apps** — the micro-app sees no session and redirects to `/login`, forcing users to log in again. Fix: implement the postMessage token bridge in every micro-app — the login page sends `MICROAPP_NEEDS_AUTH`, the Main App's `MicroappIframe` responds with `SET_AUTH { access_token, expires_at, resource_uri }`, and the micro-app calls `/api/auth/set-session` to establish its own cookie. **Never send a refresh token across the bridge** — the host owns refresh. See [add-microfrontend auth-syncing](../add-microfrontend/references/auth-syncing.instructions.md) for the full implementation.
 
 ## Architecture
 
@@ -228,12 +228,14 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { access_token, refresh_token } = await request.json();
-    if (!access_token || !refresh_token) {
+    const { access_token, expires_at, resource_uri } = await request.json();
+    if (!access_token || typeof expires_at !== 'number') {
       return NextResponse.json({ error: 'Missing tokens' }, { status: 400 });
     }
     const supabase = await createClient();
-    const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+    // Validate before trusting: this route is public. Then store the token in this
+    // app's own httpOnly cookie, plus daas_resource_uri for scope forwarding.
+    const { data, error } = await supabase.auth.getUser(access_token);
     if (error) return NextResponse.json({ error: error.message }, { status: 401 });
     return NextResponse.json({ success: true });
   } catch {
@@ -282,11 +284,11 @@ export default function LoginPage() {
     async function handleMessage(event: MessageEvent) {
       if (event.origin !== HOST_ORIGIN) return;
       if (event.data?.type !== 'SET_AUTH') return;
-      const { access_token, refresh_token } = event.data;
+      const { access_token, expires_at, resource_uri } = event.data;
       const res = await fetch('/api/auth/set-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ access_token, refresh_token }),
+        body: JSON.stringify({ access_token, expires_at, resource_uri }),
       });
       if (res.ok) {
         // replace, not href: the failed /login attempt must not stay in history.
@@ -329,7 +331,7 @@ if (event.data?.type === 'MICROAPP_NEEDS_AUTH') {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session && iframeRef.current?.contentWindow) {
         iframeRef.current.contentWindow.postMessage(
-          { type: 'SET_AUTH', access_token: session.access_token, refresh_token: session.refresh_token },
+          { type: 'SET_AUTH', access_token: session.access_token, expires_at: session.expires_at ?? 0, resource_uri: readScopeCookie() },
           resolvedOrigin,
         );
       }
