@@ -1,4 +1,3 @@
-````markdown
 # Cross-Domain Data Access
 
 ## Overview
@@ -307,4 +306,3 @@ The user's role determines what data they can access across all apps:
 | A proxy route for a Buildpad component | Unnecessary extra layer  | Let the component call DaaS through DaaSProvider|
 | Hardcoding collection names     | Fragile to schema changes        | Use constants/enums from shared-types         |
 | Ignoring fetch errors           | Silent failures                  | Handle 403, 404, 500 gracefully               |
-````
