@@ -44,13 +44,30 @@ interface MicroappIframeProps {
 The `sandbox` attribute restricts iframe capabilities:
 
 ```
-allow-scripts        → JavaScript execution
-allow-same-origin    → Access to same-origin cookies/storage
-allow-forms          → Form submission
-allow-popups         → Opening new windows (for OAuth flows)
+sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
 ```
 
-**Never add `allow-top-navigation`** — micro-apps must not redirect the Main App page.
+| Flag                             | Status                         | Reason                                                                       |
+| -------------------------------- | ------------------------------ | ----------------------------------------------------------------------------- |
+| `allow-scripts`                  | required                       | The micro-app is a Next.js app.                                              |
+| `allow-same-origin`              | required                       | Cookies and storage on the micro-app origin.                                 |
+| `allow-forms`                    | required                       | Form submission.                                                             |
+| `allow-popups`                   | required                       | External links and OAuth windows.                                            |
+| `allow-downloads`                | required                       | CSV export, and any download from the Files module (`add-files`).            |
+| `allow-popups-to-escape-sandbox` | only with `add-external-oauth` | A popup inherits this sandbox otherwise, and the OAuth flow fails.           |
+| `allow-modals`                   | **forbidden**                  | Its absence is what blocks `window.confirm`. Micro-apps use Mantine `Modal`. |
+| `allow-top-navigation`           | **forbidden**                  | It lets a micro-app replace the host page.                                   |
+
+Native dialogs are blocked by the missing `allow-modals` flag — a deliberate choice here, not a browser policy. Do not add the flag to make a dialog work.
+
+## Clickjacking Protection
+
+A micro-app that holds a valid cookie can otherwise be framed by any site. `X-Frame-Options` cannot list more than one origin, so use CSP. Generate both values from `config/app-urls.ts`.
+
+- Micro-app `next.config.ts`: `Content-Security-Policy: frame-ancestors 'self' <HOST_ORIGIN>`
+- Main App `next.config.ts`: `Content-Security-Policy: frame-src 'self' <each MICROAPP_URLS origin>`
+
+Add every local development origin to both, or the frame is blocked locally. A `frame-ancestors` mismatch is invisible to the host: the load failure is opaque, so the load watchdog is what surfaces it.
 
 ### Loading States
 
@@ -195,9 +212,9 @@ Both apps are deployed independently. The only coupling is:
 
 ## Iframe Restrictions & Pitfalls
 
-### Native Browser Dialogs Are Blocked
+### Native Browser Dialogs Do Nothing
 
-The browser **blocks** `window.confirm()`, `window.alert()`, and `window.prompt()` inside sandboxed iframes. Any micro-app code that calls these will silently fail or throw an error.
+`window.confirm()`, `window.alert()`, and `window.prompt()` do nothing inside the frame **because the `sandbox` attribute omits `allow-modals`**. This is a deliberate choice, not a browser policy — and it is why `allow-modals` must never be added.
 
 **Bad** — will fail inside iframe:
 

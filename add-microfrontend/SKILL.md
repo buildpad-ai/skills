@@ -17,11 +17,11 @@ Set up a **client-side composition** architecture where a **Main App** hosts ind
 5. **Independent Deployments**: Each micro-app is deployed independently (e.g., via AWS Amplify). Main App only holds the iframe `src` URLs — never bundles micro-app code.
 6. **SSR for Both Layers**: Both Main App pages and micro-app pages use Next.js SSR. The Main App renders the shell layout server-side; the iframe triggers a separate SSR request for the micro-app.
 7. **Auth Routes in Every App**: Both the Main App and each micro-app have their own `/api/auth/*` routes. Every micro-app additionally needs `set-session` (accepts a host token), `logout` (clears its own cookies), and `token` (hands the stored token to `DaaSProvider`). Each app validates independently in server-side middleware.
-8. **Sandbox Security**: Iframes use `sandbox="allow-scripts allow-same-origin allow-forms allow-popups"` to restrict capabilities while allowing necessary functionality.
+8. **Sandbox Security**: Iframes use `sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"`. `allow-downloads` is required or a CSV export and any download from the Files module fails inside the frame. **Never add `allow-modals`** — its absence is what blocks native dialogs (Rule 12), so adding it to "fix" a dialog defeats Rule 12. **Never add `allow-top-navigation`** — it lets a micro-app replace the host page. Add `allow-popups-to-escape-sandbox` only when the micro-app uses `add-external-oauth`, because an OAuth popup otherwise inherits this sandbox.
 9. **Single Shared DaaS Backend**: All apps (Main App + micro-apps) MUST share the same `NEXT_PUBLIC_BUILDPAD_DAAS_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. There is only ONE DaaS backend instance. **Buildpad UI components call DaaS directly** through `DaaSProvider` (which sends `Authorization: Bearer <supabase-jwt>` and `X-Resource-Uri`); **hand-written fetches go through a proxy route in the same app**. This is the same split as [authentication-proxy](../authentication-proxy/SKILL.md). Do not generate `/api/items/[collection]/route.ts` unless the app has hand-written data calls. Set `CORS_ORIGINS` in the DaaS `.env` to include all app origins.
 10. **Fallback UI**: Always show a loading skeleton inside the iframe container while the micro-app loads, and display an error boundary if the iframe fails to load.
 11. **Main App Is a Full App**: The Main App is NOT just a thin shell — it can have its own pages, collections, and data. It additionally serves as the host for micro-app iframes.
-12. **No Native Browser Dialogs in Micro-Apps**: `window.confirm()`, `window.alert()`, and `window.prompt()` are **blocked inside iframes** by the browser sandbox. Micro-apps MUST use Mantine `Modal` (or `modals.openConfirmModal` from `@mantine/modals`) for confirmation dialogs, alerts, and user input prompts. Never rely on native browser dialogs in any micro-app code.
+12. **No Native Browser Dialogs in Micro-Apps**: `window.confirm()`, `window.alert()`, and `window.prompt()` do nothing inside the frame **because the `sandbox` attribute omits `allow-modals`** — this is a deliberate choice in Rule 8, not a browser policy. Micro-apps MUST use Mantine `Modal` (or `modals.openConfirmModal` from `@mantine/modals`). Do not add `allow-modals` to make a dialog work.
 13. **No Function Props from Server Components (React 19 / Next.js 16)**: In React 19, you cannot pass functions (including React components) as props from a Server Component to a Client Component. This means patterns like `<Anchor component={Link}>` will fail in Server Components because `Link` is a function. Use plain `<Link href="...">` from `next/link` instead. The `component={...}` prop pattern is only safe inside `'use client'` components.
 14. **Verify Field Names Against DaaS Schema**: All apps share the same DaaS backend, so field name mismatches cause 500 errors that are hard to trace through iframe + proxy layers. **Always verify field names** via `mcp_daas_schema` or `mcp_daas_fields` before writing `sort`, `fields`, or `filter` parameters. Never assume names like `date_created` — the actual column may be `created_at`.
 
@@ -112,6 +112,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Skeleton, Alert, Button, Stack } from '@mantine/core';
 
+/**
+ * Every bridge message carries these two fields, so that bridge traffic can be told
+ * apart from any other postMessage on the page and from a version this app does not
+ * understand. Use the same two constants in every micro-app.
+ */
+export const BRIDGE_SOURCE = 'buildpad-mfe';
+export const BRIDGE_VERSION = 1;
+
+/** Build a message envelope. Never post a bare object literal. */
+function msg(type: string, payload: Record<string, unknown> = {}) {
+  return { source: BRIDGE_SOURCE, v: BRIDGE_VERSION, type, ...payload };
+}
+
 interface MicroappIframeProps {
   /** Base URL of the micro-app (e.g., https://microapp.example.com) */
   src: string;
@@ -162,7 +175,7 @@ export function MicroappIframe({
   title,
   path = '/',
   allowedParams = [],
-  sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups',
+  sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-downloads',
   height = '100%',
   allowedOrigin,
   loadTimeoutMs = 15000,
@@ -208,16 +221,21 @@ export function MicroappIframe({
   const loadedRef = useRef(false);
 
   const sendToMicroapp = useCallback(
-    (message: Record<string, unknown>) => {
-      iframeRef.current?.contentWindow?.postMessage(message, resolvedOrigin);
+    (type: string, payload: Record<string, unknown> = {}) => {
+      iframeRef.current?.contentWindow?.postMessage(msg(type, payload), resolvedOrigin);
     },
     [resolvedOrigin],
   );
 
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
-      // SECURITY: Validate origin
+      // SECURITY: three checks, in this order.
+      // Origin alone is NOT enough: two frames of the same micro-app on one page each
+      // pass an origin check for the other's messages, and a same-origin popup or a
+      // nested frame passes it too.
       if (event.origin !== resolvedOrigin) return;
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      if (event.data?.source !== BRIDGE_SOURCE || event.data?.v !== BRIDGE_VERSION) return;
 
       if (event.data?.type === 'MICROAPP_LOADED') {
         loadedRef.current = true;
@@ -228,7 +246,7 @@ export function MicroappIframe({
         // ever saw the params baked into its src.
         const current = pickParams(new URLSearchParams(window.location.search), allowedRef.current);
         if (serializeParams(current) !== lastFromMicroappRef.current) {
-          sendToMicroapp({ type: 'SET_QUERY_PARAMS', params: current });
+          sendToMicroapp('SET_QUERY_PARAMS', { params: current });
         }
       }
 
@@ -272,8 +290,7 @@ export function MicroappIframe({
               router.push('/auth/login');
               return;
             }
-            sendToMicroapp({
-              type: 'SET_AUTH',
+            sendToMicroapp('SET_AUTH', {
               access_token: session.access_token,
               expires_at: session.expires_at ?? 0,
               // The scope cookie is set on the HOST origin, so the micro-app origin
@@ -295,7 +312,7 @@ export function MicroappIframe({
     const current = pickParams(new URLSearchParams(searchParams.toString()), allowedRef.current);
     if (serializeParams(current) === lastFromMicroappRef.current) return; // echo, skip
     if (!loadedRef.current) return; // the frame reads its own URL on first load
-    sendToMicroapp({ type: 'SET_QUERY_PARAMS', params: current });
+    sendToMicroapp('SET_QUERY_PARAMS', { params: current });
   }, [searchParams, sendToMicroapp]);
 
   /**
@@ -436,9 +453,13 @@ export function isFramed() {
   return typeof window !== 'undefined' && window.parent !== window;
 }
 
-export function postToHost(message: Record<string, unknown>) {
+export const BRIDGE_SOURCE = 'buildpad-mfe';
+export const BRIDGE_VERSION = 1;
+
+export function postToHost(type: string, payload: Record<string, unknown> = {}) {
   if (!isFramed()) return;
-  window.parent.postMessage(message, HOST_ORIGIN);
+  // Never post to '*'. HOST_ORIGIN comes from config/app-urls.ts.
+  window.parent.postMessage({ source: BRIDGE_SOURCE, v: BRIDGE_VERSION, type, ...payload }, HOST_ORIGIN);
 }
 
 function serializeParams(params: Record<string, string>) {
@@ -453,14 +474,18 @@ export function MicroappBridgeProvider({ children }: { children: React.ReactNode
   // Tell the host this frame is alive. The host hides its skeleton on this message
   // and shows its error state if it never arrives.
   useEffect(() => {
-    postToHost({ type: 'MICROAPP_LOADED' });
+    postToHost('MICROAPP_LOADED');
   }, []);
 
   useEffect(() => {
     if (!isFramed()) return;
 
     function handleMessage(event: MessageEvent) {
+      // SECURITY: origin, then source, then the envelope. A nested frame or a popup
+      // on the host origin would otherwise be able to drive this app.
       if (event.origin !== HOST_ORIGIN) return;
+      if (event.source !== window.parent) return;
+      if (event.data?.source !== BRIDGE_SOURCE || event.data?.v !== BRIDGE_VERSION) return;
 
       if (event.data?.type === 'SET_QUERY_PARAMS') {
         const params = event.data.params;
@@ -528,7 +553,7 @@ export function useQueryParamSync({ debounceMs = 300 }: { debounceMs?: number } 
 
       clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
-        postToHost({ type: 'QUERY_PARAMS_CHANGE', params: asRecord });
+        postToHost('QUERY_PARAMS_CHANGE', { params: asRecord });
       }, debounceMs);
     },
     [searchParams, pathname, router, debounceMs],
@@ -686,7 +711,7 @@ export default function LoginPage() {
     setIsInIframe(inIframe);
     if (!inIframe) return;
 
-    window.parent.postMessage({ type: 'MICROAPP_NEEDS_AUTH' }, HOST_ORIGIN);
+    postToHost('MICROAPP_NEEDS_AUTH');
 
     async function handleMessage(event: MessageEvent) {
       if (event.origin !== HOST_ORIGIN) return;
@@ -756,17 +781,19 @@ each micro-app must clear its own cookies.
 type Frame = { window: Window; origin: string };
 const frames = new Set<Frame>();
 
-export function broadcastToMicroapps(message: Record<string, unknown>) {
-  for (const frame of frames) frame.window.postMessage(message, frame.origin);
+export function broadcastToMicroapps(type: string, payload: Record<string, unknown> = {}) {
+  for (const frame of frames) {
+    frame.window.postMessage({ source: BRIDGE_SOURCE, v: BRIDGE_VERSION, type, ...payload }, frame.origin);
+  }
 }
 
 /** Push a new tenant/scope to every mounted micro-app. Call after a scope switch. */
 export function broadcastScope(resourceUri: string) {
-  broadcastToMicroapps({ type: 'SET_SCOPE', resource_uri: resourceUri });
+  broadcastToMicroapps('SET_SCOPE', { resource_uri: resourceUri });
 }
 
 export async function logoutAllMicroapps() {
-  broadcastToMicroapps({ type: 'LOGOUT' });
+  broadcastToMicroapps('LOGOUT');
   // Give each frame one tick to fire its own /api/auth/logout request.
   await new Promise((resolve) => setTimeout(resolve, 300));
 }
@@ -880,11 +907,11 @@ function scheduleRenewal(expiresAt: number) {
   clearTimeout(renewalTimerRef.current);
   const leadMs = expiresAt * 1000 - Date.now() - 60_000;
   if (leadMs <= 0) {
-    postToHost({ type: 'MICROAPP_NEEDS_AUTH' });
+    postToHost('MICROAPP_NEEDS_AUTH');
     return;
   }
   renewalTimerRef.current = setTimeout(() => {
-    postToHost({ type: 'MICROAPP_NEEDS_AUTH' });
+    postToHost('MICROAPP_NEEDS_AUTH');
   }, leadMs);
 }
 
@@ -1022,6 +1049,44 @@ export const HOST_ORIGIN =
 > ```
 >
 > Write the actual resolved values into `config/app-urls.ts` as the default fallbacks, and write the actual infrastructure values into `.env.local`. The env var override name for microapps is `NEXT_PUBLIC_` + name uppercased with hyphens as underscores + `_URL` (e.g., `users-app` → `NEXT_PUBLIC_USERS_APP_URL`).
+
+### Step 6b: Add Clickjacking Protection (CSP)
+
+Without this, a micro-app that holds a valid cookie can be framed by **any** site, and
+the host does not restrict which origins it frames. `X-Frame-Options` cannot list more
+than one origin, so use CSP. Both values are generated from `config/app-urls.ts`.
+
+```typescript
+// Micro-app next.config.ts
+async headers() {
+  return [{
+    source: '/:path*',
+    headers: [{
+      key: 'Content-Security-Policy',
+      // AGENT: HOST_ORIGIN from config/app-urls.ts, plus every local dev origin.
+      value: "frame-ancestors 'self' https://main.d1234abcde.amplifyapp.com http://localhost:3000",
+    }],
+  }];
+}
+```
+
+```typescript
+// Main App next.config.ts
+async headers() {
+  return [{
+    source: '/:path*',
+    headers: [{
+      key: 'Content-Security-Policy',
+      // AGENT: one entry per origin in MICROAPP_URLS, plus every local dev origin.
+      value: "frame-src 'self' https://main.d5678fghij.amplifyapp.com http://localhost:3001",
+    }],
+  }];
+}
+```
+
+A `frame-ancestors` mismatch is **invisible** to the host: the load failure is opaque.
+The load watchdog from Step 1 is what surfaces it.
+
 
 ### Step 7: Proxy Routes for Your Own Code (Only If Needed)
 
