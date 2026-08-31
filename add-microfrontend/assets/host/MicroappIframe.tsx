@@ -12,7 +12,15 @@ import { useMicroappHost } from '@/lib/bridge/useMicroappHost';
  * Default sandbox. Read references/security.instructions.md before you change it.
  *  - allow-modals is deliberately absent. It is what blocks window.confirm/alert/prompt
  *    inside the frame. Do not add it. Micro-apps use Mantine Modal instead.
- *  - allow-downloads is required for CSV export and for the Files module.
+ *  - allow-popups is required for external links and OAuth windows AND for the Files
+ *    module download: file-manager.tsx and file-detail.tsx call window.open() on a
+ *    signed cross-origin storage URL. Removing it silently kills every download.
+ *  - allow-downloads is required for CSV export and for Files-module downloads. The
+ *    download happens in a popup that INHERITS this sandbox, so allow-popups and
+ *    allow-downloads are required together. allow-popups-to-escape-sandbox is not
+ *    needed here, because allow-downloads is inherited.
+ *    Verify downloads in a HEADED browser — headless Chromium drops this popup
+ *    download and reports zero files with or without the flags.
  *  - allow-storage-access-by-user-activation lets the frame call
  *    document.requestStorageAccess() when a browser blocks partitioned cookies —
  *    without it the documented cookie fallback is unreachable inside the frame.

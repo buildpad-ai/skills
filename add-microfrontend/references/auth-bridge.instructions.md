@@ -64,8 +64,16 @@ for the names and the option set; never write either as a literal.
 
 localhost hides this failure class completely: two localhost ports are the same
 *site*, so every local check passes and only the deployed cross-site build breaks.
-Verify the handshake on the deployed origins, in Safari or an Incognito window, before
-calling the bridge done.
+
+localhost also erases origin isolation, which is a second failure class. Cookies ignore
+the port, so `:3000` and `:3002` share **one** cookie jar. Measured from the host page
+at `http://localhost:3000`, `document.cookie` returned `mfe_expires_at` written by the
+frame at `:3002`, and the micro-app origin could read — and delete — the host's
+Supabase session cookie and the scope cookie. A local pass therefore proves nothing
+about session isolation between the two apps.
+
+Verify the handshake, the cookie scoping, and the isolation on the deployed origins, in
+Safari or an Incognito window, before calling the bridge done.
 
 ## Pinned edits — merging into CLI-owned files
 
@@ -165,15 +173,21 @@ that route public.
 The CLI wrapper (1.11.1) builds one `config` in a `useMemo(…, [])` whose `getToken`
 reads `supabase.auth.getSession()` — which is always null in a framed micro-app,
 because no Supabase session exists on this origin. Do not replace the wrapper (the
-Supabase path is what standalone mode uses). Three edits, anchored on the real shape:
+Supabase path is what standalone mode uses).
+
+W1 has **two halves**. The token fallback makes an authenticated call possible. The
+readiness gate makes it happen before the module's first fetch. Applying only the first
+half ships a broken frame that passes every other check in this skill.
+
+**W1a — the token fallback.** Three edits, anchored on the real shape:
 
 1. Add the import: `import { useMfeToken } from '@/lib/bridge/useMfeToken';`
-2. First line of the component body: `const mfeToken = useMfeToken();`
+2. First line of the component body: `const { token: mfeToken, ready } = useMfeToken();`
 3. In the existing `config` memo, change the `getToken` return to fall back to the
    bridge token, and add `mfeToken` to the dependency array — **both**:
 
 ```ts
-const mfeToken = useMfeToken();
+const { token: mfeToken, ready } = useMfeToken();
 
 const config = useMemo(
   () => ({
@@ -198,12 +212,63 @@ Do NOT capture `mfeToken` in a ref inside a `[]` memo — the ref updates but th
 memoized `getToken` already ran and `refreshToken` never re-fires. The dependency
 array is the mechanism, not a style choice.
 
+**W1b — the readiness gate.** The CLI wrapper has no readiness state of its own.
+**Create one.** Do not skip this step because there is nothing to modify:
+
+Add `import { Center, Loader } from '@mantine/core';` to the wrapper's imports (the
+CLI file does not import them), then:
+
+```tsx
+  // Pinned edit W1b: hold the children until the bridge token exists.
+  // A module that mounts token-less fires its list fetches with no Authorization
+  // header, receives 401, and does NOT retry — its data effects depend on its own
+  // filter state, not on the DaaS config identity.
+  const { token: mfeToken, resolved: mfeResolved } = useMfeToken();
+  // ...
+  if (!mfeResolved) {
+    return (
+      <Center h="100vh">
+        <Loader size="sm" />
+      </Center>
+    );
+  }
+```
+
+`useMfeToken` therefore returns `{ token, resolved }`, not a bare string: `resolved`
+flips true immediately when standalone, and in the frame only once the token question
+is settled. Verified in production on both micro-apps — before the gate, the deployed
+frame showed "Failed to load users — Not authenticated" and a silently empty file list
+over a backend holding a file; after it, zero 401/403 responses inside the frame.
+
+`ready` is `false` on the server and on the first client render, so there is no
+hydration mismatch. Standalone it flips true in the first effect, which costs one
+skeleton frame and no request.
+
+Measured without the gate, on the deployed origins:
+
+```
++4288ms  REQ  daas/api/users   Authorization: NONE   ← module mount fetch
++5116ms  RESP 200 /api/auth/token                    ← bridge token, 828 ms late
+         RESP 401 daas/api/users
+frame:   "Failed to load users — Not authenticated"   (terminal, never retries)
+```
+
+The Files module is worse: it swallows the same 401 and renders its empty state over a
+backend that holds files. Both modules work standalone, so only an in-frame check finds
+this.
+
 `useMfeToken` reads `/api/auth/token`, treats a redirect or non-JSON response as
 unauthenticated (a redirect to `/login` returns 200 text/html — `response.ok` alone
 lies), re-requests through the bridge on failure, and re-reads whenever
-`MicroappBridgeProvider` stores a fresh token. All other `daas-platform` rules stand:
-wrapper in `(authenticated)/layout.tsx`, never null the global config on unmount,
-`getHeaders` reads the scope cookie.
+`MicroappBridgeProvider` stores a fresh token. It returns `{ token, ready }`, and
+`ready` turns true on **both** outcomes — a token and a genuine sign-out — so an
+unauthenticated frame still renders instead of hanging on the skeleton. All other
+`daas-platform` rules stand: wrapper in `(authenticated)/layout.tsx`, never null the
+global config on unmount, `getHeaders` reads the scope cookie.
+
+Cold-start note: the first framed load logs several `GET /api/auth/token` 401s before
+the handshake completes. That is the designed `MICROAPP_NEEDS_AUTH` path, not a fault.
+React StrictMode doubles the count in development.
 
 ### H1 · `lib/api/auth-headers.ts` (both micro-apps)
 
@@ -227,6 +292,21 @@ const token = mfeToken ?? session?.access_token;
 `supabase.auth.getUser()` directly — apply the same fallback there if the project uses
 module access or the shell's profile fetch.
 
+**H1 does not cover a direct-call module.** A CLI module whose hooks import
+`lib/buildpad/services/api-request.ts` sends its requests to the DaaS origin, not to a
+Next route, so `auth-headers.ts` is never in its path. The Users module is one: every
+`useUsers`, `useRoles`, `usePolicies`, and permissions call goes through
+`api-request.ts` and is authenticated by W1 alone. Identify the path before you debug
+an empty module:
+
+```bash
+grep -rl "services/api-request" components lib   # → W1 is load-bearing
+grep -rn "fetch('/api/" components lib           # → H1 is load-bearing
+```
+
+Apply both edits in every micro-app. A perfect H1 with a missing W1 gate looks like a
+permissions failure and reads like a backend fault.
+
 ### E1 · `app/(authenticated)/layout.tsx` (micro-app)
 
 Rule 15: a framed micro-app renders **content only** — the host already provides the
@@ -234,14 +314,29 @@ sidebar, header, breadcrumb, and profile menu. Without this edit the frame shows
 second copy of all of them, and the inner nav can move the frame to a different page
 than the section the host has open.
 
-The framed/standalone decision is made **server-side, per document load**, so there
-is no client flash and no hydration mismatch. Browsers send `Sec-Fetch-Dest: iframe`
-on document requests inside a frame; the bridge cookie is the fallback for browsers
-that do not send the header. (Client-side navigations send RSC fetches, not document
-loads — the layout persists across them, so the initial decision holds.)
+The framed/standalone decision is made **server-side, per server render**. The trap is
+that one framed page produces several server renders, and only the first one is a
+document load.
 
-Make the CLI layout's default export `async` and wrap the shell conditionally —
-`DaaSProviderWrapper` stays for both modes:
+`Sec-Fetch-Dest` alone is not enough. Measured on a live pair of apps:
+
+| Request | `Sec-Fetch-Dest` | Bridge cookie sent |
+| --- | --- | --- |
+| The iframe document load | `iframe` | no (first load) |
+| An RSC fetch, `GET /files?_rsc=…` | `empty` | yes |
+| `router.refresh()` from the bridge provider | `empty` | yes |
+| A direct top-level visit | `document` | no |
+
+A condition written as `dest === 'iframe' || (dest === null && cookie)` is **false**
+for `empty`. The RSC render therefore mounts `AuthenticatedShell` and replaces the
+content-only tree with a second sidebar, header, and profile footer inside the host's.
+`MicroappBridgeProvider` calls `router.refresh()` at the end of `applyAuth` and on
+`SET_SCOPE`, so this fires on the first cold frame, on every token renewal, and on
+every tenant switch. It self-corrects on a later client-side host navigation, which is
+why it survives a casual check.
+
+Make the bridge cookie the primary signal and the header the fallback. A standalone
+visitor never holds `mfe_access_token`, because only the frame handshake writes it:
 
 ```tsx
 import { cookies, headers } from 'next/headers';
@@ -251,10 +346,12 @@ export default async function AuthenticatedLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   // Pinned edit E1 (add-microfrontend Rule 15): content only inside the frame.
+  // Sec-Fetch-Dest is 'iframe' only on the FIRST document load; every RSC render
+  // and every router.refresh() sends 'empty'. Read the marker for those.
   const dest = (await headers()).get('sec-fetch-dest');
   const framed =
     dest === 'iframe' ||
-    (dest === null && (await cookies()).has(MFE_TOKEN_COOKIE));
+    (dest !== 'document' && (await cookies()).has(FRAMED_COOKIE));
   return (
     <DaaSProviderWrapper>
       {framed ? children : <AuthenticatedShell>{children}</AuthenticatedShell>}
@@ -266,13 +363,41 @@ export default async function AuthenticatedLayout({
 Notes:
 - `headers()` makes these routes render dynamically. They already sit behind auth
   middleware, so nothing cacheable is lost.
-- The cookie fallback fires only when the header is absent (older browsers). On
-  localhost, ports share one site, so after a framed session the bridge cookie can
-  also reach a direct visit — with the header present that visit still gets the
-  shell, which is why the header is the primary signal.
+- **Use a dedicated marker cookie (`FRAMED_COOKIE` in `mfe-cookies.ts`), never the
+  token cookie.** The token cookie lives on the micro-app's own origin for ~1 h, so a
+  direct visit inside that window would be misread as framed. The marker is written by
+  the middleware (E1b) on the `iframe` document load and **deleted** on a `document`
+  load, so a direct visit self-corrects on its first request.
+- `dest !== 'document'` keeps a top-level visit on the shell path. On localhost every
+  port shares one cookie jar, so this branch matters even in dev.
+
+**E1b — the middleware writes the marker.** The layout cannot set cookies; the
+middleware can, and it already runs on every request:
+
+```ts
+function markFramed(request: NextRequest, response: NextResponse) {
+  const dest = request.headers.get('sec-fetch-dest');
+  if (dest === 'iframe') {
+    response.cookies.set(FRAMED_COOKIE, '1', {
+      httpOnly: true, secure: true, sameSite: 'none', partitioned: true, path: '/',
+    });
+  } else if (dest === 'document') {
+    response.cookies.delete(FRAMED_COOKIE);
+  }
+  return response;
+}
+```
+
+Wrap **every** response the middleware returns. Without E1b, `router.refresh()` (fired
+by `applyAuth` and `SET_SCOPE`) re-runs the layout with `dest: 'empty'`, the shell
+returns mid-session, and it stays: two sidebars, two headers, and an in-frame nav that
+can steer the frame off the host's section. Verified in production on both apps.
 - E1 supersedes the earlier S2 edit (hiding just the sign-out item): with no shell
   in the frame, there is no in-frame sign-out to hide. Micro-apps leave
   `AuthenticatedShell.tsx` itself untouched.
+- Verify E1 on a **fresh** load of the section, not after a client-side host
+  navigation. Assert that the frame body contains no `MAIN MENU` label, no nav links,
+  and no profile e-mail.
 
 ### S1 · `components/layout/AuthenticatedShell.tsx` (host)
 
@@ -312,6 +437,15 @@ receives it on its own. On a project using `manage-scope` or `add-multitenancy`:
 On a project using neither, nothing writes that cookie anywhere — no header is
 expected, and none of the scope checks apply (SKILL Rule 11).
 
+**Validate `resource_uri` before you store it.** The `SET_SCOPE` handler must check the
+value against the shape the project uses, ignore a value that fails, and clear the
+cookie instead of persisting a rejected one. A type check for `string` is not enough:
+sending `resource_uri: '/'` turned a working framed users list into
+`Failed to load users — Invalid resource URI: /`, and the state survived every reload,
+because the bad value lives in a cookie and rides `X-Resource-Uri` on every direct DaaS
+call. There is no recovery path inside the micro-app. Report a rejected scope to the
+host as a bridge error, not as a module error state.
+
 ## Checklist
 
 - [ ] `SET_AUTH` carries no refresh token, and the host calls `refreshSession()`
@@ -321,9 +455,15 @@ expected, and none of the scope checks apply (SKILL Rule 11).
       `framedCookieOptions`.
 - [ ] M1–M3, L1, P1, W1, E1, H1 applied; every merged file carries the
       LOCAL MODIFICATION banner; no `@buildpad-origin` file was replaced.
-- [ ] Framed: no sidebar/header/profile chrome inside the frame. Standalone: the
-      full shell renders. (Compare the same route with and without
-      `Sec-Fetch-Dest: iframe`.)
+- [ ] Framed: no sidebar/header/profile chrome inside the frame, on a **fresh** load of
+      the section and after a `SET_SCOPE`. Standalone: the full shell renders. Compare
+      all four header values — `iframe`, `empty` with the bridge cookie, `document`,
+      and absent — not only `iframe` against absent.
+- [ ] W1b is present: the wrapper renders a placeholder while `resolved` is false. Grep
+      the wrapper for `ready` and fail on a wrapper that only added the token fallback.
+- [ ] Zero 401 and zero 403 DaaS responses inside the frame, recorded from the network
+      log. Rendered text is not evidence: the Files module renders its empty state on a
+      401.
 - [ ] L1 expires cookies via `framedCookieOptions(0, …)` — grep the logout route for
       `cookieStore.delete(MFE` and fail on any hit.
 - [ ] W1's config memo lists `mfeToken` in its dependency array.

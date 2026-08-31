@@ -11,8 +11,8 @@ sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-download
 | `allow-scripts`                          | required                      | The micro-app is a Next.js app.                                               |
 | `allow-same-origin`                      | required                      | Cookies and storage on the micro-app origin.                                  |
 | `allow-forms`                            | required                      | Form submission.                                                              |
-| `allow-popups`                           | required                      | External links and OAuth windows.                                             |
-| `allow-downloads`                        | required                      | CSV export, and any download from the Files module.                           |
+| `allow-popups`                           | required                      | External links, OAuth windows, **and the Files module download** — `file-manager.tsx` and `file-detail.tsx` download with `window.open` to a signed cross-origin URL. |
+| `allow-downloads`                        | required                      | CSV export and Files-module downloads. The download runs in a popup that inherits this sandbox, so `allow-popups` and `allow-downloads` are required **together**. `allow-popups-to-escape-sandbox` is not needed, because `allow-downloads` is inherited. |
 | `allow-storage-access-by-user-activation`| required                      | Lets the frame call `document.requestStorageAccess()` when a browser blocks partitioned cookies. Without it the documented fallback is unreachable. |
 | `allow-popups-to-escape-sandbox`         | only with `add-external-oauth`| A popup inherits this sandbox otherwise, and the OAuth flow fails.            |
 | `allow-modals`                           | forbidden                     | Its absence is what blocks `window.confirm`. Micro-apps use Mantine `Modal`.  |
@@ -21,6 +21,19 @@ sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-download
 Native dialogs are blocked by the missing `allow-modals` flag, not by a browser policy.
 Do not add the flag to make a dialog work — and audit for calls the CLI itself ships
 (`rich-text-markdown.tsx` contains a `window.prompt`); see SKILL Step 4.
+
+Do not trim `allow-popups` from an app that has no OAuth and no external links. A/B
+runs against the real Files row-menu download inside the frame:
+
+| Sandbox | Result |
+| --- | --- |
+| `DEFAULT_SANDBOX` as shipped | the file lands (90,089 bytes) |
+| minus `allow-downloads` | 0 downloads — "the frame … is sandboxed, but the flag allow-downloads is not set" |
+| minus `allow-popups` | 0 downloads — "Blocked opening '…/storage/v1/object/sign/…' in a new window because the request was made in a sandboxed frame whose 'allow-popups' permission is not set" |
+
+**Run download assertions headed.** Headless Chromium silently drops this
+popup-download and reports zero downloads whether or not the flags are present, so a
+headless suite passes over a broken sandbox.
 
 ## Message validation
 
@@ -103,8 +116,10 @@ calls DaaS: the Main App, every micro-app, and every local development port.
 ## Checklist
 
 - [ ] The sandbox matches `DEFAULT_SANDBOX` — no `allow-modals`, no
-      `allow-top-navigation`, `allow-downloads` and
+      `allow-top-navigation`, `allow-popups`, `allow-downloads` and
       `allow-storage-access-by-user-activation` present.
+- [ ] A real download inside the frame produces a file, asserted in a **headed**
+      browser. A headless run cannot verify this flag pair.
 - [ ] Every handler checks origin, `event.source`, `source`, and `v`.
 - [ ] Every payload field is type-checked before use.
 - [ ] The host sets `frame-ancestors 'none'` AND `frame-src` for the micro-app origins.

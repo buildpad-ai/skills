@@ -60,7 +60,11 @@ complexity is not low. `add-microapp` without iframes is often the better answer
    request (via `getMfeUser` in `lib/bridge/mfe-middleware.ts`). Never trust a local
    decode: only `getUser` observes a sign-out that happened in the Main App.
 9. **Never overwrite a CLI-owned file.** Any file carrying an `@buildpad-origin`
-   header belongs to the Buildpad CLI and is restored by `npx buildpad upgrade`.
+   header belongs to the Buildpad CLI. It is restored by `npx buildpad upgrade` **and
+   by any `buildpad add <library>`** — both rewrite owned files with no prompt, which
+   is why every module install happens in Step 4a, before any merge. One documented
+   exception: `components/layout/navigation.ts` carries the header but its own docblock
+   says to edit it freely.
    The bridge merges into these files with the pinned edits in
    [auth-bridge](references/auth-bridge.instructions.md); it never replaces them.
    See "CLI-owned files" below.
@@ -70,12 +74,20 @@ complexity is not low. `add-microapp` without iframes is often the better answer
     `add-multitenancy`. Without it every micro-app call resolves at root scope and
     returns 403. On a project that uses neither, no scope cookie exists and no
     `X-Resource-Uri` header is expected — do not fabricate one.
-12. The CLI installs ~16 proxy routes that all read the Supabase session through
-    `lib/api/auth-headers.ts`. Inside the frame there is no Supabase session, so
-    **editing that one helper to also read `mfe_access_token` is a required step**
-    (Step 4), or the Files module, permissions, and the profile menu all 401.
+12. Two token paths exist, and a module uses one of them. The CLI's ~16 Next proxy
+    routes read `lib/api/auth-headers.ts` — pinned edit H1 covers those. A module whose
+    hooks import `lib/buildpad/services/api-request.ts` calls DaaS **directly** from the
+    browser and never touches H1 — pinned edit W1 is the only thing that authenticates
+    it. Run
+    `grep -rl "services/api-request" components lib` and
+    `grep -rn "fetch('/api/" components lib` in the installed module, then apply both
+    edits. The Users module is direct-call: H1 can be perfect while every users, roles,
+    policies, and permissions call fails.
 13. The sandbox attribute must omit `allow-modals` and `allow-top-navigation`. It must
-    include `allow-downloads` and `allow-storage-access-by-user-activation`.
+    include `allow-popups`, `allow-downloads`, and
+    `allow-storage-access-by-user-activation`. `allow-popups` is load-bearing for the
+    Files module download, not only for OAuth — see
+    [security](references/security.instructions.md).
 14. Micro-app pages must not call `window.confirm`, `window.alert`, or
     `window.prompt` — including calls shipped by the CLI (audit for them in Step 4).
     Use Mantine `Modal` or `modals.openConfirmModal`.
@@ -83,7 +95,10 @@ complexity is not low. `add-microapp` without iframes is often the better answer
     frame must show no sidebar, no header, no login form, and no sign-out control —
     double chrome also lets the user navigate the frame away from the section the
     host thinks is open. Pinned edit E1 skips `AuthenticatedShell` when the request
-    arrives inside a frame; opened directly, the micro-app keeps its full shell.
+    arrives inside a frame; opened directly, the micro-app keeps its full shell. E1
+    must decide from the bridge cookie, not from `Sec-Fetch-Dest` alone: an RSC fetch
+    and `router.refresh()` re-render the same layout on the server with
+    `Sec-Fetch-Dest: empty`, and a header-only test then mounts a second full shell.
 16. All apps must use the same `NEXT_PUBLIC_BUILDPAD_DAAS_URL`,
     `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 17. `NEXT_PUBLIC_HOST_ORIGIN` / `HOST_ORIGIN` are **reserved by the CLI's
@@ -119,7 +134,8 @@ Files this skill touches, and how:
 | `middleware.ts` (root) | CLI | **Do not touch** — it sets `Cache-Control: private, no-store`, the only cache header on ~20 session routes |
 | `app/api/auth/logout/route.ts` | CLI | **Merge** — pinned edit L1 (expire the three bridge cookies with `framedCookieOptions(0, …)`, never `delete()`). It has a GET handler the shell navigates to; never drop it |
 | `app/login/page.tsx` | CLI | **Merge** — pinned edit P1 (wrap the form in `LoginBridge`) |
-| `components/DaaSProviderWrapper.tsx` | CLI | **Merge** — pinned edit W1 (`useMfeToken` as second token source) |
+| `components/DaaSProviderWrapper.tsx` | CLI | **Merge** — pinned edit W1 (`useMfeToken` as second token source **and** the readiness gate) |
+| `components/ui/file-manager/*`, `components/ui/users-management/*`, module hooks | CLI | **Do not touch** — installed by `buildpad add files-routes` / `add users-routes`. Wrap them; never edit them. This is why `search` cannot be URL-synced (Step 4) |
 | `components/layout/AuthenticatedShell.tsx` | CLI | **Merge** (host only) — pinned edit S1 (`await logoutAllMicroapps()`). Micro-apps leave it untouched: E1 keeps it out of the frame entirely |
 | `app/(authenticated)/layout.tsx` | CLI | **Merge** (micro-app) — pinned edit E1 (skip the shell when framed; content only inside the frame) |
 | `lib/api/auth-headers.ts` | CLI | **Merge** — pinned edit H1 (read `mfe_access_token` before the session) |
@@ -236,7 +252,10 @@ export default function UsersSectionPage() {
         src={MICROAPP_URLS['users-management']}
         path="/users"
         title="Users Management"
-        allowedParams={['search', 'page', 'sort', 'status']}
+        // Derive this list from what the framed page really syncs (Step 4), never
+        // from a generic default. A name the micro-app never sends is dead weight;
+        // a name the micro-app sends and this list omits is dropped silently.
+        allowedParams={['user']}
         // Inside Mantine AppShell.Main, subtract the header AND the shell padding.
         height="calc(100vh - 60px - 2 * var(--mantine-spacing-lg))"
       />
@@ -266,7 +285,41 @@ Call `broadcastScope(uri)` after a tenant switch (scope projects only).
 
 ### Step 4: Wire each micro-app
 
-New files (no collisions):
+#### 4a. Install the domain module FIRST (before any file below)
+
+**Order is not optional.** `buildpad add <library>` rewrites files it owns without a
+prompt and without `--overwrite`: an observed `buildpad add api-routes` reverted six
+already-merged files (E1, L1, P1, W1, H1, and `api/auth/user`), and
+`add users-routes` silently replaced a local page. Install every module you need
+**before** applying any pinned edit, or the CLI destroys your merges.
+
+A micro-app whose domain matches a Buildpad module must scaffold that module instead
+of hand-writing a page:
+
+| Domain | Skill | Command |
+| --- | --- | --- |
+| files | [add-files](../add-files/SKILL.md) | `npx @buildpad/cli@latest add files-routes` |
+| users, roles, policies | [add-users](../add-users/SKILL.md) | `npx @buildpad/cli@latest add users-routes` |
+
+A hand-written placeholder page is acceptable ONLY when no module covers the domain.
+
+CLI 1.11.1 installs group-aware — it writes `app/(authenticated)/files/…` directly and
+records those paths in `buildpad.json`. Verify where the routes landed; move them under
+`app/(authenticated)/` only if the CLI did not, and never by hand-editing
+`buildpad.json`. Run the module's own required proxy routes step only if those routes
+are genuinely missing — bootstrap already installs a large `api-routes` set, and
+re-running it is what reverts merges.
+
+The cost of skipping the module is measured, not theoretical. A placeholder exercises
+the bridge and nothing else. The module is what carries downloads, modals, permission
+gates, and the CLI's own dialogs, and each behaves differently inside the frame: the
+Files row-menu download runs through `window.open` to a signed cross-origin URL and
+needs `allow-popups` as well as `allow-downloads`; a Mantine confirm dialog stops being
+modal at the frame edge; the module mounts its data fetches before the bridge token
+exists (W1b). Six field trials on placeholder pages passed every gate in this skill
+while the real modules were broken.
+
+#### 4b. New files (no collisions)
 
 | Copy from | Copy to |
 | --- | --- |
@@ -278,7 +331,9 @@ New files (no collisions):
 | `assets/microapp/set-session.route.ts` | `app/api/auth/set-session/route.ts` |
 | `assets/microapp/token.route.ts` | `app/api/auth/token/route.ts` |
 
-Merges into CLI-owned files — exact hunks in
+#### 4c. Merges into CLI-owned files
+
+Apply these only AFTER 4a. Exact hunks in
 [auth-bridge](references/auth-bridge.instructions.md), "Pinned edits":
 
 1. **M1–M3** `lib/supabase/middleware.ts` — accept the bridge token as a second
@@ -290,26 +345,60 @@ Merges into CLI-owned files — exact hunks in
    Keep the GET handler and the OAuth SLO.
 3. **P1** `app/login/page.tsx` — wrap the CLI form in `LoginBridge` (with `Suspense`).
 4. **W1** `components/DaaSProviderWrapper.tsx` — add `useMfeToken()` as the framed
-   token source alongside the Supabase path.
+   token source alongside the Supabase path, **and gate the children on its `ready`
+   flag**. Both halves are required. Without the gate the module mounts and fires its
+   first DaaS fetches with no `Authorization` header, gets 401, and never retries —
+   Users shows "Not authenticated" forever and Files shows an empty file list over a
+   backend that holds files.
 5. **H1** `lib/api/auth-headers.ts` — read `mfe_access_token` first, fall back to the
-   Supabase session (Rule 12; this single edit fixes all ~16 CLI proxy routes).
+   Supabase session (this single edit fixes all ~16 CLI proxy routes). H1 covers the
+   Next proxy routes only. A direct-call module needs W1 (Rule 12).
 6. **E1** `app/(authenticated)/layout.tsx` — render content only when framed
    (Rule 15's implementation path): skip `AuthenticatedShell`, keep
-   `DaaSProviderWrapper`. Standalone keeps the full shell. Without this, the frame
+   `DaaSProviderWrapper`. Standalone keeps the full shell. Decide from the bridge
+   cookie; `Sec-Fetch-Dest` alone fails on every RSC re-render. Without this, the frame
    shows a second sidebar, header, and profile menu inside the host's — and its nav
    lets the user move the frame to a different page than the host section.
 
-Then:
+#### 4d. Then wire
 
 - Mount `MicroappBridgeProvider` in the micro-app **root** layout, inside
   `MantineProvider`. A page that is not wrapped never reports that it loaded, and the
   host shows its error state.
 - Add `DEFAULT_AUTHENTICATED_ROUTE` to `config/app-urls.ts` — the micro-app's first
   real route.
-- **Wire the URL sync**: on the `DEFAULT_AUTHENTICATED_ROUTE` page, drive at least one
-  allowlisted parameter through `useQueryParamSync` — a Buildpad `CollectionList`
-  toolbar (its search ships `data-testid="collection-list-search"`) or a hand-written
-  input with `data-testid="microapp-search"`. Copied-but-unwired sync is untestable.
+- **Wire the URL sync — to a parameter the page can actually drive.** A CLI module is
+  URL-unaware. `file-manager.tsx` and `users-manager.tsx` hold `search`, `page`,
+  `sort`, and `view` in private `useState`, expose no controlled prop and no change
+  callback for them, and call no `useSearchParams`/`useRouter`. Rule 9 forbids editing
+  those files, so `search` **cannot** be synced out of either module. Do not try.
+
+  Sync what the module exposes through a public callback instead. Put the wrapper in a
+  **new local file** (for example `app/(authenticated)/users/users-section.tsx`) and
+  render it from the CLI page — the CLI page itself carries `@buildpad-origin`, so
+  editing it is a merge, and the smallest merge is a one-line render of your wrapper:
+
+  | Module | Public callback | Parameter to sync | Element the sync test drives |
+  | --- | --- | --- | --- |
+  | Users | `UsersManager.onUserClick` | `user` (record id) | a row: `[data-testid="users-manager"] tbody tr` |
+  | Files | `FileManager.onFileClick` | `file` (record id) | a card/row in the file list |
+
+  The driver is a **row click**, not the search box — the module's search input is
+  unsyncable (above), so never target it in a sync test. Verify any `data-testid` you
+  rely on actually reaches the DOM: `users-manager.tsx` passes one to `<VTable>`, and
+  `vtable.tsx` never spreads it, so `[data-testid="users-manager-table"]` matches
+  nothing. TypeScript does not catch that — hyphenated JSX attributes are exempt from
+  excess-property checks.
+
+  Then add that parameter name to `allowedParams` on the **host** page. `pickParams()`
+  filters both directions, so a parameter the micro-app syncs and the host does not
+  allow is dropped silently and looks like working code in local testing. Reconcile the
+  two lists in one step.
+
+  When a module exposes no controllable state at all, record the gap and skip the sync
+  rather than scraping the frame DOM. The durable fix is upstream: optional controlled
+  `search`/`page`/`view` props on `FileManager` and `UsersManager` that fall back to the
+  current internal state.
 - **Audit for native dialogs**:
   `grep -rn 'window\.\(confirm\|alert\|prompt\)' app components lib --include='*.tsx'`.
   The CLI's `rich-text-markdown.tsx` ships a `window.prompt` that is silently dead in
@@ -468,12 +557,22 @@ main-app/
 
 Each item names its procedure — a box without evidence is not ticked.
 
-- [ ] Typing in the frame's search box updates the host URL, the frame `src` is
-      unchanged, and the input keeps focus (spec: *search reaches the host URL*).
+- [ ] Every micro-app whose domain matches a Buildpad module renders that module, not a
+      hand-written placeholder (Step 4, first bullet). A placeholder proves the bridge
+      and nothing about the module.
+- [ ] The frame shows real data. Record every DaaS response inside the frame and assert
+      that **none** is 401 or 403. An empty list is not proof of an empty backend: the
+      Files module swallows a 401 and renders "Drag files here" while files exist.
+- [ ] The parameter the framed page syncs appears in the host `allowedParams`, and
+      driving it in the frame updates the host URL while the frame `src` is unchanged
+      (spec: *in-frame state reaches the host URL*). When the installed module exposes
+      no controllable state, the gap is recorded and this box is marked N/A.
 - [ ] A signed-in user reaches a micro-app section with no login form and no extra
       click (spec: *auth bridge signs the frame in*).
 - [ ] Inside the frame the micro-app shows **no** sidebar, header, or profile menu;
-      opened directly on its own origin it still shows the full shell (E1).
+      opened directly on its own origin it still shows the full shell (E1). Check this
+      after a **fresh** host page load and after a host tenant switch, not only after a
+      client-side navigation — an RSC re-render is what defeats a header-only E1.
 - [ ] Renewal works without waiting an hour: overwrite `mfe_expires_at` to now+70 s
       and observe a second `set-session` round trip (spec: *token renewal*).
 - [ ] Sign-out: `mfe_access_token` is present on the frame origin **before** the

@@ -12,8 +12,8 @@
 // see references/auth-bridge.instructions.md, "Merging into the CLI middleware".
 
 import { createServerClient } from '@supabase/ssr';
-import type { NextRequest } from 'next/server';
-import { MFE_TOKEN_COOKIE } from './mfe-cookies';
+import { NextResponse, type NextRequest } from 'next/server';
+import { FRAMED_COOKIE, MFE_TOKEN_COOKIE } from './mfe-cookies';
 
 /**
  * API routes that must NOT ride the CLI middleware's blanket `/api` pass.
@@ -48,4 +48,28 @@ export async function getMfeUser(request: NextRequest) {
   });
   const { data, error } = await supabase.auth.getUser(token);
   return error ? null : data.user;
+}
+
+/**
+ * E1b — record framed-ness on the document load, where Sec-Fetch-Dest is
+ * trustworthy, so RSC requests (router.refresh(), client navigation) can read it.
+ *
+ * Wrap EVERY response the CLI middleware returns with this. Without it the layout
+ * flips back to the full app shell mid-session and stays there.
+ */
+export function markFramed(request: NextRequest, response: NextResponse) {
+  const dest = request.headers.get('sec-fetch-dest');
+  if (dest === 'iframe') {
+    response.cookies.set(FRAMED_COOKIE, '1', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      partitioned: true,
+      path: '/',
+    });
+  } else if (dest === 'document') {
+    // A direct visit clears the marker, so a stale one never strips the shell.
+    response.cookies.delete(FRAMED_COOKIE);
+  }
+  return response;
 }
