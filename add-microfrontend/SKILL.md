@@ -108,9 +108,9 @@ Create a reusable iframe wrapper component in the Main App:
 // components/MicroappIframe.tsx
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Skeleton, Alert } from '@mantine/core';
+import { Skeleton, Alert, Button, Stack } from '@mantine/core';
 
 interface MicroappIframeProps {
   /** Base URL of the micro-app (e.g., https://microapp.example.com) */
@@ -119,7 +119,7 @@ interface MicroappIframeProps {
   title: string;
   /** Route path within the micro-app (e.g., /users) */
   path?: string;
-  /** Query params to forward from host URL to micro-app */
+  /** Query params that may cross the boundary in either direction */
   allowedParams?: string[];
   /** iframe sandbox permissions */
   sandbox?: string;
@@ -127,62 +127,118 @@ interface MicroappIframeProps {
   height?: string;
   /** Allowed origin for postMessage validation */
   allowedOrigin?: string;
+  /** Show the error state if MICROAPP_LOADED has not arrived by then */
+  loadTimeoutMs?: number;
+}
+
+/** Keep only the allowlisted keys, dropping empty values. */
+function pickParams(params: Record<string, string> | URLSearchParams, allowed: string[]) {
+  const source = params instanceof URLSearchParams ? Object.fromEntries(params.entries()) : params;
+  const out: Record<string, string> = {};
+  for (const key of allowed) {
+    if (source[key]) out[key] = source[key];
+  }
+  return out;
+}
+
+/** A stable string for a param set, used to compare two sets for equality. */
+function serializeParams(params: Record<string, string>) {
+  const search = new URLSearchParams();
+  for (const key of Object.keys(params).sort()) search.set(key, params[key]);
+  return search.toString();
 }
 
 export function MicroappIframe({
   src,
   title,
-  path = '',
+  path = '/',
   allowedParams = [],
   sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups',
   height = '100%',
   allowedOrigin,
+  loadTimeoutMs = 15000,
 }: MicroappIframeProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
-  // Build full iframe src with forwarded query params
-  const iframeSrc = buildIframeSrc(src, path, searchParams, allowedParams);
-
-  // Determine allowed origin from src if not explicitly provided
   const resolvedOrigin = allowedOrigin || new URL(src).origin;
 
-  // Listen for postMessage from micro-app (URL sync)
+  const allowedRef = useRef(allowedParams);
+  allowedRef.current = allowedParams;
+
+  // Freeze the params that were on the host URL at mount.
+  const initialParamsRef = useRef<Record<string, string> | null>(null);
+  if (initialParamsRef.current === null) {
+    initialParamsRef.current = pickParams(new URLSearchParams(searchParams.toString()), allowedParams);
+  }
+
+  /**
+   * CRITICAL: `src` depends on `src` and `path` ONLY.
+   *
+   * Never read `searchParams` here. Doing so creates a loop: the micro-app posts
+   * QUERY_PARAMS_CHANGE, the host calls router.replace(), searchParams changes, the
+   * computed src changes, React writes the new src attribute, and the browser reloads
+   * the frame. Every debounced keystroke would remount the micro-app and drop focus.
+   *
+   * Host-side param changes travel as SET_QUERY_PARAMS messages instead.
+   */
+  const iframeSrc = useMemo(() => {
+    const url = new URL(path, src);
+    for (const [key, value] of Object.entries(initialParamsRef.current ?? {})) {
+      url.searchParams.set(key, value);
+    }
+    return url.toString();
+  }, [src, path]);
+
+  // The last param set that came UP from the micro-app, used to drop the echo.
+  const lastFromMicroappRef = useRef(serializeParams(initialParamsRef.current ?? {}));
+  const loadedRef = useRef(false);
+
+  const sendToMicroapp = useCallback(
+    (message: Record<string, unknown>) => {
+      iframeRef.current?.contentWindow?.postMessage(message, resolvedOrigin);
+    },
+    [resolvedOrigin],
+  );
+
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
       // SECURITY: Validate origin
       if (event.origin !== resolvedOrigin) return;
 
-      if (event.data?.type === 'QUERY_PARAMS_CHANGE') {
-        const params = event.data.params as Record<string, string>;
-        const currentParams = new URLSearchParams(searchParams.toString());
-
-        // Only sync allowed params
-        for (const [key, value] of Object.entries(params)) {
-          if (allowedParams.includes(key)) {
-            if (value) {
-              currentParams.set(key, value);
-            } else {
-              currentParams.delete(key);
-            }
-          }
-        }
-
-        const queryString = currentParams.toString();
-        const newPath = window.location.pathname + (queryString ? `?${queryString}` : '');
-        router.replace(newPath, { scroll: false });
-      }
-
       if (event.data?.type === 'MICROAPP_LOADED') {
+        loadedRef.current = true;
         setIsLoading(false);
+        setHasError(false);
+
+        // The host URL may have moved while the frame was loading. The frame only
+        // ever saw the params baked into its src.
+        const current = pickParams(new URLSearchParams(window.location.search), allowedRef.current);
+        if (serializeParams(current) !== lastFromMicroappRef.current) {
+          sendToMicroapp({ type: 'SET_QUERY_PARAMS', params: current });
+        }
       }
 
-      if (event.data?.type === 'MICROAPP_ERROR') {
-        setHasError(true);
-        setIsLoading(false);
+      if (event.data?.type === 'QUERY_PARAMS_CHANGE') {
+        const params = event.data.params;
+        if (typeof params !== 'object' || params === null) return;
+
+        const filtered = pickParams(params as Record<string, string>, allowedRef.current);
+        lastFromMicroappRef.current = serializeParams(filtered);
+
+        const next = new URLSearchParams(window.location.search);
+        for (const key of allowedRef.current) {
+          if (filtered[key]) next.set(key, filtered[key]);
+          else next.delete(key);
+        }
+        const queryString = next.toString();
+        router.replace(window.location.pathname + (queryString ? `?${queryString}` : ''), {
+          scroll: false,
+        });
       }
 
       // Handle auth expiration from micro-app
@@ -191,22 +247,16 @@ export function MicroappIframe({
       }
 
       // Handle cross-domain auth bridge (Amplify deployments)
-      // Micro-app login page cannot share cookies with the host on Amplify, so it
-      // sends MICROAPP_NEEDS_AUTH.  The host responds with the current session tokens,
-      // which the micro-app uses to call /api/auth/set-session and establish its own cookie.
       if (event.data?.type === 'MICROAPP_NEEDS_AUTH') {
         import('@/lib/supabase/client').then(({ createClient }) => {
           const supabase = createClient();
           supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session && iframeRef.current?.contentWindow) {
-              iframeRef.current.contentWindow.postMessage(
-                {
-                  type: 'SET_AUTH',
-                  access_token: session.access_token,
-                  refresh_token: session.refresh_token,
-                },
-                resolvedOrigin,
-              );
+            if (session) {
+              sendToMicroapp({
+                type: 'SET_AUTH',
+                access_token: session.access_token,
+                refresh_token: session.refresh_token,
+              });
             }
           });
         });
@@ -215,64 +265,69 @@ export function MicroappIframe({
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [resolvedOrigin, allowedParams, searchParams, router]);
+  }, [resolvedOrigin, router, sendToMicroapp]);
 
-  const handleLoad = useCallback(() => {
-    setIsLoading(false);
-  }, []);
+  // Host URL changes travel DOWN as a message, never as a new src.
+  useEffect(() => {
+    const current = pickParams(new URLSearchParams(searchParams.toString()), allowedRef.current);
+    if (serializeParams(current) === lastFromMicroappRef.current) return; // echo, skip
+    if (!loadedRef.current) return; // the frame reads its own URL on first load
+    sendToMicroapp({ type: 'SET_QUERY_PARAMS', params: current });
+  }, [searchParams, sendToMicroapp]);
 
-  const handleError = useCallback(() => {
-    setHasError(true);
-    setIsLoading(false);
-  }, []);
+  /**
+   * Load watchdog.
+   *
+   * `<iframe onError>` does NOT fire for HTTP errors, network failures, or a frame
+   * blocked by CSP: a cross-origin load failure is opaque to the host. The only
+   * reliable failure signal is the absence of MICROAPP_LOADED.
+   */
+  useEffect(() => {
+    loadedRef.current = false;
+    setIsLoading(true);
+    setHasError(false);
+    const timer = setTimeout(() => {
+      if (!loadedRef.current) {
+        setHasError(true);
+        setIsLoading(false);
+      }
+    }, loadTimeoutMs);
+    return () => clearTimeout(timer);
+  }, [iframeSrc, loadTimeoutMs, attempt]);
+
+  const retry = useCallback(() => {
+    if (iframeRef.current) iframeRef.current.src = iframeSrc;
+    setAttempt((value) => value + 1);
+  }, [iframeSrc]);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height }}>
+    <div style={{ position: 'relative', width: '100%', height, overflow: 'hidden' }}>
       {isLoading && (
-        <Skeleton
-          visible
-          height="100%"
-          width="100%"
-          style={{ position: 'absolute', inset: 0, zIndex: 1 }}
-        />
+        <Skeleton height="100%" width="100%" style={{ position: 'absolute', inset: 0, zIndex: 1 }} />
       )}
       {hasError && (
-        <Alert color="red" title="Failed to load micro-app">
-          The embedded application could not be loaded. Please try refreshing the page.
+        <Alert color="red" title="This section did not load" style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
+          <Stack align="flex-start" gap="sm">
+            <span>The embedded application did not respond.</span>
+            <Button size="xs" variant="light" onClick={retry}>Try again</Button>
+          </Stack>
         </Alert>
       )}
-      {!hasError && (
-        <iframe
-          ref={iframeRef}
-          src={iframeSrc}
-          title={title}
-          sandbox={sandbox}
-          onLoad={handleLoad}
-          onError={handleError}
-          style={{
-            width: '100%',
-            height: '100%',
-            border: 'none',
-            display: isLoading ? 'none' : 'block',
-          }}
-        />
-      )}
+      {/* The iframe stays mounted in the error state so that retry can reuse the ref. */}
+      <iframe
+        ref={iframeRef}
+        src={iframeSrc}
+        title={title}
+        sandbox={sandbox}
+        style={{
+          width: '100%',
+          height: '100%',
+          border: 'none',
+          display: isLoading || hasError ? 'none' : 'block',
+        }}
+      />
     </div>
   );
-}
-
-function buildIframeSrc(
-  base: string,
-  path: string,
-  searchParams: URLSearchParams,
-  allowedParams: string[],
-): string {
-  const url = new URL(path, base);
-  for (const param of allowedParams) {
-    const value = searchParams.get(param);
-    if (value) url.searchParams.set(param, value);
-  }
-  return url.toString();
 }
 ```
 
@@ -335,82 +390,133 @@ export default function AdminUsersPage() {
 
 **Agent rule:** When generating these pages, iterate over the actual `microapps[]` array from context. For each microapp, create a page under `app/admin/{{route}}/page.tsx` with the iframe pointing to that microapp's Amplify URL via env var.
 
-### Step 4: Create useQueryParamSync Hook (Micro-App)
+### Step 4: Create the Bridge Provider and useQueryParamSync Hook (Micro-App)
 
-Inside each micro-app, create a hook that syncs query params to the host via postMessage:
+**1. `components/MicroappBridgeProvider.tsx`** — mount this in the micro-app **root**
+layout. It owns the MICROAPP_LOADED signal and applies host-to-micro-app messages.
+
+Do not put the MICROAPP_LOADED sender in `useQueryParamSync`. A page that does not use
+that hook would never report that it loaded, and the host would show its error state.
+
+```typescript
+// components/MicroappBridgeProvider.tsx
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { HOST_ORIGIN } from '@/config/app-urls';
+
+/** The last param set the host pushed down, so the hook does not echo it back. */
+export const lastFromHostRef = { current: '' };
+
+export function isFramed() {
+  return typeof window !== 'undefined' && window.parent !== window;
+}
+
+export function postToHost(message: Record<string, unknown>) {
+  if (!isFramed()) return;
+  window.parent.postMessage(message, HOST_ORIGIN);
+}
+
+function serializeParams(params: Record<string, string>) {
+  const search = new URLSearchParams();
+  for (const key of Object.keys(params).sort()) search.set(key, params[key]);
+  return search.toString();
+}
+
+export function MicroappBridgeProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+
+  // Tell the host this frame is alive. The host hides its skeleton on this message
+  // and shows its error state if it never arrives.
+  useEffect(() => {
+    postToHost({ type: 'MICROAPP_LOADED' });
+  }, []);
+
+  useEffect(() => {
+    if (!isFramed()) return;
+
+    function handleMessage(event: MessageEvent) {
+      if (event.origin !== HOST_ORIGIN) return;
+
+      if (event.data?.type === 'SET_QUERY_PARAMS') {
+        const params = event.data.params;
+        if (typeof params !== 'object' || params === null) return;
+
+        lastFromHostRef.current = serializeParams(params as Record<string, string>);
+        const queryString = new URLSearchParams(params as Record<string, string>).toString();
+        // replace, not push: host-driven changes must not grow the joint history.
+        router.replace(window.location.pathname + (queryString ? `?${queryString}` : ''), {
+          scroll: false,
+        });
+      }
+
+      if (event.data?.type === 'LOGOUT') {
+        // The host cannot delete a cookie on this origin. Only this app can.
+        void fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      }
+    }
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [router]);
+
+  return <>{children}</>;
+}
+```
+
+**2. `hooks/useQueryParamSync.ts`** — syncs one param set up to the host:
 
 ```typescript
 // hooks/useQueryParamSync.ts
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { lastFromHostRef, postToHost } from '@/components/MicroappBridgeProvider';
 
-interface UseQueryParamSyncOptions {
-  /** The host/Main App origin to post messages to */
-  hostOrigin: string;
-  /** Debounce delay in ms (default: 300) */
-  debounceMs?: number;
+function serializeParams(params: Record<string, string>) {
+  const search = new URLSearchParams();
+  for (const key of Object.keys(params).sort()) search.set(key, params[key]);
+  return search.toString();
 }
 
-export function useQueryParamSync({ hostOrigin, debounceMs = 300 }: UseQueryParamSyncOptions) {
+export function useQueryParamSync({ debounceMs = 300 }: { debounceMs?: number } = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
-
-  // Notify host that micro-app has loaded
-  useEffect(() => {
-    if (window.parent !== window) {
-      window.parent.postMessage({ type: 'MICROAPP_LOADED' }, hostOrigin);
-    }
-  }, [hostOrigin]);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const updateQueryParams = useCallback(
     (params: Record<string, string | null>) => {
-      const currentParams = new URLSearchParams(searchParams.toString());
-
+      const next = new URLSearchParams(searchParams.toString());
       for (const [key, value] of Object.entries(params)) {
-        if (value === null || value === '') {
-          currentParams.delete(key);
-        } else {
-          currentParams.set(key, value);
-        }
+        if (value === null || value === '') next.delete(key);
+        else next.set(key, value);
       }
 
-      const queryString = currentParams.toString();
-      const newPath = pathname + (queryString ? `?${queryString}` : '');
+      const queryString = next.toString();
+      // replace, not push: every keystroke would otherwise add a history entry.
+      router.replace(pathname + (queryString ? `?${queryString}` : ''), { scroll: false });
 
-      // Update micro-app URL
-      router.replace(newPath, { scroll: false });
+      const asRecord = Object.fromEntries(next.entries());
+      // Drop the echo: this exact set arrived from the host a moment ago.
+      if (serializeParams(asRecord) === lastFromHostRef.current) return;
 
-      // Debounce postMessage to host
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
-        if (window.parent !== window) {
-          window.parent.postMessage(
-            {
-              type: 'QUERY_PARAMS_CHANGE',
-              params: Object.fromEntries(currentParams.entries()),
-            },
-            hostOrigin,
-          );
-        }
+        postToHost({ type: 'QUERY_PARAMS_CHANGE', params: asRecord });
       }, debounceMs);
     },
-    [searchParams, pathname, router, hostOrigin, debounceMs],
+    [searchParams, pathname, router, debounceMs],
   );
 
-  // Cleanup debounce on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, []);
+  useEffect(() => () => clearTimeout(debounceRef.current), []);
 
   return { updateQueryParams, searchParams };
 }
 ```
+
 
 ### Step 5: Auth Syncing Setup
 
@@ -459,11 +565,30 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-**2. Add `/api/auth/set-session` to public routes in `lib/supabase/middleware.ts`:**
+**2. Define ONE route table in `lib/supabase/middleware.ts`:**
+
+Every route name in the micro-app must come from this file. A redirect target that
+does not match the file structure is the classic cause of a redirect loop inside the
+frame.
 
 ```typescript
-const publicRoutes = ['/login', '/api/auth/set-session'];
+// lib/supabase/middleware.ts
+export const LOGIN_ROUTE = '/login';
+
+export const PUBLIC_ROUTES = [
+  LOGIN_ROUTE,
+  '/api/auth/set-session',
+  '/api/auth/logout',
+];
+
+function isPublic(pathname: string) {
+  return PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
 ```
+
+The middleware matcher must exclude static assets only. Do NOT try to exclude auth
+routes by prefix: `/api/auth/set-session` starts with `api`, not `auth`, so a prefix
+rule lets the middleware run on the bridge call itself and redirect it.
 
 **3. Update the micro-app login page (`app/login/page.tsx`) to handle iframe auth:**
 
@@ -471,7 +596,7 @@ const publicRoutes = ['/login', '/api/auth/set-session'];
 'use client';
 
 import { useEffect, useState } from 'react';
-import { HOST_ORIGIN } from '@/config/app-urls';
+import { DEFAULT_AUTHENTICATED_ROUTE, HOST_ORIGIN } from '@/config/app-urls';
 import { Center, Loader, Stack, Text } from '@mantine/core';
 
 export default function LoginPage() {
@@ -497,7 +622,10 @@ export default function LoginPage() {
           body: JSON.stringify({ access_token, refresh_token }),
         });
         if (res.ok) {
-          window.location.href = '/content'; // redirect to your default authenticated route
+          // replace, not href: the failed /login attempt must not stay in history.
+          // DEFAULT_AUTHENTICATED_ROUTE comes from config/app-urls.ts. Set it to this
+          // micro-app's own first route. Never hardcode a route here.
+          window.location.replace(DEFAULT_AUTHENTICATED_ROUTE);
         } else {
           setIframeAuthFailed(true);
         }
@@ -534,20 +662,85 @@ export default function LoginPage() {
 
 The `MicroappIframe` component (Step 1) already handles `MICROAPP_NEEDS_AUTH` and sends `SET_AUTH` back.
 
-**Main App logout clears session for all apps** because they share the same Supabase session cookie on the same domain:
+**Main App logout does NOT clear micro-app sessions on its own.**
+
+On Amplify each micro-app sets its own cookie on its own origin. The Main App cannot
+delete a cookie it does not own. `signOut()` revokes the refresh tokens server-side,
+but the micro-app access tokens stay valid until they expire — up to one hour.
+
+The host must broadcast `LOGOUT` to every mounted frame **before** it signs out, and
+each micro-app must clear its own cookies.
+
+**1. Main App: keep a registry of mounted frames and broadcast before signing out.**
+
+```typescript
+// components/MicroappIframe.tsx — module scope, alongside the component
+type Frame = { window: Window; origin: string };
+const frames = new Set<Frame>();
+
+export function broadcastToMicroapps(message: Record<string, unknown>) {
+  for (const frame of frames) frame.window.postMessage(message, frame.origin);
+}
+
+export async function logoutAllMicroapps() {
+  broadcastToMicroapps({ type: 'LOGOUT' });
+  // Give each frame one tick to fire its own /api/auth/logout request.
+  await new Promise((resolve) => setTimeout(resolve, 300));
+}
+
+// ...and inside the component, register the frame while it is mounted:
+useEffect(() => {
+  const target = iframeRef.current?.contentWindow;
+  if (!target) return;
+  const frame: Frame = { window: target, origin: resolvedOrigin };
+  frames.add(frame);
+  return () => { frames.delete(frame); };
+}, [resolvedOrigin, iframeSrc]);
+```
+
+The logout button calls `logoutAllMicroapps()` first, then `POST /api/auth/logout`.
+Never call the host logout route on its own.
 
 ```typescript
 // Main App: app/api/auth/logout/route.ts
 import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
 export async function POST() {
   const supabase = await createClient();
   await supabase.auth.signOut();
 
+  // Bug 20: a stale scope cookie is forwarded as X-Resource-Uri for the next user.
+  (await cookies()).delete('daas_resource_uri');
+
   return NextResponse.json({ success: true });
 }
 ```
+
+**2. Every micro-app needs its own logout route** (public, and handled by
+`MicroappBridgeProvider` on the `LOGOUT` message):
+
+```typescript
+// Micro-app: app/api/auth/logout/route.ts
+import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+
+export async function POST() {
+  const supabase = await createClient();
+  // scope: 'local' clears this app's cookies without touching other sessions.
+  await supabase.auth.signOut({ scope: 'local' });
+
+  (await cookies()).delete('daas_resource_uri');
+
+  return NextResponse.json({ success: true });
+}
+```
+
+**3. Test it.** Sign out in the Main App, then load a micro-app route directly. If it
+still renders authenticated content, the access token is still accepted by the Auth
+server — shorten the JWT expiry for the project.
 
 **Micro-app middleware checks session on every SSR request:**
 
@@ -574,11 +767,16 @@ export async function middleware(request: NextRequest) {
     },
   );
 
+  // Skip the public routes from the ONE route table above.
+  if (isPublic(request.nextUrl.pathname)) return response;
+
+  // getUser, never getSession: getUser validates the token against the Auth server on
+  // every request, so a sign-out that happened in the Main App is observed here.
   const { data: { user } } = await supabase.auth.getUser();
 
-  // If no valid session, notify host
   if (!user) {
-    const loginUrl = new URL('/auth/login', request.url);
+    const loginUrl = new URL(LOGIN_ROUTE, request.url);
+    loginUrl.searchParams.set('next', request.nextUrl.pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }
 
@@ -586,7 +784,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|auth).*)'],
+  // Static assets only. Never exclude auth routes by prefix here.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
 ```
 
@@ -845,7 +1044,8 @@ users-microapp/                            # Independent micro-app
 │   │   │   ├── login/route.ts
 │   │   │   ├── logout/route.ts
 │   │   │   ├── user/route.ts
-│   │   │   └── set-session/route.ts       # Cross-domain auth bridge (Amplify)
+│   │   │   ├── set-session/route.ts       # Cross-domain auth bridge (Amplify)
+│   │   │   └── logout/route.ts            # Clears THIS app's own cookies on LOGOUT
 │   │   └── items/[collection]/route.ts    # DaaS proxy (SAME backend as Main App)
 ├── hooks/
 │   └── useQueryParamSync.ts               # URL sync via postMessage

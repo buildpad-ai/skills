@@ -70,11 +70,42 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-**Micro-app: `middleware.ts`** — add `/api/auth/set-session` to public routes:
+**Micro-app: `lib/supabase/middleware.ts`** — define ONE route table:
+
+Every route name in the micro-app must come from this file. A redirect target that does
+not match the file structure is the classic cause of a redirect loop inside the frame.
 
 ```typescript
-// In lib/supabase/middleware.ts (or wherever publicRoutes is defined)
-const publicRoutes = ["/login", "/api/auth/set-session"];
+// lib/supabase/middleware.ts
+export const LOGIN_ROUTE = "/login";
+
+export const PUBLIC_ROUTES = [
+  LOGIN_ROUTE,
+  "/api/auth/set-session",
+  "/api/auth/logout",
+];
+
+function isPublic(pathname: string) {
+  return PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
+// ...and in the middleware body:
+if (isPublic(request.nextUrl.pathname)) return response;
+
+const { data: { user } } = await supabase.auth.getUser();
+if (!user) {
+  return NextResponse.redirect(new URL(LOGIN_ROUTE, request.url));
+}
+```
+
+The matcher must exclude static assets only. Do NOT exclude auth routes by prefix:
+`/api/auth/set-session` starts with `api`, not `auth`, so a prefix rule lets the
+middleware run on the bridge call itself and redirect it.
+
+```typescript
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+};
 ```
 
 **Micro-app: `app/login/page.tsx`** — detect iframe context, request auth from host:
@@ -83,7 +114,7 @@ const publicRoutes = ["/login", "/api/auth/set-session"];
 'use client';
 
 import { useEffect, useState } from 'react';
-import { HOST_ORIGIN } from '@/config/app-urls';
+import { DEFAULT_AUTHENTICATED_ROUTE, HOST_ORIGIN } from '@/config/app-urls';
 import { Center, Loader, Stack, Text } from '@mantine/core';
 
 export default function LoginPage() {
@@ -114,8 +145,9 @@ export default function LoginPage() {
         });
 
         if (response.ok) {
-          // Session established — redirect to content
-          window.location.href = '/content'; // or your default authenticated route
+          // replace, not href: the failed /login attempt must not stay in history.
+          // DEFAULT_AUTHENTICATED_ROUTE comes from config/app-urls.ts. Never hardcode.
+          window.location.replace(DEFAULT_AUTHENTICATED_ROUTE);
         } else {
           setIframeAuthFailed(true);
         }
@@ -207,15 +239,29 @@ Cookie domain: .example.com (shared)
 8. Micro-app calls DaaS directly with Bearer token (CORS handled on DaaS side via CORS_ORIGINS)
 ```
 
-### Logout (Main App Only)
+### Logout (broadcast first, then sign out)
+
+> **A Main App logout does NOT clear micro-app sessions on its own.** Each micro-app
+> sets its own cookie on its own origin, and the host cannot delete a cookie it does
+> not own. `signOut()` revokes the refresh tokens server-side, but the micro-app
+> access tokens stay valid until they expire — up to one hour.
 
 ```
 1. User clicks logout in Main App
-2. Main App POST /api/auth/logout → Supabase Auth
-3. Supabase clears session cookie
-4. Main App redirects to /auth/login
-5. Any iframe refresh → no session → micro-app redirects to login
+2. Host broadcasts LOGOUT to every mounted MicroappIframe
+3. Each micro-app POSTs its own /api/auth/logout
+   → signOut({ scope: 'local' }) + delete daas_resource_uri (Bug 20)
+4. Host waits ~300ms, then POST /api/auth/logout → Supabase Auth
+5. Main App redirects to its login route
 ```
+
+The order matters. If the host signs out first and the page unloads, the frames never
+receive the message and their cookies survive until the token expires.
+
+The micro-app middleware must use `supabase.auth.getUser()`, not `getSession()`.
+`getUser()` validates the token against the Auth server on every request, so a
+sign-out that happened elsewhere is observed. Test it: sign out in the host, then load
+a micro-app route directly. If it still renders, shorten the project JWT expiry.
 
 ### Session Validation (Both Apps)
 
@@ -387,7 +433,9 @@ The DaaS backend enforces collection-level and record-level permissions based on
 - [ ] Main App handles AUTH_EXPIRED messages and redirects to login
 - [ ] `postMessage` origin is validated against allowlist
 - [ ] Micro-apps never implement their own login form
-- [ ] Logout in Main App clears session for all apps (shared cookie)
+- [ ] Host logout broadcasts `LOGOUT` to every mounted frame BEFORE it signs out
+- [ ] Every micro-app has its own `/api/auth/logout` that deletes `daas_resource_uri`
+- [ ] Micro-app middleware uses `getUser()`, never `getSession()`
 - [ ] Service role keys (`SUPABASE_SERVICE_ROLE_KEY`) are NEVER exposed to client code
 - [ ] All API calls use `credentials: 'include'` for cookie forwarding
 - [ ] DaaS RBAC controls which collections/records each role can access
@@ -397,7 +445,9 @@ The DaaS backend enforces collection-level and record-level permissions based on
 - [ ] Micro-app login page detects iframe context (`window.parent !== window`) and sends `MICROAPP_NEEDS_AUTH` instead of showing the login form
 - [ ] Main App `MicroappIframe` handles `MICROAPP_NEEDS_AUTH` and responds with `SET_AUTH` containing session tokens
 - [ ] Micro-app has `/api/auth/set-session` route that calls `supabase.auth.setSession()`
-- [ ] `/api/auth/set-session` is in the public routes list (middleware bypass)
+- [ ] `/api/auth/set-session` and `/api/auth/logout` are in `PUBLIC_ROUTES`
+- [ ] The middleware matcher excludes static assets only, never auth routes by prefix
+- [ ] `DEFAULT_AUTHENTICATED_ROUTE` points at a route that exists in `app/`
 - [ ] `SET_AUTH` postMessage validates the origin against `HOST_ORIGIN` from `config/app-urls.ts`
 - [ ] Micro-app login page falls back to the standard login form after 3s if no `SET_AUTH` arrives (handles host-not-configured edge case)
 - [ ] `access_token` and `refresh_token` are never logged or stored beyond the duration of the `setSession()` call

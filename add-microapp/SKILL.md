@@ -245,7 +245,19 @@ export async function POST(request: NextRequest) {
 **2. Allow the route in middleware public routes (`lib/supabase/middleware.ts`):**
 
 ```typescript
-const publicRoutes = ['/login', '/api/auth/set-session'];
+// lib/supabase/middleware.ts — ONE route table. Every route name in the micro-app
+// must come from here. A redirect target that does not match the file structure is
+// the classic cause of a redirect loop inside the frame.
+export const LOGIN_ROUTE = '/login';
+
+export const PUBLIC_ROUTES = [
+  LOGIN_ROUTE,
+  '/api/auth/set-session',
+  '/api/auth/logout',
+];
+
+// The matcher must exclude static assets only. Do NOT exclude auth routes by prefix:
+// '/api/auth/set-session' starts with 'api', not 'auth'.
 ```
 
 **3. Update `app/login/page.tsx` to detect iframe context:**
@@ -277,7 +289,9 @@ export default function LoginPage() {
         body: JSON.stringify({ access_token, refresh_token }),
       });
       if (res.ok) {
-        window.location.href = '/content'; // your default authenticated route
+        // replace, not href: the failed /login attempt must not stay in history.
+        // DEFAULT_AUTHENTICATED_ROUTE comes from config/app-urls.ts. Never hardcode.
+        window.location.replace(DEFAULT_AUTHENTICATED_ROUTE);
       } else {
         setIframeAuthFailed(true);
       }
