@@ -3,22 +3,24 @@
 ## Sandbox
 
 ```
-sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
+sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads allow-storage-access-by-user-activation"
 ```
 
-| Flag                             | Status                        | Reason                                                                        |
-| -------------------------------- | ----------------------------- | ----------------------------------------------------------------------------- |
-| `allow-scripts`                  | required                      | The micro-app is a Next.js app.                                               |
-| `allow-same-origin`              | required                      | Cookies and storage on the micro-app origin.                                  |
-| `allow-forms`                    | required                      | Form submission.                                                              |
-| `allow-popups`                   | required                      | External links and OAuth windows.                                             |
-| `allow-downloads`                | required                      | CSV export, and any download from the Files module.                           |
-| `allow-popups-to-escape-sandbox` | only with `add-external-oauth` | A popup inherits this sandbox otherwise, and the OAuth flow fails.            |
-| `allow-modals`                   | forbidden                     | Its absence is what blocks `window.confirm`. Micro-apps use Mantine `Modal`.  |
-| `allow-top-navigation`           | forbidden                     | It lets a micro-app replace the host page.                                    |
+| Flag                                     | Status                        | Reason                                                                        |
+| ---------------------------------------- | ----------------------------- | ----------------------------------------------------------------------------- |
+| `allow-scripts`                          | required                      | The micro-app is a Next.js app.                                               |
+| `allow-same-origin`                      | required                      | Cookies and storage on the micro-app origin.                                  |
+| `allow-forms`                            | required                      | Form submission.                                                              |
+| `allow-popups`                           | required                      | External links and OAuth windows.                                             |
+| `allow-downloads`                        | required                      | CSV export, and any download from the Files module.                           |
+| `allow-storage-access-by-user-activation`| required                      | Lets the frame call `document.requestStorageAccess()` when a browser blocks partitioned cookies. Without it the documented fallback is unreachable. |
+| `allow-popups-to-escape-sandbox`         | only with `add-external-oauth`| A popup inherits this sandbox otherwise, and the OAuth flow fails.            |
+| `allow-modals`                           | forbidden                     | Its absence is what blocks `window.confirm`. Micro-apps use Mantine `Modal`.  |
+| `allow-top-navigation`                   | forbidden                     | It lets a micro-app replace the host page.                                    |
 
 Native dialogs are blocked by the missing `allow-modals` flag, not by a browser policy.
-Do not add the flag to make a dialog work.
+Do not add the flag to make a dialog work — and audit for calls the CLI itself ships
+(`rich-text-markdown.tsx` contains a `window.prompt`); see SKILL Step 4.
 
 ## Message validation
 
@@ -40,91 +42,73 @@ Validate the payload shape after the envelope. `typeof params !== 'object'` and
 
 Never pass `'*'` as the target origin of a `postMessage` call.
 
-## Clickjacking
+## Clickjacking — both directions
 
-A micro-app that holds a valid cookie can otherwise be framed by any site.
-`X-Frame-Options` cannot list more than one origin, so use CSP. Both values come from
-`config/app-urls.ts`, so generate them from the same context.
+`frame-src` restricts what an app may **embed**. It does nothing to stop the app
+**being embedded** — that is `frame-ancestors`, and both sides need one:
 
-```ts
-// Micro-app next.config.ts
-async headers() {
-  return [{
-    source: '/:path*',
-    headers: [{
-      key: 'Content-Security-Policy',
-      // AGENT: HOST_ORIGIN, from config/app-urls.ts.
-      value: "frame-ancestors 'self' https://main.d1234abcde.amplifyapp.com",
-    }],
-  }];
-}
-```
+- **Host**: `frame-ancestors 'none'` — it holds the real Supabase session, the
+  sign-out control, and the scope switcher. Nothing may frame it.
+- **Micro-app**: `frame-ancestors 'self' <HOST_ORIGIN>` — only the host may frame it.
 
-```ts
-// Main App next.config.ts
-async headers() {
-  return [{
-    source: '/:path*',
-    headers: [{
-      key: 'Content-Security-Policy',
-      // AGENT: one entry per origin in MICROAPP_URLS.
-      value: "frame-src 'self' https://main.d5678fghij.amplifyapp.com https://main.d9012klmno.amplifyapp.com",
-    }],
-  }];
-}
-```
+`X-Frame-Options` cannot list more than one origin, so use CSP. **A Buildpad starter
+ships no `next.config.ts` — create it.** The complete files (with the relative-import
+and `NODE_ENV` rules) are in SKILL Step 5; the traps are worth restating:
 
-Add every local development origin to `frame-ancestors` and `frame-src` as well, or the
-frame is blocked locally.
+1. The snippet must be a whole module with `export default` — a bare `headers()`
+   method is a syntax error in an empty file.
+2. `@/…` aliases do not resolve from the Next config loader. Import
+   `./config/app-urls` relatively. Never hardcode an origin literal — it drifts the
+   day any app moves to a custom domain.
+3. Gate `http://localhost:*` entries on `NODE_ENV === 'development'`. A production
+   header advertising localhost invites any local server on the visitor's machine to
+   frame the app. Verify with `jq '.headers' .next/routes-manifest.json` after a
+   production build: real origins present, no `http://localhost`.
 
 A `frame-ancestors` mismatch is invisible to the host: the load failure is opaque. The
 load watchdog in `useMicroappHost` is what surfaces it.
 
 ## Cookies
 
-Micro-app cookies are set inside a cross-site frame, so they need
-`SameSite=None; Secure`.
+Bridge cookies are set inside a cross-site frame, so they need
+`SameSite=None; Secure; Partitioned` — see `assets/shared/mfe-cookies.ts`
+(`framedCookieOptions`) and the cookie rules in
+[auth-bridge](auth-bridge.instructions.md). Never write a cookie name or option set as
+a literal.
 
 | Cookie              | httpOnly | Read by                                       |
 | ------------------- | -------- | --------------------------------------------- |
-| `mfe_access_token`  | yes      | middleware, `/api/auth/token`                 |
-| `mfe_expires_at`    | no       | client code, to schedule renewal              |
-| `daas_resource_uri` | no       | `DaaSProvider.getHeaders`                     |
+| `mfe_access_token`  | yes      | middleware (`getMfeUser`), `/api/auth/token`, `auth-headers.ts` |
+| `mfe_expires_at`    | no       | `MicroappBridgeProvider`, to schedule renewal |
+| `daas_resource_uri` | no       | `DaaSProvider.getHeaders` (scope projects only) |
 
 `SUPABASE_SERVICE_ROLE_KEY` never reaches client code, in any app.
 
-Some browsers block third-party cookies entirely. When the frame cannot keep a cookie,
-the handshake repeats on every navigation. Test the target browsers before launch.
+`Secure` is exempted on `http://localhost`, but any other plain-HTTP dev origin
+(a LAN IP, `*.local`, a container hostname) silently loses every bridge cookie — use
+`localhost` ports for local dev.
 
 ## CORS
 
-Set `CORS_ORIGINS` in the DaaS configuration to every origin that calls it: the Main
-App, every micro-app, and every local development port.
+The DaaS **default** is `cors_origins: ["*"]` with `cors_allow_credentials: false` —
+which blocks every credentialed browser call, because the Fetch spec discards a
+credentialed response carrying `Access-Control-Allow-Origin: *`. (`X-Resource-Uri` is
+already in the default `cors_allowed_headers` on DaaS ≥ 0.1.92 — keep it in the list
+anyway when updating.)
 
-```json
-{
-  "cors_origins": [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "https://main.d1234abcde.amplifyapp.com",
-    "https://main.d5678fghij.amplifyapp.com"
-  ],
-  "cors_allow_credentials": true,
-  "cors_allowed_headers": ["Content-Type","Authorization","Origin","X-Requested-With","Accept","X-Resource-Uri"],
-  "cors_max_age": 0
-}
-```
-
-`X-Resource-Uri` must be in `cors_allowed_headers`, or every scoped call from a
-micro-app is blocked at preflight. See Bugs 17 and 25 in
-[daas-platform](../../daas-platform/SKILL.md).
+The runnable update call and its `curl` verification are in SKILL Step 6
+(`mcp_daas_cors-settings`, or `PATCH /api/settings/cors`). List every origin that
+calls DaaS: the Main App, every micro-app, and every local development port.
 
 ## Checklist
 
-- [ ] The sandbox matches `DEFAULT_SANDBOX`, with no `allow-modals` and no `allow-top-navigation`.
+- [ ] The sandbox matches `DEFAULT_SANDBOX` — no `allow-modals`, no
+      `allow-top-navigation`, `allow-downloads` and
+      `allow-storage-access-by-user-activation` present.
 - [ ] Every handler checks origin, `event.source`, `source`, and `v`.
 - [ ] Every payload field is type-checked before use.
-- [ ] The micro-app sets `frame-ancestors` for the host origin only.
-- [ ] The Main App sets `frame-src` for the micro-app origins only.
-- [ ] Cookies use `SameSite=None; Secure`.
-- [ ] `CORS_ORIGINS` lists every deployed origin and every local port.
+- [ ] The host sets `frame-ancestors 'none'` AND `frame-src` for the micro-app origins.
+- [ ] Each micro-app sets `frame-ancestors 'self' <HOST_ORIGIN>`.
+- [ ] No `http://localhost` in any production `routes-manifest.json` header.
+- [ ] Bridge cookies use `framedCookieOptions` (None + Secure + Partitioned).
+- [ ] The Step 6 `curl` echoes the origin and `access-control-allow-credentials: true`.

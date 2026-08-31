@@ -20,6 +20,7 @@ import {
   BRIDGE_VERSION,
   type MicroappMessage,
 } from '@/lib/bridge/bridge-protocol';
+import { MFE_EXPIRES_COOKIE, SCOPE_COOKIE } from '@/lib/bridge/mfe-cookies';
 
 /** Send one message up to the host. No-op when the app is not framed. */
 export function postToHost(message: MicroappMessage) {
@@ -82,13 +83,15 @@ export function onAuthApplied(listener: () => void) {
 
 /** Write the scope cookie that DaaSProvider.getHeaders forwards as X-Resource-Uri. */
 export function writeScopeCookie(resourceUri: string) {
-  document.cookie = `daas_resource_uri=${encodeURIComponent(resourceUri)}; path=/; SameSite=None; Secure`;
+  // SameSite=None + Partitioned: this cookie lives inside a cross-site frame.
+  document.cookie = `${SCOPE_COOKIE}=${encodeURIComponent(resourceUri)}; path=/; SameSite=None; Secure; Partitioned`;
 }
 
 export function MicroappBridgeProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { setColorScheme } = useMantineColorScheme();
   const renewalTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const lastExpiresRef = useRef(0);
 
   // Tell the host this frame is alive. The host hides its skeleton on this message
   // and shows its error state if it never arrives.
@@ -104,25 +107,26 @@ export function MicroappBridgeProvider({ children }: { children: React.ReactNode
      * This must also run on a plain page load. The handshake happens on /login and
      * then the app does a full navigation, so the provider that scheduled the first
      * renewal is gone by the time the real page renders.
+     *
+     * The retry is CLAMPED to 5 s minimum. Never post immediately when leadMs <= 0:
+     * if the host answers with an unchanged expires_at, an unclamped loop hammers
+     * postMessage + Supabase Auth until rate limiting kills the session.
      */
     function scheduleRenewal(expiresAt: number) {
       clearTimeout(renewalTimerRef.current);
       const leadMs = expiresAt * 1000 - Date.now() - 60_000;
-      if (leadMs <= 0) {
-        postToHost(bridgeMessage('MICROAPP_NEEDS_AUTH'));
-        return;
-      }
       renewalTimerRef.current = setTimeout(() => {
         postToHost(bridgeMessage('MICROAPP_NEEDS_AUTH'));
-      }, leadMs);
+      }, Math.max(leadMs, 5_000));
     }
 
     const storedExpiry = Number(
       document.cookie
         .split('; ')
-        .find((row) => row.startsWith('mfe_expires_at='))
+        .find((row) => row.startsWith(`${MFE_EXPIRES_COOKIE}=`))
         ?.split('=')[1] ?? 0,
     );
+    lastExpiresRef.current = storedExpiry;
     if (storedExpiry) scheduleRenewal(storedExpiry);
 
     async function applyAuth(accessToken: string, expiresAt: number, resourceUri?: string) {
@@ -131,7 +135,12 @@ export function MicroappBridgeProvider({ children }: { children: React.ReactNode
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ access_token: accessToken, expires_at: expiresAt, resource_uri: resourceUri }),
       });
-      if (!response.ok) return;
+      if (!response.ok) {
+        // Do not go silent on failure — retry on the clamped cadence.
+        scheduleRenewal(lastExpiresRef.current);
+        return;
+      }
+      lastExpiresRef.current = expiresAt;
       if (resourceUri) writeScopeCookie(resourceUri);
       scheduleRenewal(expiresAt);
 
@@ -149,6 +158,12 @@ export function MicroappBridgeProvider({ children }: { children: React.ReactNode
       switch (message.type) {
         case 'SET_AUTH': {
           if (typeof message.access_token !== 'string' || typeof message.expires_at !== 'number') return;
+          // A token that does not advance expiry is a repeat of what we hold.
+          // Re-applying it would re-run set-session on every retry tick.
+          if (message.expires_at <= lastExpiresRef.current) {
+            scheduleRenewal(lastExpiresRef.current);
+            return;
+          }
           void applyAuth(
             message.access_token,
             message.expires_at,

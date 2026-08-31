@@ -16,154 +16,234 @@ The bridge is also necessary in local development. `localhost:3000` and
 The bridge works on a custom domain too. Use it there as well. A shared parent-domain
 cookie is an optional extra, not a replacement.
 
-## Rule: the host owns refresh
+## Rule: the host owns refresh — actively
 
 `SET_AUTH` carries `access_token` and `expires_at`. It must never carry
 `refresh_token`.
 
 Supabase rotates refresh tokens. A consumed refresh token is accepted again only
 inside the reuse interval, which defaults to 10 seconds. A later reuse is treated as
-possible theft, and Supabase can revoke the whole session family.
+possible theft, and Supabase can revoke the whole session family. If the host and
+three micro-apps each hold the same refresh token, each refreshes on its own; the
+first wins and the rest present a consumed token — a forced sign-out of every app
+about an hour after sign-in.
 
-If the host and three micro-apps each hold the same refresh token, each one refreshes
-on its own when the access token expires. The first app wins. The others present a
-consumed token. The result is a forced sign-out of every app about one hour after
-sign-in.
+"Owns refresh" needs code behind it. When a frame asks for a token and the host
+session is inside the renewal window, `getSession()` returns the **same**
+`expires_at`, the frame's lead timer fires again, and the two loop. The host handler
+in `useMicroappHost.ts` therefore calls `refreshSession()` when less than 90 s
+remains — 90 s > the frame's 60 s lead, so the windows always overlap. The frame side
+clamps its retry to ≥ 5 s and ignores a `SET_AUTH` whose `expires_at` does not
+advance, so even a misbehaving host cannot drive an unbounded loop.
 
-With host-owned refresh there is exactly one refresh client: the Main App browser
-client. Each micro-app asks for a new access token before its current one expires.
+> **Confirm this against your Supabase version** with the renewal test in Step 7 —
+> overwrite `mfe_expires_at` to now+70 s and watch a second
+> `MICROAPP_NEEDS_AUTH → SET_AUTH → set-session` round trip complete.
 
-> **Confirm this against your Supabase version.** Sign in, wait for the access token
-> to expire, then use the host and two micro-apps. All three must stay signed in.
+## Rule: a valid token is not authorization
 
-## Rule: validate every token before you store it
+`POST /api/auth/set-session` is reachable by anything on the page. Validating the
+token with `getUser(access_token)` proves the token is *valid* — not that it belongs
+to the current user or came from the host frame. Without an origin check, an attacker
+page can POST **its own** valid token as a CORS-simple request (no preflight) and log
+the victim's frame into the attacker's account, planting an attacker `resource_uri`
+with it.
 
-`POST /api/auth/set-session` is a public route. Anything on the page can call it. The
-route must call `supabase.auth.getUser(access_token)` and reject the request when the
-Auth server does not accept the token. See `assets/microapp/set-session.route.ts`.
+`assets/microapp/set-session.route.ts` therefore rejects any request whose
+`Sec-Fetch-Site` is not `same-origin`, whose `Origin` does not match
+`publicOrigin(request)`, or whose `Content-Type` is not `application/json` — and only
+then validates the token with `getUser`.
 
-## Rule: the micro-app middleware uses `getUser`, never `getSession`
+## Rule: bridge cookies are third-party cookies
 
-`getUser(token)` validates the token against the Auth server on every request.
-`getSession()` only decodes it locally. Only `getUser` observes a sign-out that
-happened somewhere else.
+Every cookie `set-session` writes lives inside a cross-site frame, so it needs
+`SameSite=None; Secure; Partitioned` — all three. Without `Partitioned` (CHIPS), the
+write is silently dropped by Safari (default), Chrome/Edge Incognito, Brave, and any
+block-third-party-cookies profile. `lib/bridge/mfe-cookies.ts` is the single source
+for the names and the option set; never write either as a literal.
 
-An unexpired access token can still outlive a global sign-out. Test it: sign out in
-the host, then reload a micro-app route directly. If the micro-app still renders,
-shorten the JWT expiry for the project.
+localhost hides this failure class completely: two localhost ports are the same
+*site*, so every local check passes and only the deployed cross-site build breaks.
+Verify the handshake on the deployed origins, in Safari or an Incognito window, before
+calling the bridge done.
 
-## Rule: one route table
+## Pinned edits — merging into CLI-owned files
 
-Every route name comes from `PUBLIC_ROUTES` and `LOGIN_ROUTE` in
-`assets/microapp/middleware.ts`. Do not write a route name anywhere else.
+Never overwrite a file carrying `@buildpad-origin` (SKILL Rule 9). Anchor each edit on
+the named line, not on a line number. After each merge, add under the CLI header:
+`// ⚠️ LOCAL MODIFICATION (add-microfrontend): re-apply pinned edits after buildpad upgrade`.
 
-| Route                    | Public | Why                                                    |
-| ------------------------ | ------ | ------------------------------------------------------ |
-| `/login`                 | yes    | Runs the handshake. The middleware sends users here.    |
-| `/api/auth/set-session`  | yes    | The handshake target. It has no cookie yet.             |
-| `/api/auth/logout`       | yes    | The caller has just lost its session.                   |
-| `/api/auth/token`        | no     | The middleware must validate the cookie first.          |
-| everything else          | no     | —                                                       |
+### M1–M3 · `lib/supabase/middleware.ts` (micro-app)
 
-The middleware matcher excludes static assets only. Do not exclude auth routes by
-prefix: `/api/auth/set-session` starts with `api`, not `auth`, so a prefix rule lets
-the middleware run on the bridge call and redirect it.
+The CLI file already treats `/login`, `/signup`, `/auth`, and `/api/auth` as public
+and passes every `/api` path through. Keep all of that — it is what keeps standalone
+sign-in, sign-up, and the OAuth callback working. Three additions:
 
-Set `DEFAULT_AUTHENTICATED_ROUTE` in the micro-app `config/app-urls.ts` to the
-micro-app's first real route. Do not hardcode `/content`.
+**M1 — import the bridge helpers** (top of file):
 
-## Rule: the scope header must cross the origin
-
-Buildpad components call DaaS directly from the browser. `DaaSProvider.getHeaders`
-reads the `daas_resource_uri` cookie and sends it as `X-Resource-Uri`. That cookie is
-set on the host origin, so the micro-app origin never receives it on its own.
-
-Without the fix, every micro-app call on a project that uses `manage-scope` or
-`add-multitenancy` resolves at root scope and returns 403.
-
-1. The host reads its own `daas_resource_uri` cookie and puts the value in
-   `SET_AUTH.resource_uri`.
-2. `/api/auth/set-session` writes `daas_resource_uri` on the micro-app origin.
-3. On a tenant switch, the host calls `broadcastScope(resourceUri)`. Each micro-app
-   rewrites the cookie and calls `router.refresh()`.
-
-The cookie must use `SameSite=None; Secure`. A `Lax` cookie is not sent inside a
-cross-site frame.
-
-## DaaSProvider in a micro-app
-
-The micro-app has no Supabase session, so `DaaSProviderWrapper` cannot call
-`supabase.auth.getSession()`. It reads the token from `/api/auth/token` instead.
-Every other rule in [daas-platform](../../daas-platform/SKILL.md) still applies:
-place the wrapper in `app/(authenticated)/layout.tsx`, pass `token` as a sync prop,
-gate `ready` on a non-null token, and never null the global config on unmount.
-
-```tsx
-// components/DaaSProviderWrapper.tsx (micro-app variant)
-'use client';
-
-const [token, setToken] = useState<string | null>(null);
-
-useEffect(() => {
-  let cancelled = false;
-
-  async function load() {
-    const response = await fetch('/api/auth/token', { credentials: 'include' });
-    if (!response.ok) {
-      // The cookie expired between renders. Ask the host for a new token.
-      postToHost(bridgeMessage('MICROAPP_NEEDS_AUTH'));
-      return;
-    }
-    const { access_token } = await response.json();
-    if (!cancelled) setToken(access_token);
-  }
-
-  void load();
-  // Re-read after MicroappBridgeProvider stores a new token.
-  const unsubscribe = onAuthApplied(() => void load());
-
-  return () => {
-    cancelled = true;
-    unsubscribe();
-  };
-}, []);
+```ts
+import { getMfeUser, isProtectedApiRoute } from '@/lib/bridge/mfe-middleware';
 ```
 
-Keep `getHeaders` exactly as `daas-platform` specifies. It reads the same
-`daas_resource_uri` cookie that `/api/auth/set-session` wrote.
+**M2 — accept the bridge token as a second session source.** Directly after the line
+`const { data: { user } } = await supabase.auth.getUser();` add:
 
-## Sign-out
+```ts
+// Framed micro-app: no Supabase session exists on this origin. Accept the
+// bridge access token, validated against the Auth server on every request.
+const effectiveUser = user ?? (await getMfeUser(request));
+```
 
-Follow the sequence in [bridge-protocol](bridge-protocol.instructions.md). The host
-button must call `logoutAllMicroapps()` before `POST /api/auth/logout`.
+…and use `effectiveUser` in the redirect condition below it (in place of `user`).
 
-Every micro-app logout route deletes `daas_resource_uri` as well as its token
-cookies. A stale scope cookie is forwarded as `X-Resource-Uri` for the next user and
-causes an immediate 403 FORBIDDEN_SCOPE. See Bug 20 in
-[authentication-proxy](../../authentication-proxy/SKILL.md).
+**M3 — gate the token route with 401 JSON, never a redirect.** Directly before the
+`if (!effectiveUser && !isPublicRoute && !isApiRoute)` redirect block add:
 
-## Direct calls and proxy routes
+```ts
+// /api/auth/token must NOT ride the blanket /api pass — it hands out the bridge
+// token. Answer JSON, never redirect: a redirect lands on /login, returns
+// 200 text/html, and silently breaks every fetch() caller.
+if (isProtectedApiRoute(request.nextUrl.pathname) && !effectiveUser) {
+  return NextResponse.json({ errors: [{ message: 'Unauthorized' }] }, { status: 401 });
+}
+```
 
-The split is the same as in [authentication-proxy](../../authentication-proxy/SKILL.md).
+Leave the CLI's redirect exactly as it is — it is built from `publicOrigin(request)`,
+which is correct behind Amplify/CloudFront where `request.url` names the server
+process, not the browser's address.
 
-| Caller                                            | Path                                              |
-| ------------------------------------------------- | ------------------------------------------------- |
-| Buildpad UI components (`CollectionList`, `VForm`) | Direct to DaaS, through `DaaSProvider`.            |
-| Your own hand-written fetches                      | Through a Next.js proxy route in the same app.     |
+### L1 · `app/api/auth/logout/route.ts` (micro-app)
 
-Do not generate `/api/items/[collection]/route.ts` unless the app has hand-written
-data calls. When you do generate it, `getAuthHeaders` reads the token from
-`mfe_access_token` in a micro-app, not from a Supabase session.
+Inside `performLogout()`, **before** `await supabase.auth.signOut();` (signOut can
+error and return early inside the frame, which would strand the cookies):
+
+```ts
+// Bridge cookies live on THIS origin; the host cannot delete them.
+// A stale daas_resource_uri is forwarded as X-Resource-Uri for the next
+// user and causes an immediate 403 FORBIDDEN_SCOPE (Bug 20).
+const { MFE_TOKEN_COOKIE, MFE_EXPIRES_COOKIE, SCOPE_COOKIE } = await import('@/lib/bridge/mfe-cookies');
+cookieStore.delete(MFE_TOKEN_COOKIE);
+cookieStore.delete(MFE_EXPIRES_COOKIE);
+cookieStore.delete(SCOPE_COOKIE);
+```
+
+Keep everything else: the **GET handler** (the shell navigates to it), the OAuth SLO
+logic, and the `oauth_provider` cleanup.
+
+### P1 · `app/login/page.tsx` (micro-app)
+
+Rename the CLI page's default export to `LoginForm` (change nothing inside it), then
+add a new default export. `LoginBridge` reads `useSearchParams`, so the page needs a
+`Suspense` boundary:
+
+```tsx
+import { Suspense } from 'react';
+import { LoginBridge } from '@/components/LoginBridge';
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginBridge fallback={<LoginForm />} />
+    </Suspense>
+  );
+}
+```
+
+Framed: `LoginBridge` runs the handshake and never shows the form. Standalone: the
+untouched CLI form renders and its `/api/auth/login` POST works, because M1–M3 kept
+that route public.
+
+### W1 · `components/DaaSProviderWrapper.tsx` (micro-app)
+
+The CLI wrapper listens to `supabase.auth.onAuthStateChange` — which never fires in a
+framed micro-app, because there is no Supabase session on this origin. Do not replace
+the wrapper (the Supabase path is what standalone mode uses). Add the framed source:
+
+1. `import { useMfeToken } from '@/lib/bridge/useMfeToken';`
+2. Inside the component: `const mfeToken = useMfeToken();`
+3. Wherever the wrapper uses its Supabase-derived token state, use
+   `tokenState ?? mfeToken` instead.
+4. Wherever it gates readiness on the Supabase token being non-null, gate on
+   *either* being non-null.
+
+`useMfeToken` reads `/api/auth/token`, treats a redirect or non-JSON response as
+unauthenticated (a redirect to `/login` returns 200 text/html — `response.ok` alone
+lies), re-requests through the bridge on failure, and re-reads whenever
+`MicroappBridgeProvider` stores a fresh token. All other `daas-platform` rules stand:
+wrapper in `(authenticated)/layout.tsx`, never null the global config on unmount,
+`getHeaders` reads the scope cookie.
+
+### H1 · `lib/api/auth-headers.ts` (both micro-apps)
+
+The CLI installs ~16 proxy routes (`/api/items`, `/api/files`, `/api/folders`,
+`/api/collections`, `/api/fields`, `/api/permissions/me`, `/api/assets`,
+`/api/relations`, `/api/auth/user`, …) that all build their `Authorization` header
+here from `supabase.auth.getSession()` — which is empty inside the frame, so all 16
+answer 401 and the Files module, permission gates, and profile menu die. One edit
+fixes all of them. Where the helper resolves the token:
+
+```ts
+import { cookies } from 'next/headers';
+import { MFE_TOKEN_COOKIE } from '@/lib/bridge/mfe-cookies';
+
+// Framed micro-app: the bridge token is the session.
+const mfeToken = (await cookies()).get(MFE_TOKEN_COOKIE)?.value;
+const token = mfeToken ?? session?.access_token;
+```
+
+`lib/module-access/enforce.ts` and `app/api/auth/user/route.ts` call
+`supabase.auth.getUser()` directly — apply the same fallback there if the project uses
+module access or the shell's profile fetch.
+
+### S1 · `components/layout/AuthenticatedShell.tsx` (host)
+
+See SKILL Step 3: make the sign-out `onClick` async, `await logoutAllMicroapps()`
+first, then the existing `window.location.href = '/api/auth/logout'` navigation. The
+await matters — the assignment unloads the page, and the broadcast's 300 ms drain is
+what lets each frame finish its own logout request.
+
+## Sign-out order
+
+1. Shell sign-out control: `await logoutAllMicroapps()` — broadcasts `LOGOUT` to every
+   mounted frame, waits 300 ms.
+2. Each frame POSTs its own `/api/auth/logout`, which deletes its three bridge
+   cookies (L1) on its own origin.
+3. The host then navigates to its CLI `GET /api/auth/logout` — Supabase `signOut()`,
+   scope-cookie cleanup, OAuth SLO if applicable.
+
+The order is not optional: sign the host out first and the page unloads before the
+frames hear anything, leaving their cookies alive until token expiry.
+
+A micro-app never renders its own sign-out control inside the frame (SKILL Rule 15) —
+it would clear only its own cookies, and the next `MICROAPP_NEEDS_AUTH` signs the user
+straight back in.
+
+## Scope across the origin
+
+`DaaSProvider.getHeaders` reads the `daas_resource_uri` cookie and sends it as
+`X-Resource-Uri`. That cookie is set on the host origin; the micro-app origin never
+receives it on its own. On a project using `manage-scope` or `add-multitenancy`:
+
+1. The host reads its own scope cookie into `SET_AUTH.resource_uri`.
+2. `set-session` writes the cookie on the micro-app origin (Partitioned, like the
+   token cookies).
+3. On a tenant switch the host calls `broadcastScope(uri)`; each frame rewrites the
+   cookie and calls `router.refresh()`.
+
+On a project using neither, nothing writes that cookie anywhere — no header is
+expected, and none of the scope checks apply (SKILL Rule 11).
 
 ## Checklist
 
-- [ ] `SET_AUTH` carries no refresh token.
-- [ ] `/api/auth/set-session` validates the token with `getUser` before it sets a cookie.
-- [ ] Token cookies use `httpOnly`, `Secure`, and `SameSite=None`.
-- [ ] The micro-app middleware calls `getUser`, not `getSession`.
-- [ ] `PUBLIC_ROUTES` is the only place a route name is written.
-- [ ] `DEFAULT_AUTHENTICATED_ROUTE` points at a route that exists.
-- [ ] `SET_AUTH` carries `resource_uri` on any project that uses scopes.
-- [ ] The host logout broadcasts `LOGOUT` before it signs out.
-- [ ] Every micro-app logout route deletes `daas_resource_uri`.
-- [ ] The expiry test passes: host and two micro-apps stay signed in past the access token lifetime.
+- [ ] `SET_AUTH` carries no refresh token, and the host calls `refreshSession()`
+      inside the 90 s window.
+- [ ] `set-session` rejects cross-site callers *before* validating the token.
+- [ ] All bridge cookies use `SameSite=None; Secure; Partitioned` via
+      `framedCookieOptions`.
+- [ ] M1–M3, L1, P1, W1, H1 applied; every merged file carries the
+      LOCAL MODIFICATION banner; no `@buildpad-origin` file was replaced.
+- [ ] `/api/auth/token` answers 401 JSON to an unauthenticated caller — never a
+      redirect.
+- [ ] Standalone mode still works: `/login` shows the form outside a frame, and
+      sign-in through it succeeds.
+- [ ] The renewal test (expiry cookie → now+70 s) completes a second round trip.

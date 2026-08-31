@@ -77,7 +77,7 @@ Before any code or configuration, call the `get_project_detail` platform MCP too
 ```
 
 This returns:
-- **`project.mainAmplifyUrl`** — Main App's deployed URL (used as `NEXT_PUBLIC_HOST_ORIGIN` in micro-apps)
+- **`project.mainAmplifyUrl`** — Main App's deployed URL (the `HOST_ORIGIN` default in each micro-app's `config/app-urls.ts`; override via `NEXT_PUBLIC_MICROAPP_URL_MAIN`, never `NEXT_PUBLIC_HOST_ORIGIN` — that name is reserved by `lib/origin.ts`)
 - **`project.supabaseUrl`**, **`project.supabaseAnonKey`**, **`project.supabaseServiceRoleKey`** — shared auth credentials
 - **`project.daasUrl`** — shared DaaS backend URL
 - **`project.mainGitUrl`**, **`project.mainGitToken`** — git credentials for cloning/pushing
@@ -119,6 +119,13 @@ mkdir -p /path/to/{{serviceName}}-app
 npx @buildpad/cli@latest bootstrap --cwd /path/to/{{serviceName}}-app
 ```
 
+> The directory name is a local choice and is NOT the platform `microapps[].name` —
+> existing repos may be called `<name>-starter`, `<name>-app`, or anything else.
+> Config keys and env-var names always derive from the platform `name`; routes come
+> from the micro-app's own `DEFAULT_AUTHENTICATED_ROUTE`. Write the mapping table
+> from [add-microfrontend Step 3](../add-microfrontend/SKILL.md) before creating
+> pages.
+
 ### Step 3: Auto-Configure Environment & URL Config (From Context — No User Input)
 
 **ALL values come from the `get_project_detail` response.** Never use placeholder URLs.
@@ -157,8 +164,13 @@ Full implementation and the security checklist:
 
 Buildpad UI components call DaaS directly from the browser. Hand-written fetches use a proxy route in the same app (Rule 3). Supply the DaaS URL and the Supabase JWT with `DaaSProvider`:
 
+In a Buildpad starter the CLI already installs `components/DaaSProviderWrapper.tsx`
+mounted from `app/(authenticated)/layout.tsx` — keep that. Never move the provider to
+the root layout: root layouts never unmount, so a logout → login cycle delivers a
+stale token (daas-platform Bug 22). The hand-rolled shape, for reference:
+
 ```typescript
-// app/layout.tsx (in every app)
+// app/(authenticated)/layout.tsx-style wiring — NEVER app/layout.tsx (Bug 22)
 import { DaaSProvider } from '@/lib/buildpad/services';
 import { createBrowserClient } from '@supabase/ssr';
 
@@ -185,11 +197,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 ```
 
-DaaS CORS configuration (in DaaS `.env.local` or deployment env):
-```
-CORS_ORIGINS="http://localhost:3000,http://localhost:3001,https://main-app.example.com,https://micro-app.example.com"
-CORS_ALLOW_CREDENTIALS=false
-```
+DaaS CORS is a **settings singleton**, not env vars, and the default
+(`cors_origins: ["*"]`, `cors_allow_credentials: false`) blocks every credentialed
+browser call. Configure it with the runnable `mcp_daas_cors-settings` update in
+[add-microfrontend Step 6](../add-microfrontend/SKILL.md) — origins must be explicit
+and `cors_allow_credentials` must be `true`.
 
 In client components, use `useDaaSContext()` to get `buildUrl` and `getHeaders`:
 

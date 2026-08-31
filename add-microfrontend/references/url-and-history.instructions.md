@@ -19,6 +19,14 @@ Every debounced keystroke reloads the micro-app.
 Host-side changes travel as `SET_QUERY_PARAMS` messages instead. `useMicroappHost.ts`
 implements this.
 
+## Rule: every embedding page needs a Suspense boundary
+
+`useMicroappHost` reads `useSearchParams()`. On Next.js 16, a statically prerendered
+page that renders `MicroappIframe` without a `Suspense` boundary fails `next build`
+with "useSearchParams() should be wrapped in a suspense boundary". Wrap the frame
+(SKILL Step 3 shows the pattern); the same applies to the `/login` page around
+`LoginBridge`.
+
 ## Rule: drop the echo on both sides
 
 The host records the parameter set it received in `lastFromMicroappRef`. Before it

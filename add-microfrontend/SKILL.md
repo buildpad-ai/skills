@@ -43,38 +43,85 @@ complexity is not low. `add-microapp` without iframes is often the better answer
    the frame `src`.
 2. The Main App must not read the frame DOM. The micro-app must not read
    `window.parent` DOM. All communication uses `postMessage`.
-3. Copy `assets/shared/bridge-protocol.ts` to every app. Do not retype the message
-   shapes. See [bridge-protocol](references/bridge-protocol.instructions.md).
+3. Copy `assets/shared/bridge-protocol.ts` and `assets/shared/mfe-cookies.ts` to every
+   app. Do not retype message shapes or cookie names.
 4. Every message handler must check `event.origin`, then `event.source`, then the
    `source` and `v` envelope fields.
 5. The iframe `src` must depend on the micro-app origin and the route path only. It
    must never depend on the host query string.
 6. The Main App owns token refresh. `SET_AUTH` carries `access_token` and `expires_at`.
-   It must never carry `refresh_token`.
-7. Each micro-app stores its own access token in its own cookie, on its own origin.
-   The bridge is required on Amplify, on a custom domain, and in local development.
-8. The micro-app middleware must call `supabase.auth.getUser(token)`. It must not call
-   `getSession()`.
-9. Every route name in a micro-app comes from `PUBLIC_ROUTES` and `LOGIN_ROUTE` in one
-   file. Do not write a route name anywhere else.
-10. The host logout must broadcast `LOGOUT` to every mounted frame before it signs out.
-    The host cannot delete a cookie on a micro-app origin.
+   It must never carry `refresh_token`. When the host session is inside the renewal
+   window, the host must call `refreshSession()` before answering — `getSession()`
+   alone returns the same token and the frame asks again forever.
+7. Each micro-app stores its own access token in its own cookie, on its own origin,
+   with `SameSite=None; Secure; Partitioned`. The bridge is required on Amplify, on a
+   custom domain, and in local development.
+8. A micro-app validates the bridge token with `supabase.auth.getUser(token)` on every
+   request (via `getMfeUser` in `lib/bridge/mfe-middleware.ts`). Never trust a local
+   decode: only `getUser` observes a sign-out that happened in the Main App.
+9. **Never overwrite a CLI-owned file.** Any file carrying an `@buildpad-origin`
+   header belongs to the Buildpad CLI and is restored by `npx buildpad upgrade`.
+   The bridge merges into these files with the pinned edits in
+   [auth-bridge](references/auth-bridge.instructions.md); it never replaces them.
+   See "CLI-owned files" below.
+10. The host sign-out control must `await logoutAllMicroapps()` before it triggers
+    `/api/auth/logout`. The host cannot delete a cookie on a micro-app origin.
 11. `SET_AUTH` must carry `resource_uri` on any project that uses `manage-scope` or
     `add-multitenancy`. Without it every micro-app call resolves at root scope and
-    returns 403.
-12. Buildpad UI components call DaaS directly through `DaaSProvider`. Hand-written
-    fetches go through a proxy route in the same app. Do not generate
-    `/api/items/[collection]/route.ts` unless the app has hand-written data calls.
+    returns 403. On a project that uses neither, no scope cookie exists and no
+    `X-Resource-Uri` header is expected — do not fabricate one.
+12. The CLI installs ~16 proxy routes that all read the Supabase session through
+    `lib/api/auth-headers.ts`. Inside the frame there is no Supabase session, so
+    **editing that one helper to also read `mfe_access_token` is a required step**
+    (Step 4), or the Files module, permissions, and the profile menu all 401.
 13. The sandbox attribute must omit `allow-modals` and `allow-top-navigation`. It must
-    include `allow-downloads`.
-14. Micro-apps must not call `window.confirm`, `window.alert`, or `window.prompt`. Use
-    Mantine `Modal` or `modals.openConfirmModal`.
-15. Micro-apps must not render their own login form inside the frame.
+    include `allow-downloads` and `allow-storage-access-by-user-activation`.
+14. Micro-app pages must not call `window.confirm`, `window.alert`, or
+    `window.prompt` — including calls shipped by the CLI (audit for them in Step 4).
+    Use Mantine `Modal` or `modals.openConfirmModal`.
+15. Micro-apps must not render their own login form inside the frame — and not their
+    own sign-out control either: it clears only this app's cookies, the host stays
+    signed in, and `SET_AUTH` instantly signs the user back in.
 16. All apps must use the same `NEXT_PUBLIC_BUILDPAD_DAAS_URL`,
     `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-17. Verify field names with `mcp_daas_schema` or `mcp_daas_fields` before you write any
+17. `NEXT_PUBLIC_HOST_ORIGIN` / `HOST_ORIGIN` are **reserved by the CLI's
+    `lib/origin.ts`** and mean *this app's own* public origin. Never set them to
+    another app's URL. The Main App's origin travels in
+    `NEXT_PUBLIC_MICROAPP_URL_MAIN`, which bootstrap already writes into every
+    `.env.local`.
+18. Verify field names with `mcp_daas_schema` or `mcp_daas_fields` before you write any
     `sort`, `fields`, or `filter` parameter. A wrong name returns a 500 that is hard to
     trace through the frame.
+
+## CLI-owned files
+
+A Buildpad starter is not an empty Next.js app. `npx @buildpad/cli bootstrap` installs
+components, auth routes, and middleware, and marks each file with an
+`@buildpad-origin` header. `npx buildpad upgrade` restores them — interactively it
+prompts on local changes, but with `--yes` or `--strategy=overwrite` (what a
+non-interactive agent uses) it **silently reverts them**.
+
+Before Step 3, run the preflight in every app:
+
+```bash
+grep -rl "@buildpad-origin" --include="*.ts" --include="*.tsx" app components lib middleware.ts 2>/dev/null
+```
+
+Files this skill touches, and how:
+
+| Path | Owner | Action |
+| --- | --- | --- |
+| `lib/supabase/middleware.ts` | CLI | **Merge** — pinned edits M1–M3 in [auth-bridge](references/auth-bridge.instructions.md) |
+| `middleware.ts` (root) | CLI | **Do not touch** — it sets `Cache-Control: private, no-store`, the only cache header on ~20 session routes |
+| `app/api/auth/logout/route.ts` | CLI | **Merge** — pinned edit L1 (three cookie deletes). It has a GET handler the shell navigates to; never drop it |
+| `app/login/page.tsx` | CLI | **Merge** — pinned edit P1 (wrap the form in `LoginBridge`) |
+| `components/DaaSProviderWrapper.tsx` | CLI | **Merge** — pinned edit W1 (`useMfeToken` as second token source) |
+| `components/layout/AuthenticatedShell.tsx` | CLI | **Merge** (host only) — pinned edit S1 (`await logoutAllMicroapps()`) |
+| `lib/api/auth-headers.ts` | CLI | **Merge** — pinned edit H1 (read `mfe_access_token` before the session) |
+| everything under `lib/bridge/`, `components/Microapp*`, `components/LoginBridge.tsx`, `config/app-urls.ts`, `next.config.ts`, the three bridge auth routes | this skill | **New files** — copy from `assets/` |
+
+On every merged file, add one line under the CLI header:
+`// ⚠️ LOCAL MODIFICATION (add-microfrontend): re-apply pinned edits after buildpad upgrade`.
 
 ## Architecture
 
@@ -104,11 +151,14 @@ Call `get_project_detail` on the platform MCP server. Take every URL and credent
 from the response. Never ask the user for them.
 
 Tool naming in this repo: platform tools have no prefix (`get_project_detail`). DaaS
-tools use the `mcp_daas_*` prefix (`mcp_daas_schema`, `mcp_daas_fields`).
+tools use the `mcp_daas_*` prefix (`mcp_daas_schema`, `mcp_daas_cors-settings`).
 
 Read `project.mainAmplifyUrl` (host origin), `project.daasUrl`,
 `project.supabaseUrl`, `project.supabaseAnonKey`, and `microapps[]` (each with `name`
-and `amplifyUrl`).
+and `amplifyUrl`). The response may carry more fields than the documented schema
+(`workers`, `messaging`, …) — the schema lists what these skills consume, not
+everything the platform returns. When you enumerate origins (CSP, CORS), enumerate
+what is actually present.
 
 Stop and report to the user if `daasUrl`, `supabaseUrl`, or `mainAmplifyUrl` is null.
 Do not continue with a placeholder.
@@ -119,155 +169,313 @@ Full response schema:
 ### Step 1: Write `config/app-urls.ts` in every app
 
 This file is committed to git. Amplify builds it with no console configuration.
+The local-dev override for the Main App origin is `NEXT_PUBLIC_MICROAPP_URL_MAIN` —
+bootstrap already writes it into every `.env.local` (Rule 17; never
+`NEXT_PUBLIC_HOST_ORIGIN`).
 
 Generation rules and the failure modes:
 [add-microapp app-urls config](../add-microapp/references/app-urls-config.instructions.md).
 
 ### Step 2: Install the bridge contract
 
-Copy `assets/shared/bridge-protocol.ts` to `lib/bridge/bridge-protocol.ts` in the Main
-App and in every micro-app. Copy it unchanged.
+Copy to `lib/bridge/` in the Main App **and** in every micro-app, unchanged:
+
+| Copy from | Copy to |
+| --- | --- |
+| `assets/shared/bridge-protocol.ts` | `lib/bridge/bridge-protocol.ts` |
+| `assets/shared/mfe-cookies.ts` | `lib/bridge/mfe-cookies.ts` |
 
 ### Step 3: Wire the host
 
-| Copy from                        | Copy to                        |
-| -------------------------------- | ------------------------------ |
+New files (no collisions):
+
+| Copy from | Copy to |
+| --- | --- |
 | `assets/host/useMicroappHost.ts` | `lib/bridge/useMicroappHost.ts` |
 | `assets/host/MicroappIframe.tsx` | `components/MicroappIframe.tsx` |
 
-Set the Main App login route in `useMicroappHost.ts`, at the line marked `AGENT`.
+Set the Main App login route in `useMicroappHost.ts` at the line marked `AGENT`.
 Change nothing else.
 
-Create one host page per micro-app route:
+**Route mapping.** `microapps[]` carries a `name` and an `amplifyUrl` — **no route**.
+Four strings that look alike are independent; write the table before writing pages:
+
+| Platform `name` | `MICROAPP_URLS` key | Local directory | Host page file | `path` prop |
+| --- | --- | --- | --- | --- |
+| `users-management` | `'users-management'` | whatever the repo is called | `app/(authenticated)/users/page.tsx` | that micro-app's `DEFAULT_AUTHENTICATED_ROUTE` |
+
+The `path` prop must be a route that **exists in that micro-app** — read its
+`DEFAULT_AUTHENTICATED_ROUTE` from its `config/app-urls.ts`, or verify a page file
+exists at the path you choose. A wrong `path` does not error: it bounces through the
+login bridge and looks like it works while every deep link is broken.
+
+**Host pages** live in the authenticated route group — in a Buildpad starter that is
+`app/(authenticated)/`, whose layout mounts `DaaSProviderWrapper` and the app shell.
+A page outside it renders with no auth context and no chrome. The embedding page must
+wrap the frame in `Suspense`: `useMicroappHost` reads `useSearchParams()`, and a
+statically prerendered page without a boundary fails `next build`.
 
 ```tsx
-// app/admin/users/page.tsx
+// app/(authenticated)/users/page.tsx
+import { Suspense } from 'react';
+import { Skeleton } from '@mantine/core';
 import { MicroappIframe } from '@/components/MicroappIframe';
 import { MICROAPP_URLS } from '@/config/app-urls';
 
-export default function AdminUsersPage() {
+export default function UsersSectionPage() {
   return (
-    <MicroappIframe
-      src={MICROAPP_URLS['users-app']}
-      path="/users"
-      title="Users Management"
-      allowedParams={['search', 'page', 'sort', 'status']}
-      height="calc(100vh - 60px)"
-    />
+    <Suspense fallback={<Skeleton height="100%" width="100%" />}>
+      <MicroappIframe
+        src={MICROAPP_URLS['users-management']}
+        path="/users"
+        title="Users Management"
+        allowedParams={['search', 'page', 'sort', 'status']}
+        // Inside Mantine AppShell.Main, subtract the header AND the shell padding.
+        height="calc(100vh - 60px - 2 * var(--mantine-spacing-lg))"
+      />
+    </Suspense>
   );
 }
 ```
 
-Iterate over the real `microapps[]` array from Step 0. Do not invent routes.
+Navigation in a hand-written shell must be a client component
+(`<NavLink component={Link} …>` inside `'use client'`). The starter's
+`AuthenticatedShell` handles nav itself — add the section items to it instead.
 
-The navigation must be a client component. A `<NavLink href>` in a server component
-renders a plain anchor, and every click reloads the host shell.
+**Sign-out (pinned edit S1).** The starter's shell signs out with
+`window.location.href = '/api/auth/logout'` — a GET navigation, not a POST fetch.
+There is nothing to intercept after it runs, so the broadcast must come first, awaited:
 
 ```tsx
-// components/AdminNav.tsx
-'use client';
-import { NavLink } from '@mantine/core';
-import Link from 'next/link';
-
-export function AdminNav() {
-  return <NavLink component={Link} href="/admin/users" label="Users" />;
-}
+// components/layout/AuthenticatedShell.tsx — the sign-out onClick (CLI-owned; merge)
+onClick={async () => {
+  const { logoutAllMicroapps } = await import('@/lib/bridge/useMicroappHost');
+  await logoutAllMicroapps();               // broadcast LOGOUT + 300 ms drain
+  window.location.href = '/api/auth/logout'; // the CLI GET route, unchanged
+}}
 ```
 
-Call `logoutAllMicroapps()` from the host logout button before `POST /api/auth/logout`.
-Call `broadcastScope(uri)` after a tenant switch. Both come from `useMicroappHost.ts`.
+Call `broadcastScope(uri)` after a tenant switch (scope projects only).
 
 ### Step 4: Wire each micro-app
 
-| Copy from                                    | Copy to                                    |
-| -------------------------------------------- | ------------------------------------------ |
-| `assets/microapp/MicroappBridgeProvider.tsx` | `components/MicroappBridgeProvider.tsx`    |
-| `assets/microapp/LoginBridge.tsx`            | `components/LoginBridge.tsx`               |
-| `assets/microapp/useQueryParamSync.ts`       | `hooks/useQueryParamSync.ts`               |
-| `assets/microapp/middleware.ts`              | `lib/supabase/middleware.ts`               |
-| `assets/microapp/middleware.root.ts`         | `middleware.ts`                            |
-| `assets/microapp/set-session.route.ts`       | `app/api/auth/set-session/route.ts`        |
-| `assets/microapp/logout.route.ts`            | `app/api/auth/logout/route.ts`             |
-| `assets/microapp/token.route.ts`             | `app/api/auth/token/route.ts`              |
+New files (no collisions):
 
-Mount `MicroappBridgeProvider` in the micro-app **root** layout, inside
-`MantineProvider`. A page that is not wrapped never reports that it loaded, and the
-host shows its error state.
+| Copy from | Copy to |
+| --- | --- |
+| `assets/microapp/MicroappBridgeProvider.tsx` | `components/MicroappBridgeProvider.tsx` |
+| `assets/microapp/LoginBridge.tsx` | `components/LoginBridge.tsx` |
+| `assets/microapp/useQueryParamSync.ts` | `hooks/useQueryParamSync.ts` |
+| `assets/microapp/useMfeToken.ts` | `lib/bridge/useMfeToken.ts` |
+| `assets/microapp/mfe-middleware.ts` | `lib/bridge/mfe-middleware.ts` |
+| `assets/microapp/set-session.route.ts` | `app/api/auth/set-session/route.ts` |
+| `assets/microapp/token.route.ts` | `app/api/auth/token/route.ts` |
 
-Render `LoginBridge` from `app/login/page.tsx`, with the normal login form as its
-`fallback`.
+Merges into CLI-owned files — exact hunks in
+[auth-bridge](references/auth-bridge.instructions.md), "Pinned edits":
 
-Add `DEFAULT_AUTHENTICATED_ROUTE` to the micro-app `config/app-urls.ts`. Set it to the
-micro-app's first real route.
+1. **M1–M3** `lib/supabase/middleware.ts` — accept the bridge token as a second
+   session source and gate `/api/auth/token`. Do **not** replace the file: it owns the
+   `publicOrigin()` redirect, the Supabase cookie refresh, and the route table.
+2. **L1** `app/api/auth/logout/route.ts` — delete the three bridge cookies inside
+   `performLogout()`, before `signOut()`. Keep the GET handler and the OAuth SLO.
+3. **P1** `app/login/page.tsx` — wrap the CLI form in `LoginBridge` (with `Suspense`).
+4. **W1** `components/DaaSProviderWrapper.tsx` — add `useMfeToken()` as the framed
+   token source alongside the Supabase path.
+5. **H1** `lib/api/auth-headers.ts` — read `mfe_access_token` first, fall back to the
+   Supabase session (Rule 12; this single edit fixes all ~16 CLI proxy routes).
 
-Point `DaaSProviderWrapper` at `/api/auth/token`. See
-[auth-bridge](references/auth-bridge.instructions.md).
+Then:
 
-### Step 5: Add the CSP headers
+- Mount `MicroappBridgeProvider` in the micro-app **root** layout, inside
+  `MantineProvider`. A page that is not wrapped never reports that it loaded, and the
+  host shows its error state.
+- Add `DEFAULT_AUTHENTICATED_ROUTE` to `config/app-urls.ts` — the micro-app's first
+  real route.
+- **Wire the URL sync**: on the `DEFAULT_AUTHENTICATED_ROUTE` page, drive at least one
+  allowlisted parameter through `useQueryParamSync` — a Buildpad `CollectionList`
+  toolbar (its search ships `data-testid="collection-list-search"`) or a hand-written
+  input with `data-testid="microapp-search"`. Copied-but-unwired sync is untestable.
+- **Audit for native dialogs**:
+  `grep -rn 'window\.\(confirm\|alert\|prompt\)' app components lib --include='*.tsx'`.
+  The CLI's `rich-text-markdown.tsx` ships a `window.prompt` that is silently dead in
+  the frame — replace the call or avoid that interface on framed pages (Rule 14).
 
-Add `frame-ancestors` to each micro-app `next.config.ts`. Add `frame-src` to the Main
-App `next.config.ts`. Generate both from `config/app-urls.ts`. See
-[security](references/security.instructions.md).
+### Step 5: Create the CSP headers
 
-### Step 6: Configure CORS
+**A Buildpad starter ships no `next.config.ts` — create it.** These are complete
+files. Two traps: the snippet must be a whole module (not a bare `headers()` method),
+and `@/…` aliases do not resolve from the Next config loader — the import must be
+**relative**. Never bake `localhost` into a production header: gate local origins on
+`NODE_ENV`.
 
-Add every deployed origin and every local development port to `CORS_ORIGINS` in DaaS.
-Add `X-Resource-Uri` to `cors_allowed_headers`.
+```ts
+// Main App: next.config.ts (new file)
+import type { NextConfig } from 'next';
+import { MICROAPP_URLS } from './config/app-urls';
+
+const dev = process.env.NODE_ENV === 'development';
+const microappOrigins = Object.values(MICROAPP_URLS).map((u) => new URL(u).origin);
+const frameSrc = ["'self'", ...microappOrigins, ...(dev ? ['http://localhost:3001', 'http://localhost:3002'] : [])];
+
+const nextConfig: NextConfig = {
+  async headers() {
+    return [{
+      source: '/:path*',
+      headers: [{
+        key: 'Content-Security-Policy',
+        // frame-ancestors 'none': the host holds the real Supabase session and
+        // must not be framable by anyone. frame-src limits what IT may embed —
+        // it does nothing to stop it being embedded.
+        value: `frame-ancestors 'none'; frame-src ${frameSrc.join(' ')}`,
+      }],
+    }];
+  },
+};
+export default nextConfig;
+```
+
+```ts
+// Micro-app: next.config.ts (new file)
+import type { NextConfig } from 'next';
+import { HOST_ORIGIN } from './config/app-urls';
+
+const dev = process.env.NODE_ENV === 'development';
+const ancestors = ["'self'", HOST_ORIGIN, ...(dev ? ['http://localhost:3000'] : [])];
+
+const nextConfig: NextConfig = {
+  async headers() {
+    return [{
+      source: '/:path*',
+      headers: [{ key: 'Content-Security-Policy', value: `frame-ancestors ${ancestors.join(' ')}` }],
+    }];
+  },
+};
+export default nextConfig;
+```
+
+Verify after `pnpm build`: the resolved origins — and no `http://localhost` — appear in
+`jq '.headers' .next/routes-manifest.json`.
+
+### Step 6: Configure CORS (runnable)
+
+The DaaS default (`cors_origins: ["*"]`, `cors_allow_credentials: false`) blocks
+**every** credentialed browser call: the Fetch spec discards a credentialed response
+carrying `Access-Control-Allow-Origin: *`. Fix it with the DaaS MCP tool
+`mcp_daas_cors-settings` (wired in `.mcp.json`; REST equivalent
+`PATCH /api/settings/cors`):
+
+```json
+{
+  "action": "update",
+  "cors_origins": ["<mainAmplifyUrl>", "<each microapps[].amplifyUrl>", "http://localhost:3000", "http://localhost:3001", "http://localhost:3002"],
+  "cors_allow_credentials": true,
+  "cors_allowed_headers": ["Content-Type", "Authorization", "Origin", "X-Requested-With", "Accept", "X-Resource-Uri"],
+  "cors_max_age": 0
+}
+```
+
+Verify:
+
+```bash
+curl -si -X OPTIONS "<daasUrl>/api/items/anything" -H "Origin: <mainAmplifyUrl>" -H "Access-Control-Request-Method: GET" | grep -i access-control
+```
+
+The response must echo the origin (not `*`) and include
+`access-control-allow-credentials: true`.
 
 ### Step 7: Add the tests
 
-Copy `assets/tests/iframe-composition.spec.ts` to
-`tests/microfrontend/iframe-composition.spec.ts`. Replace the values marked `AGENT`.
+The starters ship no test tooling. Install it, then copy the three assets:
 
-### Step 8: Deploy
+```bash
+pnpm add -D @playwright/test
+pnpm exec playwright install chromium
+```
 
-Push each micro-app first, then the Main App. Amplify builds on push to `main` and
-takes two to five minutes. No console environment variable changes are needed: the
-URLs live in `config/app-urls.ts`.
+| Copy from | Copy to (host app) |
+| --- | --- |
+| `assets/tests/playwright.config.ts` | `playwright.config.ts` |
+| `assets/tests/auth.setup.ts` | `tests/auth.setup.ts` |
+| `assets/tests/iframe-composition.spec.ts` | `tests/iframe-composition.spec.ts` |
+
+Fill every value in the spec's `AGENT` block and the config's `webServer` array (one
+entry per app — this composition needs three servers). Add `playwright/.auth/` and
+`test-results/` to `.gitignore`. Run with real credentials:
+
+```bash
+TEST_EMAIL=... TEST_PASSWORD=... pnpm exec playwright test
+```
+
+**Never add a host route to `publicRoutes` to make a test pass** — `auth.setup.ts` +
+`storageState` is the correct fix for tests landing on `/login`.
+
+### Step 8: Deploy (gated)
+
+`pnpm build` must pass **in every app you touched** before any push — Amplify runs the
+same build, and a failure surfaces minutes later in a file unrelated to your change.
+Then push each micro-app first, then the Main App. No console environment variable
+changes are needed: the URLs live in `config/app-urls.ts`.
+
+After the first deploy, verify the handshake **on the deployed origins**, not on
+localhost — two localhost ports are the same *site*, so partitioned-cookie failures
+(Safari, Incognito) are invisible locally.
 
 ## File Structure
 
 ```
 main-app/
-├── app/admin/{route}/page.tsx        # one page per micro-app route
+├── app/(authenticated)/{route}/page.tsx   # one page per micro-app, Suspense-wrapped
 ├── components/MicroappIframe.tsx
-├── components/AdminNav.tsx           # 'use client'
-├── config/app-urls.ts                # committed
-├── lib/bridge/bridge-protocol.ts
-├── lib/bridge/useMicroappHost.ts
-└── next.config.ts                    # frame-src
+├── components/layout/AuthenticatedShell.tsx  # CLI-owned — pinned edit S1
+├── config/app-urls.ts                     # committed
+├── lib/bridge/{bridge-protocol,mfe-cookies,useMicroappHost}.ts
+├── next.config.ts                         # NEW: frame-ancestors 'none' + frame-src
+├── playwright.config.ts                   # NEW
+└── tests/{auth.setup,iframe-composition.spec}.ts
 
-{name}-microapp/
-├── app/login/page.tsx                # renders LoginBridge
-├── app/api/auth/set-session/route.ts
-├── app/api/auth/logout/route.ts
-├── app/api/auth/token/route.ts
-├── components/MicroappBridgeProvider.tsx
-├── components/LoginBridge.tsx
-├── config/app-urls.ts                # committed, holds HOST_ORIGIN
-├── hooks/useQueryParamSync.ts
-├── lib/bridge/bridge-protocol.ts
-├── lib/supabase/middleware.ts        # PUBLIC_ROUTES, LOGIN_ROUTE
-├── middleware.ts
-└── next.config.ts                    # frame-ancestors
+{microapp}/
+├── app/login/page.tsx                     # CLI-owned — pinned edit P1 (LoginBridge)
+├── app/api/auth/logout/route.ts           # CLI-owned — pinned edit L1
+├── app/api/auth/{set-session,token}/route.ts  # NEW
+├── components/{MicroappBridgeProvider,LoginBridge}.tsx  # NEW
+├── components/DaaSProviderWrapper.tsx     # CLI-owned — pinned edit W1
+├── config/app-urls.ts                     # committed: HOST_ORIGIN + DEFAULT_AUTHENTICATED_ROUTE
+├── hooks/useQueryParamSync.ts             # NEW — and WIRED on the default route
+├── lib/api/auth-headers.ts                # CLI-owned — pinned edit H1
+├── lib/bridge/{bridge-protocol,mfe-cookies,mfe-middleware,useMfeToken}.ts  # NEW
+├── lib/supabase/middleware.ts             # CLI-owned — pinned edits M1–M3
+├── middleware.ts                          # CLI-owned — untouched
+└── next.config.ts                         # NEW: frame-ancestors
 ```
 
 ## Before You Call It Done
 
-- [ ] Typing in a micro-app search box updates the host URL and does not reload the frame.
-- [ ] A signed-in user reaches a micro-app section with no login form and no extra click.
-- [ ] Host, and two micro-apps, are all still signed in after the access token expires.
-- [ ] Sign-out in the host clears the cookies on every micro-app origin.
-- [ ] A scoped DaaS call from inside a frame carries `X-Resource-Uri`.
-- [ ] The host back button does not step through invisible frame states.
-- [ ] A deliberately wrong `frame-ancestors` value produces the host error state, not a blank frame.
+Each item names its procedure — a box without evidence is not ticked.
+
+- [ ] Typing in the frame's search box updates the host URL, the frame `src` is
+      unchanged, and the input keeps focus (spec: *search reaches the host URL*).
+- [ ] A signed-in user reaches a micro-app section with no login form and no extra
+      click (spec: *auth bridge signs the frame in*).
+- [ ] Renewal works without waiting an hour: overwrite `mfe_expires_at` to now+70 s
+      and observe a second `set-session` round trip (spec: *token renewal*).
+- [ ] Sign-out: `mfe_access_token` is present on the frame origin **before** the
+      click and absent after (spec: *logout clears the micro-app cookie*).
+- [ ] Scope projects only (Rule 11): a frame's `/api/items/*` call carries
+      `X-Resource-Uri`. On other projects this box does not apply.
+- [ ] `jq '.headers' .next/routes-manifest.json` shows the CSP with real origins and
+      no `http://localhost` in a production build, in every app.
+- [ ] The Step 6 `curl` echoes the origin and `access-control-allow-credentials: true`.
+- [ ] `pnpm build` is green in every touched app.
+- [ ] The deployed handshake was verified on the real cross-site origins, including
+      once in Safari or an Incognito window (partitioned cookies).
 
 ## References
 
 - [Bridge protocol and sequences](references/bridge-protocol.instructions.md)
-- [Auth bridge, refresh, scope, sign-out](references/auth-bridge.instructions.md)
+- [Auth bridge: pinned edits, refresh, scope, sign-out](references/auth-bridge.instructions.md)
 - [URL, history, layout limits](references/url-and-history.instructions.md)
-- [Sandbox, CSP, message validation](references/security.instructions.md)
+- [Sandbox, CSP, cookies, message validation](references/security.instructions.md)
 - [Troubleshooting](references/troubleshooting.instructions.md)
 - [add-microapp](../add-microapp/SKILL.md) — domain boundaries and repo bootstrap
 - [daas-platform](../daas-platform/SKILL.md) — DaaSProvider and CORS rules

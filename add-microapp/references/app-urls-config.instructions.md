@@ -28,14 +28,30 @@ App URLs change every time a micro-app is added. A committed TypeScript file mea
 
 ```typescript
 // ❌ localhost as the default, and chained variables
-process.env.NEXT_PUBLIC_HOST_ORIGIN || process.env.NEXT_PUBLIC_HOST_ORIGIN_MAIN || 'http://localhost:3000'
+process.env.NEXT_PUBLIC_MICROAPP_URL_MAIN || process.env.NEXT_PUBLIC_MAIN_URL || 'http://localhost:3000'
 
 // ❌ localhost as the default
 'users-app': process.env.NEXT_PUBLIC_USERS_APP_URL || 'http://localhost:3001',
 
-// ✅ the real deployed URL as the default, one override
+// ❌ a name the CLI reserves for THIS app's own origin (lib/origin.ts)
 process.env.NEXT_PUBLIC_HOST_ORIGIN || 'https://main.d1234abcde.amplifyapp.com'
+
+// ✅ the real deployed URL as the default, the CLI-populated override
+process.env.NEXT_PUBLIC_MICROAPP_URL_MAIN || 'https://main.d1234abcde.amplifyapp.com'
 ```
+
+## Reserved names
+
+`NEXT_PUBLIC_HOST_ORIGIN` and `HOST_ORIGIN` (the env vars) are **reserved by the
+CLI's `lib/origin.ts`** and mean *this app's own* public origin — the middleware
+login redirect, the OAuth `redirect_uri`, and the post-logout URI are all built from
+them. Setting either to another app's URL redirects this app's users to that app.
+The exported TypeScript symbol `HOST_ORIGIN` in `config/app-urls.ts` is fine — only
+the environment variable names are reserved.
+
+Bootstrap already writes `NEXT_PUBLIC_MICROAPP_URL_MAIN=<mainAmplifyUrl>` into every
+`.env.local`. Use it as the one override for the Main App origin — do not invent a
+second convention.
 
 ## Main App
 
@@ -45,12 +61,12 @@ template syntax such as `{{#each}}` into a TypeScript file.
 ```typescript
 // config/app-urls.ts — committed to git.
 // Generated from get_project_detail. Override for local development in .env.local:
-//   NEXT_PUBLIC_HOST_ORIGIN=http://localhost:3000
+//   NEXT_PUBLIC_MICROAPP_URL_MAIN=http://localhost:3000
 //   NEXT_PUBLIC_USERS_APP_URL=http://localhost:3001
 
 /** Main App deployed URL. */
 export const MAIN_APP_URL =
-  process.env.NEXT_PUBLIC_HOST_ORIGIN || 'https://main.d1234abcde.amplifyapp.com';
+  process.env.NEXT_PUBLIC_MICROAPP_URL_MAIN || 'https://main.d1234abcde.amplifyapp.com';
 
 /** Micro-app deployed URLs. Used as the iframe src in the Main App. */
 export const MICROAPP_URLS = {
@@ -70,11 +86,14 @@ export type MicroappKey = keyof typeof MICROAPP_URLS;
 ```typescript
 // config/app-urls.ts — committed to git.
 // Generated from get_project_detail. Override for local development in .env.local:
-//   NEXT_PUBLIC_HOST_ORIGIN=http://localhost:3000
+//   NEXT_PUBLIC_MICROAPP_URL_MAIN=http://localhost:3000
 
 /** Main App origin. Used to validate and target every postMessage call. */
+// The env override is NEXT_PUBLIC_MICROAPP_URL_MAIN — bootstrap already writes it
+// into every .env.local with the correct value. NEVER use NEXT_PUBLIC_HOST_ORIGIN
+// here: that name is reserved (see below).
 export const HOST_ORIGIN =
-  process.env.NEXT_PUBLIC_HOST_ORIGIN || 'https://main.d1234abcde.amplifyapp.com';
+  process.env.NEXT_PUBLIC_MICROAPP_URL_MAIN || 'https://main.d1234abcde.amplifyapp.com';
 
 /** The first real route in this micro-app. The auth bridge redirects here. */
 // AGENT: replace with this micro-app's own first route. Never leave a route that
@@ -97,8 +116,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<project.supabaseAnonKey>
 SUPABASE_SERVICE_ROLE_KEY=<project.supabaseServiceRoleKey>
 NEXT_PUBLIC_BUILDPAD_DAAS_URL=<project.daasUrl>
 
-# Optional local overrides
-# NEXT_PUBLIC_HOST_ORIGIN=http://localhost:3000
+# Optional local overrides (NEXT_PUBLIC_MICROAPP_URL_MAIN is already present —
+# bootstrap writes it with the deployed Main App URL; point it at localhost for dev)
+# NEXT_PUBLIC_MICROAPP_URL_MAIN=http://localhost:3000
 # NEXT_PUBLIC_USERS_APP_URL=http://localhost:3001
 ```
 
