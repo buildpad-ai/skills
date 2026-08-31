@@ -53,6 +53,13 @@ Bootstrap already writes `NEXT_PUBLIC_MICROAPP_URL_MAIN=<mainAmplifyUrl>` into e
 `.env.local`. Use it as the one override for the Main App origin — do not invent a
 second convention.
 
+**Where overrides live matters.** `next build` loads `.env.local`, so any localhost
+value in it is baked into the production build (including the CSP headers generated
+from `config/app-urls.ts`). Deployed values stay in `.env.local`; every localhost
+override goes in **`.env.development.local`**, which only `next dev` loads. Verify
+with `jq '.headers' .next/routes-manifest.json` after a build — no `http://localhost`
+may appear.
+
 ## Main App
 
 The example below is fully rendered. Write real values in the same shape. Do not emit
@@ -60,7 +67,9 @@ template syntax such as `{{#each}}` into a TypeScript file.
 
 ```typescript
 // config/app-urls.ts — committed to git.
-// Generated from get_project_detail. Override for local development in .env.local:
+// Generated from get_project_detail. Localhost overrides for local development go
+// in .env.development.local (NEVER .env.local — `next build` loads .env.local, so a
+// localhost value there ends up inside the production CSP header):
 //   NEXT_PUBLIC_MICROAPP_URL_MAIN=http://localhost:3000
 //   NEXT_PUBLIC_USERS_APP_URL=http://localhost:3001
 
@@ -85,7 +94,8 @@ export type MicroappKey = keyof typeof MICROAPP_URLS;
 
 ```typescript
 // config/app-urls.ts — committed to git.
-// Generated from get_project_detail. Override for local development in .env.local:
+// Generated from get_project_detail. Localhost override for local development goes
+// in .env.development.local (NEVER .env.local — see above):
 //   NEXT_PUBLIC_MICROAPP_URL_MAIN=http://localhost:3000
 
 /** Main App origin. Used to validate and target every postMessage call. */
@@ -116,10 +126,12 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<project.supabaseAnonKey>
 SUPABASE_SERVICE_ROLE_KEY=<project.supabaseServiceRoleKey>
 NEXT_PUBLIC_BUILDPAD_DAAS_URL=<project.daasUrl>
 
-# Optional local overrides (NEXT_PUBLIC_MICROAPP_URL_MAIN is already present —
-# bootstrap writes it with the deployed Main App URL; point it at localhost for dev)
-# NEXT_PUBLIC_MICROAPP_URL_MAIN=http://localhost:3000
-# NEXT_PUBLIC_USERS_APP_URL=http://localhost:3001
+# Bootstrap writes NEXT_PUBLIC_MICROAPP_URL_MAIN here with the DEPLOYED Main App
+# URL — leave it. Localhost overrides go in .env.development.local instead:
+# `next build` loads .env.local, so a localhost value here is baked into the
+# production CSP header. Example .env.development.local:
+#   NEXT_PUBLIC_MICROAPP_URL_MAIN=http://localhost:3000
+#   NEXT_PUBLIC_USERS_APP_URL=http://localhost:3001
 ```
 
 A micro-app `.env.local` is the same file without `SUPABASE_SERVICE_ROLE_KEY`.

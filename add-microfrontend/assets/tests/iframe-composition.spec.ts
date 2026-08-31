@@ -3,7 +3,9 @@
 // Runs authenticated via auth.setup.ts (storageState). Requires all three dev
 // servers — playwright.config.ts starts them.
 //
-// AGENT CONTRACT — replace every value in this block; leave the tests alone.
+// AGENT CONTRACT — every value below is a DEFAULT THAT WILL BE WRONG for some
+// projects. Verify each one against the wired apps before the first run; do not
+// assume a default is filled just because it looks plausible. Leave the tests alone.
 const AGENT = {
   // A host route that renders a MicroappIframe.
   HOST_ROUTE: '/files',
@@ -15,10 +17,11 @@ const AGENT = {
   // its frame src must contain. Delete the navigation test if there is only one.
   SECOND_HOST_ROUTE: '/users',
   SECOND_SRC_FRAGMENT: '/users',
-  // The search input inside the frame. Buildpad's CollectionList toolbar ships
-  // data-testid="collection-list-search"; a hand-written page should add
-  // data-testid="microapp-search" (Step 4 wiring sub-step).
-  SEARCH_TESTID: 'collection-list-search',
+  // The search input inside the frame. Step 4 mandates
+  // data-testid="microapp-search" on a hand-written page; a Buildpad
+  // CollectionList toolbar ships data-testid="collection-list-search" instead.
+  // Open the micro-app's default-route page and use what is actually there.
+  SEARCH_TESTID: 'microapp-search',
   // A query parameter in the page's allowedParams that the search box drives.
   SEARCH_PARAM: 'search',
   // True only when this project uses manage-scope / add-multitenancy (Rule 11).

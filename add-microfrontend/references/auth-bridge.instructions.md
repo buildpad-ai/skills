@@ -121,10 +121,17 @@ error and return early inside the frame, which would strand the cookies):
 // Bridge cookies live on THIS origin; the host cannot delete them.
 // A stale daas_resource_uri is forwarded as X-Resource-Uri for the next
 // user and causes an immediate 403 FORBIDDEN_SCOPE (Bug 20).
-const { MFE_TOKEN_COOKIE, MFE_EXPIRES_COOKIE, SCOPE_COOKIE } = await import('@/lib/bridge/mfe-cookies');
-cookieStore.delete(MFE_TOKEN_COOKIE);
-cookieStore.delete(MFE_EXPIRES_COOKIE);
-cookieStore.delete(SCOPE_COOKIE);
+//
+// Expire with the SAME attribute set the write used — never cookieStore.delete().
+// A bare delete emits Set-Cookie without Secure/SameSite=None/Partitioned; the
+// browser rejects the defaulted-Lax expiry in the cross-site frame, and under
+// CHIPS an unpartitioned expiry addresses a DIFFERENT cookie anyway, so the
+// bridge cookie survives sign-out. Invisible on localhost (same-site).
+const { MFE_TOKEN_COOKIE, MFE_EXPIRES_COOKIE, SCOPE_COOKIE, framedCookieOptions } =
+  await import('@/lib/bridge/mfe-cookies');
+cookieStore.set(MFE_TOKEN_COOKIE, '', framedCookieOptions(0, true));
+cookieStore.set(MFE_EXPIRES_COOKIE, '', framedCookieOptions(0, false));
+cookieStore.set(SCOPE_COOKIE, '', framedCookieOptions(0, false));
 ```
 
 Keep everything else: the **GET handler** (the shell navigates to it), the OAuth SLO
@@ -155,16 +162,41 @@ that route public.
 
 ### W1 · `components/DaaSProviderWrapper.tsx` (micro-app)
 
-The CLI wrapper listens to `supabase.auth.onAuthStateChange` — which never fires in a
-framed micro-app, because there is no Supabase session on this origin. Do not replace
-the wrapper (the Supabase path is what standalone mode uses). Add the framed source:
+The CLI wrapper (1.11.1) builds one `config` in a `useMemo(…, [])` whose `getToken`
+reads `supabase.auth.getSession()` — which is always null in a framed micro-app,
+because no Supabase session exists on this origin. Do not replace the wrapper (the
+Supabase path is what standalone mode uses). Three edits, anchored on the real shape:
 
-1. `import { useMfeToken } from '@/lib/bridge/useMfeToken';`
-2. Inside the component: `const mfeToken = useMfeToken();`
-3. Wherever the wrapper uses its Supabase-derived token state, use
-   `tokenState ?? mfeToken` instead.
-4. Wherever it gates readiness on the Supabase token being non-null, gate on
-   *either* being non-null.
+1. Add the import: `import { useMfeToken } from '@/lib/bridge/useMfeToken';`
+2. First line of the component body: `const mfeToken = useMfeToken();`
+3. In the existing `config` memo, change the `getToken` return to fall back to the
+   bridge token, and add `mfeToken` to the dependency array — **both**:
+
+```ts
+const mfeToken = useMfeToken();
+
+const config = useMemo(
+  () => ({
+    url: process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL ?? '',
+    getToken: async () => {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getSession();
+      // Framed: the bridge token IS the session.
+      return data.session?.access_token ?? mfeToken ?? null;
+    },
+    getHeaders: /* … keep the CLI scope-header block unchanged … */,
+  }),
+  [mfeToken],  // ← REQUIRED. DaaSProvider's refreshToken is useCallback([config])
+               //   behind a one-shot effect: with [], it runs once at mount,
+               //   BEFORE the bridge delivers a token, and dynamicToken stays
+               //   null forever — every direct call and /api/users/me 401s,
+               //   while the H1 proxy routes keep working, which hides it.
+);
+```
+
+Do NOT capture `mfeToken` in a ref inside a `[]` memo — the ref updates but the
+memoized `getToken` already ran and `refreshToken` never re-fires. The dependency
+array is the mechanism, not a style choice.
 
 `useMfeToken` reads `/api/auth/token`, treats a redirect or non-JSON response as
 unauthenticated (a redirect to `/login` returns 200 text/html — `response.ok` alone
@@ -194,6 +226,21 @@ const token = mfeToken ?? session?.access_token;
 `lib/module-access/enforce.ts` and `app/api/auth/user/route.ts` call
 `supabase.auth.getUser()` directly — apply the same fallback there if the project uses
 module access or the shell's profile fetch.
+
+### S2 · `components/layout/AuthenticatedShell.tsx` (micro-app)
+
+The CLI shell renders its own Sign out menu item, which Rule 15 forbids inside the
+frame — clicking it clears only this app's cookies and `SET_AUTH` signs the user
+straight back in. Do not delete it (standalone mode needs it): render it
+conditionally. In the component body add
+
+```ts
+const [framed, setFramed] = useState(false);
+useEffect(() => { setFramed(window.parent !== window); }, []);
+```
+
+and wrap the sign-out `Menu.Item` in `{!framed && ( … )}`. Standalone keeps the
+control; the frame hides it.
 
 ### S1 · `components/layout/AuthenticatedShell.tsx` (host)
 
@@ -240,8 +287,11 @@ expected, and none of the scope checks apply (SKILL Rule 11).
 - [ ] `set-session` rejects cross-site callers *before* validating the token.
 - [ ] All bridge cookies use `SameSite=None; Secure; Partitioned` via
       `framedCookieOptions`.
-- [ ] M1–M3, L1, P1, W1, H1 applied; every merged file carries the
+- [ ] M1–M3, L1, P1, W1, S2, H1 applied; every merged file carries the
       LOCAL MODIFICATION banner; no `@buildpad-origin` file was replaced.
+- [ ] L1 expires cookies via `framedCookieOptions(0, …)` — grep the logout route for
+      `cookieStore.delete(MFE` and fail on any hit.
+- [ ] W1's config memo lists `mfeToken` in its dependency array.
 - [ ] `/api/auth/token` answers 401 JSON to an unauthenticated caller — never a
       redirect.
 - [ ] Standalone mode still works: `/login` shows the form outside a frame, and

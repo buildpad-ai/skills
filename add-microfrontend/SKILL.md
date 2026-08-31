@@ -88,7 +88,9 @@ complexity is not low. `add-microapp` without iframes is often the better answer
     `lib/origin.ts`** and mean *this app's own* public origin. Never set them to
     another app's URL. The Main App's origin travels in
     `NEXT_PUBLIC_MICROAPP_URL_MAIN`, which bootstrap already writes into every
-    `.env.local`.
+    `.env.local`. Localhost overrides go in `.env.development.local`, never
+    `.env.local` — `next build` loads `.env.local`, so a localhost value there is
+    baked into the production CSP.
 18. Verify field names with `mcp_daas_schema` or `mcp_daas_fields` before you write any
     `sort`, `fields`, or `filter` parameter. A wrong name returns a 500 that is hard to
     trace through the frame.
@@ -113,10 +115,10 @@ Files this skill touches, and how:
 | --- | --- | --- |
 | `lib/supabase/middleware.ts` | CLI | **Merge** — pinned edits M1–M3 in [auth-bridge](references/auth-bridge.instructions.md) |
 | `middleware.ts` (root) | CLI | **Do not touch** — it sets `Cache-Control: private, no-store`, the only cache header on ~20 session routes |
-| `app/api/auth/logout/route.ts` | CLI | **Merge** — pinned edit L1 (three cookie deletes). It has a GET handler the shell navigates to; never drop it |
+| `app/api/auth/logout/route.ts` | CLI | **Merge** — pinned edit L1 (expire the three bridge cookies with `framedCookieOptions(0, …)`, never `delete()`). It has a GET handler the shell navigates to; never drop it |
 | `app/login/page.tsx` | CLI | **Merge** — pinned edit P1 (wrap the form in `LoginBridge`) |
 | `components/DaaSProviderWrapper.tsx` | CLI | **Merge** — pinned edit W1 (`useMfeToken` as second token source) |
-| `components/layout/AuthenticatedShell.tsx` | CLI | **Merge** (host only) — pinned edit S1 (`await logoutAllMicroapps()`) |
+| `components/layout/AuthenticatedShell.tsx` | CLI | **Merge** — host: pinned edit S1 (`await logoutAllMicroapps()`); micro-app: pinned edit S2 (hide the in-frame sign-out) |
 | `lib/api/auth-headers.ts` | CLI | **Merge** — pinned edit H1 (read `mfe_access_token` before the session) |
 | everything under `lib/bridge/`, `components/Microapp*`, `components/LoginBridge.tsx`, `config/app-urls.ts`, `next.config.ts`, the three bridge auth routes | this skill | **New files** — copy from `assets/` |
 
@@ -170,8 +172,10 @@ Full response schema:
 
 This file is committed to git. Amplify builds it with no console configuration.
 The local-dev override for the Main App origin is `NEXT_PUBLIC_MICROAPP_URL_MAIN` —
-bootstrap already writes it into every `.env.local` (Rule 17; never
-`NEXT_PUBLIC_HOST_ORIGIN`).
+bootstrap already writes the deployed value into every `.env.local` (Rule 17; never
+`NEXT_PUBLIC_HOST_ORIGIN`). Put localhost overrides in `.env.development.local`
+only: `next build` loads `.env.local`, and a localhost value there ends up inside
+the production CSP header.
 
 Generation rules and the failure modes:
 [add-microapp app-urls config](../add-microapp/references/app-urls-config.instructions.md).
@@ -277,13 +281,17 @@ Merges into CLI-owned files — exact hunks in
 1. **M1–M3** `lib/supabase/middleware.ts` — accept the bridge token as a second
    session source and gate `/api/auth/token`. Do **not** replace the file: it owns the
    `publicOrigin()` redirect, the Supabase cookie refresh, and the route table.
-2. **L1** `app/api/auth/logout/route.ts` — delete the three bridge cookies inside
-   `performLogout()`, before `signOut()`. Keep the GET handler and the OAuth SLO.
+2. **L1** `app/api/auth/logout/route.ts` — expire the three bridge cookies inside
+   `performLogout()`, before `signOut()`, using `framedCookieOptions(0, …)` — a bare
+   `delete()` emits an unpartitioned Lax expiry that the cross-site frame rejects.
+   Keep the GET handler and the OAuth SLO.
 3. **P1** `app/login/page.tsx` — wrap the CLI form in `LoginBridge` (with `Suspense`).
 4. **W1** `components/DaaSProviderWrapper.tsx` — add `useMfeToken()` as the framed
    token source alongside the Supabase path.
 5. **H1** `lib/api/auth-headers.ts` — read `mfe_access_token` first, fall back to the
    Supabase session (Rule 12; this single edit fixes all ~16 CLI proxy routes).
+6. **S2** `components/layout/AuthenticatedShell.tsx` — hide the shell's own sign-out
+   control when framed (Rule 15's implementation path; standalone keeps it).
 
 Then:
 
@@ -440,6 +448,7 @@ main-app/
 ├── app/api/auth/{set-session,token}/route.ts  # NEW
 ├── components/{MicroappBridgeProvider,LoginBridge}.tsx  # NEW
 ├── components/DaaSProviderWrapper.tsx     # CLI-owned — pinned edit W1
+├── components/layout/AuthenticatedShell.tsx  # CLI-owned — pinned edit S2
 ├── config/app-urls.ts                     # committed: HOST_ORIGIN + DEFAULT_AUTHENTICATED_ROUTE
 ├── hooks/useQueryParamSync.ts             # NEW — and WIRED on the default route
 ├── lib/api/auth-headers.ts                # CLI-owned — pinned edit H1
