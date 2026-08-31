@@ -62,12 +62,12 @@ When Guard blocks or queues work:
 
 ```bash
 hol-guard approvals
-hol-guard approvals open
+hol-guard approvals open <request-id>
 hol-guard receipts
 hol-guard diff <detected-harness>
 ```
 
-Only approve after reviewing the risk reason and requested scope. Never bypass a Guard approval or represent a queued request as completed.
+Use the exact pending request ID shown by `hol-guard approvals`. Only approve after reviewing the risk reason and requested scope. Never bypass a Guard approval or represent a queued request as completed.
 
 For post-change evidence:
 
