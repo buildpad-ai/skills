@@ -198,10 +198,12 @@ The micro-app applies `SET_QUERY_PARAMS` with `router.replace()` and records the
 
 ## Security
 
-1. **Always validate `event.origin`** against the expected micro-app origin
-2. **Never use `'*'` as target origin** in postMessage calls
-3. **Allowlist params explicitly** — never blindly forward all params
-4. **Type-check message payloads** before using them
+1. **Validate `event.origin`** against the expected origin
+2. **Validate `event.source`** — origin alone is not enough. Two frames of the same micro-app on one page each pass an origin check for the other's messages, and a same-origin popup or nested frame passes it too
+3. **Validate the envelope** — every message carries `source: 'buildpad-mfe'` and `v: 1`, so bridge traffic can be told apart from other postMessage traffic and from an unknown version
+4. **Never use `'*'` as target origin** in postMessage calls
+5. **Allowlist params explicitly** — never blindly forward all params
+6. **Type-check message payloads** before using them
 
 ```typescript
 // BAD — accepts messages from any origin
@@ -210,11 +212,13 @@ window.addEventListener("message", (event) => {
   router.replace(event.data.path);
 });
 
-// GOOD — strict origin and type validation
+// GOOD — origin, source, envelope, then payload shape
 window.addEventListener("message", (event) => {
   if (event.origin !== EXPECTED_ORIGIN) return;
-  if (event.data?.type !== "QUERY_PARAMS_CHANGE") return;
-  if (typeof event.data.params !== "object") return;
+  if (event.source !== iframeRef.current?.contentWindow) return; // host side
+  if (event.data?.source !== BRIDGE_SOURCE || event.data?.v !== BRIDGE_VERSION) return;
+  if (event.data.type !== "QUERY_PARAMS_CHANGE") return;
+  if (typeof event.data.params !== "object" || event.data.params === null) return;
   // ... safe to process
 });
 ```
