@@ -31,28 +31,29 @@ const AGENT = {
   //
   // A search box is usually NOT the control to use here. Every CLI module holds
   // search, page, sort, and view in private useState, exposes no controlled prop and
-  // no change callback for them, and Rule 9 forbids editing module source — so those
-  // parameters cannot be synced at all. What a module does expose is a selection
-  // callback (UsersManager.onUserClick, FileManager.onFileClick), so the wrapper
-  // syncs a record id and the control is a row. See SKILL Step 4.
-  // Verified to exist. NOT users-manager-table: users-manager.tsx passes that
-  // testid to <VTable>, which never spreads it, so it matches nothing (and
-  // TypeScript will not catch it — hyphenated JSX attrs skip excess-property checks).
-  SYNC_CONTROL: '[data-testid="users-manager"] tbody tr',
+  // From buildpad-ui's URL-state release the list managers persist their settled
+  // search/filter/sort/page in the frame URL by default, and the bridge provider's
+  // OutboundUrlMirror posts every frame-URL change to the host — so the flagship
+  // demo is typing in the MODULE'S OWN search box. On OLDER module versions that
+  // state is private useState (Rule 9 forbids editing module source): set
+  // URL_SYNC_IS_WIRED to false, or point SYNC_CONTROL at a wrapper-synced row
+  // ('[data-testid="users-manager"] tbody tr' + SYNC_ACTION 'click' + SYNC_PARAM
+  // 'user'). Verify any testid actually reaches the DOM — users-manager-table is
+  // passed to <VTable>, never spread, and matches nothing.
+  SYNC_CONTROL: '[data-testid="users-manager-search"]',
   // 'click' for a row or a link. 'fill' for a text input.
-  SYNC_ACTION: 'click' as 'click' | 'fill',
+  SYNC_ACTION: 'fill' as 'click' | 'fill',
   // Text to type when SYNC_ACTION is 'fill'. Ignored for 'click'.
-  SYNC_FILL_VALUE: '',
+  SYNC_FILL_VALUE: 'admin',
   // The allowlisted parameter that control drives. It MUST appear in the host page's
-  // allowedParams AND in the micro-app's useQueryParamSync call: pickParams() drops
-  // everything else in both directions, so a one-sided name is discarded in silence
-  // and still looks correct inside the frame.
+  // allowedParams: pickParams() drops everything else in both directions, so a
+  // one-sided name is discarded in silence and still looks correct inside the frame.
   // The sync test drives whichever micro-app actually wires the sync — which may
   // NOT be the one in HOST_ROUTE/FRAME_TITLE above.
   SYNC_HOST_ROUTE: '/users',
   SYNC_FRAME_TITLE: 'Users Management',
-  SYNC_PARAM: 'user',
-  // Set false when the installed module exposes no controllable state at all. The
+  SYNC_PARAM: 'search',
+  // Set false on pre-URL-state module versions with no wrapper-synced control. The
   // URL round-trip test then skips instead of failing on an impossible assertion.
   URL_SYNC_IS_WIRED: true,
   // True only when this project uses manage-scope / add-multitenancy (Rule 11).

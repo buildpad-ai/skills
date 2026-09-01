@@ -9,8 +9,8 @@
 
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useMantineColorScheme } from '@mantine/core';
 import { HOST_ORIGIN } from '@/config/app-urls';
 import {
@@ -38,6 +38,15 @@ export function isFramed() {
  * this value so that a host-originated change is not sent straight back up.
  */
 export const lastFromHostRef = { current: '' };
+
+/**
+ * Contract event shared with Buildpad's URL-aware list components
+ * (@buildpad/hooks URL_STATE_EVENT). Dispatched after a programmatic URL
+ * rewrite so those components re-read the URL — router.replace alone fires
+ * neither popstate nor anything a framework-free component can hear.
+ * Keep the literal identical to the hooks package.
+ */
+export const URL_STATE_EVENT = 'buildpad:urlchange';
 
 /**
  * Ask the host for an access token, and keep asking until it answers.
@@ -85,6 +94,33 @@ export function onAuthApplied(listener: () => void) {
 export function writeScopeCookie(resourceUri: string) {
   // SameSite=None + Partitioned: this cookie lives inside a cross-site frame.
   document.cookie = `${SCOPE_COOKIE}=${encodeURIComponent(resourceUri)}; path=/; SameSite=None; Secure; Partitioned`;
+}
+
+/**
+ * Outbound URL mirror. Buildpad list managers (buildpad-ui ≥ the URL-state
+ * release) write their settled search/filter/sort/page state to THIS frame's
+ * URL via native history.replaceState — which Next feeds into useSearchParams.
+ * This observer posts those writes up as QUERY_PARAMS_CHANGE, so the host URL
+ * follows the module with no per-module wiring.
+ *
+ * Echo-safe by construction: a host-driven SET_QUERY_PARAMS records itself in
+ * lastFromHostRef before router.replace, so its own reflection is skipped.
+ * Split out (and Suspense-wrapped by the provider) because useSearchParams
+ * requires a boundary under static prerendering.
+ */
+function OutboundUrlMirror() {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (!isFramed()) return;
+    const params = Object.fromEntries(searchParams.entries());
+    const serialized = serializeParams(params);
+    if (serialized === lastFromHostRef.current) return; // host echo — stop the loop
+    lastFromHostRef.current = serialized;
+    postToHost(bridgeMessage('QUERY_PARAMS_CHANGE', { params }));
+  }, [searchParams]);
+
+  return null;
 }
 
 export function MicroappBridgeProvider({ children }: { children: React.ReactNode }) {
@@ -188,6 +224,9 @@ export function MicroappBridgeProvider({ children }: { children: React.ReactNode
           // replace, not push: host-driven parameter changes must not grow the
           // joint session history that the host back button walks through.
           router.replace(window.location.pathname + (query ? `?${query}` : ''), { scroll: false });
+          // Wake URL-aware components (Buildpad list managers): they listen for
+          // this event because router.replace fires no popstate.
+          window.dispatchEvent(new Event(URL_STATE_EVENT));
           break;
         }
 
@@ -213,5 +252,12 @@ export function MicroappBridgeProvider({ children }: { children: React.ReactNode
     };
   }, [router, setColorScheme]);
 
-  return <>{children}</>;
+  return (
+    <>
+      <Suspense fallback={null}>
+        <OutboundUrlMirror />
+      </Suspense>
+      {children}
+    </>
+  );
 }

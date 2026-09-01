@@ -367,38 +367,27 @@ Apply these only AFTER 4a. Exact hunks in
   host shows its error state.
 - Add `DEFAULT_AUTHENTICATED_ROUTE` to `config/app-urls.ts` — the micro-app's first
   real route.
-- **Wire the URL sync — to a parameter the page can actually drive.** A CLI module is
-  URL-unaware. `file-manager.tsx` and `users-manager.tsx` hold `search`, `page`,
-  `sort`, and `view` in private `useState`, expose no controlled prop and no change
-  callback for them, and call no `useSearchParams`/`useRouter`. Rule 9 forbids editing
-  those files, so `search` **cannot** be synced out of either module. Do not try.
+- **Wire the URL sync.** From buildpad-ui's URL-state release
+  ([PR #154](https://github.com/buildpad-ai/ui/pull/154)), the list managers
+  persist search/filter/sort/page (and Files' `folder`) in the frame's URL by
+  default via `history.replaceState`, and `MicroappBridgeProvider`'s
+  `OutboundUrlMirror` posts those writes to the host automatically — **module
+  search now syncs with zero per-module wiring**. Two obligations remain:
 
-  Sync what the module exposes through a public callback instead. Put the wrapper in a
-  **new local file** (for example `app/(authenticated)/users/users-section.tsx`) and
-  render it from the CLI page — the CLI page itself carries `@buildpad-origin`, so
-  editing it is a merge, and the smallest merge is a one-line render of your wrapper:
+  1. Reconcile the host allowlist. `pickParams()` filters both directions, so
+     every parameter the module writes must be named in the host page's
+     `allowedParams` or it is dropped silently:
+     `['search', 'role', 'status', 'sort', 'page', 'folder', 'user', 'file']`
+     covers the stock modules plus the row-click sync below.
+  2. Detail-record sync stays a wrapper concern: drive `user`/`file` from
+     `onUserClick`/`onFileClick` in a **new local file** rendered by the CLI
+     page (the CLI page itself is `@buildpad-origin` — a one-line merge).
 
-  | Module | Public callback | Parameter to sync | Element the sync test drives |
-  | --- | --- | --- | --- |
-  | Users | `UsersManager.onUserClick` | `user` (record id) | a row: `[data-testid="users-manager"] tbody tr` |
-  | Files | `FileManager.onFileClick` | `file` (record id) | a card/row in the file list |
-
-  The driver is a **row click**, not the search box — the module's search input is
-  unsyncable (above), so never target it in a sync test. Verify any `data-testid` you
-  rely on actually reaches the DOM: `users-manager.tsx` passes one to `<VTable>`, and
-  `vtable.tsx` never spreads it, so `[data-testid="users-manager-table"]` matches
-  nothing. TypeScript does not catch that — hyphenated JSX attributes are exempt from
-  excess-property checks.
-
-  Then add that parameter name to `allowedParams` on the **host** page. `pickParams()`
-  filters both directions, so a parameter the micro-app syncs and the host does not
-  allow is dropped silently and looks like working code in local testing. Reconcile the
-  two lists in one step.
-
-  When a module exposes no controllable state at all, record the gap and skip the sync
-  rather than scraping the frame DOM. The durable fix is upstream: optional controlled
-  `search`/`page`/`view` props on `FileManager` and `UsersManager` that fall back to the
-  current internal state.
+  On module versions **before** the URL-state release, module search is
+  unsyncable — those managers hold `search`/`page`/`sort` in private
+  `useState` inside `@buildpad-origin` files with no controlled prop, and
+  Rule 9 forbids editing them. Do not scrape the frame DOM to fake it; take
+  the upstream update instead.
 - **Audit for native dialogs**:
   `grep -rn 'window\.\(confirm\|alert\|prompt\)' app components lib --include='*.tsx'`.
   The CLI's `rich-text-markdown.tsx` ships a `window.prompt` that is silently dead in
