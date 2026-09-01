@@ -120,6 +120,21 @@ Leave the CLI's redirect exactly as it is — it is built from `publicOrigin(req
 which is correct behind Amplify/CloudFront where `request.url` names the server
 process, not the browser's address.
 
+### M4 · `lib/supabase/middleware.ts` — carry the path through the bounce
+
+The CLI's login redirect forwards only the query
+(`url.search = request.nextUrl.search`) — the requested PATH is lost, so a
+framed bounce on any non-default route lands the handshake on
+`DEFAULT_AUTHENTICATED_ROUTE`. Invisible while one host section exists;
+wrong the moment a micro-app serves several (/users, /roles, /policies).
+Directly after that line, add:
+
+```ts
+url.searchParams.set('next', request.nextUrl.pathname + request.nextUrl.search);
+```
+
+`LoginBridge` prefers an explicit `next` and uses it verbatim.
+
 ### L1 · `app/api/auth/logout/route.ts` (micro-app)
 
 Inside `performLogout()`, **before** `await supabase.auth.signOut();` (signOut can
@@ -475,7 +490,7 @@ host as a bridge error, not as a module error state.
 - [ ] `set-session` rejects cross-site callers *before* validating the token.
 - [ ] All bridge cookies use `SameSite=None; Secure; Partitioned` via
       `framedCookieOptions`.
-- [ ] M1–M3, L1, P1, W1, E1, H1 applied; every merged file carries the
+- [ ] M1–M4, L1, P1, W1, E1, H1 applied; every merged file carries the
       LOCAL MODIFICATION banner; no `@buildpad-origin` file was replaced.
 - [ ] Framed: no sidebar/header/profile chrome inside the frame, on a **fresh** load of
       the section and after a `SET_SCOPE`. Standalone: the full shell renders. Compare
