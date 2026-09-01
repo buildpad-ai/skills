@@ -9,8 +9,8 @@
 
 'use client';
 
-import { Suspense, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useMantineColorScheme } from '@mantine/core';
 import { HOST_ORIGIN } from '@/config/app-urls';
 import {
@@ -99,33 +99,43 @@ export function writeScopeCookie(resourceUri: string) {
 /**
  * Outbound URL mirror. Buildpad list managers (buildpad-ui ≥ the URL-state
  * release) write their settled search/filter/sort/page state to THIS frame's
- * URL via native history.replaceState — which Next feeds into useSearchParams.
- * This observer posts those writes up as QUERY_PARAMS_CHANGE, so the host URL
+ * URL via native history.replaceState and announce each write with the
+ * URL_STATE_EVENT contract event. This observer re-reads the URL on that event
+ * (and on popstate) and posts it up as QUERY_PARAMS_CHANGE, so the host URL
  * follows the module with no per-module wiring.
  *
- * Echo-safe by construction: a host-driven SET_QUERY_PARAMS records itself in
- * lastFromHostRef before router.replace, so its own reflection is skipped.
- * Split out (and Suspense-wrapped by the provider) because useSearchParams
- * requires a boundary under static prerendering.
+ * Deliberately NOT useSearchParams: field-verified on Next 16, the app router
+ * does not feed native replaceState back into useSearchParams, so a
+ * router-based observer never fires. The event IS the contract.
+ *
+ * Echo-safe: a host-driven SET_QUERY_PARAMS records itself in lastFromHostRef
+ * before router.replace + dispatch, so its own reflection is skipped.
  */
-function OutboundUrlMirror() {
-  const searchParams = useSearchParams();
-
+function useOutboundUrlMirror() {
   useEffect(() => {
     if (!isFramed()) return;
-    const params = Object.fromEntries(searchParams.entries());
-    const serialized = serializeParams(params);
-    if (serialized === lastFromHostRef.current) return; // host echo — stop the loop
-    lastFromHostRef.current = serialized;
-    postToHost(bridgeMessage('QUERY_PARAMS_CHANGE', { params }));
-  }, [searchParams]);
 
-  return null;
+    const post = () => {
+      const params = Object.fromEntries(new URLSearchParams(window.location.search).entries());
+      const serialized = serializeParams(params);
+      if (serialized === lastFromHostRef.current) return; // host echo — stop the loop
+      lastFromHostRef.current = serialized;
+      postToHost(bridgeMessage('QUERY_PARAMS_CHANGE', { params }));
+    };
+
+    window.addEventListener(URL_STATE_EVENT, post);
+    window.addEventListener('popstate', post);
+    return () => {
+      window.removeEventListener(URL_STATE_EVENT, post);
+      window.removeEventListener('popstate', post);
+    };
+  }, []);
 }
 
 export function MicroappBridgeProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { setColorScheme } = useMantineColorScheme();
+  useOutboundUrlMirror();
   const renewalTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastExpiresRef = useRef(0);
 
@@ -252,12 +262,5 @@ export function MicroappBridgeProvider({ children }: { children: React.ReactNode
     };
   }, [router, setColorScheme]);
 
-  return (
-    <>
-      <Suspense fallback={null}>
-        <OutboundUrlMirror />
-      </Suspense>
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }
