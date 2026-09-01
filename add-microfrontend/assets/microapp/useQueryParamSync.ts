@@ -11,7 +11,11 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { bridgeMessage, serializeParams } from '@/lib/bridge/bridge-protocol';
-import { lastFromHostRef, postToHost } from '@/components/MicroappBridgeProvider';
+import {
+  lastAnnouncedSearchRef,
+  lastFromHostRef,
+  postToHost,
+} from '@/components/MicroappBridgeProvider';
 
 export function useQueryParamSync({ debounceMs = 300 }: { debounceMs?: number } = {}) {
   const router = useRouter();
@@ -21,7 +25,14 @@ export function useQueryParamSync({ debounceMs = 300 }: { debounceMs?: number } 
 
   const updateQueryParams = useCallback(
     (params: Record<string, string | null>) => {
-      const next = new URLSearchParams(searchParams.toString());
+      // Merge from the last ANNOUNCED query string, not from a snapshot.
+      // Both useSearchParams and window.location can lag: router writes commit
+      // asynchronously, and a just-announced module write (URL_STATE_EVENT)
+      // may not have landed in either yet. The announcement is the truth;
+      // location is the fallback before any announcement exists.
+      const next = new URLSearchParams(
+        lastAnnouncedSearchRef.current ?? window.location.search,
+      );
       for (const [key, value] of Object.entries(params)) {
         if (value === null || value === '') next.delete(key);
         else next.set(key, value);
@@ -31,6 +42,10 @@ export function useQueryParamSync({ debounceMs = 300 }: { debounceMs?: number } 
       // replace, not push: every keystroke would otherwise add an entry to the
       // joint session history and trap the host back button inside the frame.
       router.replace(pathname + (query ? `?${query}` : ''), { scroll: false });
+      // Announce the write, carrying the written query (listeners must not
+      // trust location.search — the replace above has not committed yet).
+      lastAnnouncedSearchRef.current = query;
+      window.dispatchEvent(new CustomEvent('buildpad:urlchange', { detail: { search: query } }));
 
       const asRecord = Object.fromEntries(next.entries());
       // Drop the echo: this exact set arrived from the host a moment ago.

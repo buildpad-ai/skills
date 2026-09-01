@@ -49,6 +49,21 @@ export const lastFromHostRef = { current: '' };
 export const URL_STATE_EVENT = 'buildpad:urlchange';
 
 /**
+ * The query string most recently ANNOUNCED on URL_STATE_EVENT (no leading '?').
+ * Router writes commit asynchronously, so location.search can lag the write
+ * that was just announced; anything merging "current" params (useQueryParamSync)
+ * must prefer this over a snapshot. null until the first announcement.
+ */
+export const lastAnnouncedSearchRef: { current: string | null } = { current: null };
+
+/** Read the query string a URL_STATE_EVENT carries, falling back to the URL. */
+function eventSearch(event: Event): string {
+  const detail = (event as CustomEvent<{ search?: string }>).detail;
+  if (detail && typeof detail.search === 'string') return detail.search;
+  return window.location.search.replace(/^\?/, '');
+}
+
+/**
  * Ask the host for an access token, and keep asking until it answers.
  * A single shot is not enough: a cold host can still be mounting its message
  * listener when the frame finishes loading.
@@ -115,19 +130,23 @@ function useOutboundUrlMirror() {
   useEffect(() => {
     if (!isFramed()) return;
 
-    const post = () => {
-      const params = Object.fromEntries(new URLSearchParams(window.location.search).entries());
+    const post = (event?: Event) => {
+      const search =
+        event && event.type === URL_STATE_EVENT ? eventSearch(event) : window.location.search;
+      lastAnnouncedSearchRef.current = search.replace(/^\?/, '');
+      const params = Object.fromEntries(new URLSearchParams(search).entries());
       const serialized = serializeParams(params);
       if (serialized === lastFromHostRef.current) return; // host echo — stop the loop
       lastFromHostRef.current = serialized;
       postToHost(bridgeMessage('QUERY_PARAMS_CHANGE', { params }));
     };
 
+    const onPop = () => post();
     window.addEventListener(URL_STATE_EVENT, post);
-    window.addEventListener('popstate', post);
+    window.addEventListener('popstate', onPop);
     return () => {
       window.removeEventListener(URL_STATE_EVENT, post);
-      window.removeEventListener('popstate', post);
+      window.removeEventListener('popstate', onPop);
     };
   }, []);
 }
@@ -234,9 +253,11 @@ export function MicroappBridgeProvider({ children }: { children: React.ReactNode
           // replace, not push: host-driven parameter changes must not grow the
           // joint session history that the host back button walks through.
           router.replace(window.location.pathname + (query ? `?${query}` : ''), { scroll: false });
-          // Wake URL-aware components (Buildpad list managers): they listen for
-          // this event because router.replace fires no popstate.
-          window.dispatchEvent(new Event(URL_STATE_EVENT));
+          // Wake URL-aware components (Buildpad list managers). Carry the applied
+          // query: router.replace commits asynchronously, so listeners reading
+          // location.search here would see the PRE-commit URL.
+          lastAnnouncedSearchRef.current = query;
+          window.dispatchEvent(new CustomEvent(URL_STATE_EVENT, { detail: { search: query } }));
           break;
         }
 

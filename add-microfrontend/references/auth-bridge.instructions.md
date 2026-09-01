@@ -270,6 +270,28 @@ Cold-start note: the first framed load logs several `GET /api/auth/token` 401s b
 the handshake completes. That is the designed `MICROAPP_NEEDS_AUTH` path, not a fault.
 React StrictMode doubles the count in development.
 
+
+**W1c — register the URL-state writer** (buildpad-ui ≥ f9e9483). In the same wrapper:
+
+```tsx
+import { useRouter } from 'next/navigation';
+import { registerUrlStateWriter } from '@/lib/buildpad/hooks';
+
+const router = useRouter();
+useEffect(() => {
+  registerUrlStateWriter((url) => router.replace(url, { scroll: false }));
+  return () => registerUrlStateWriter(null);
+}, [router]);
+```
+
+Without it the managers fall back to native `history.replaceState`, which the
+App Router both ignores (`useSearchParams` never updates) and actively fights —
+it re-asserts its own stale URL on later renders, silently stripping the
+parameters (observed live on Next 16). The `URL_STATE_EVENT` announcements now
+carry `detail.search` (the written query) because router writes commit
+asynchronously; every listener in the bridge assets reads the detail, never a
+snapshot.
+
 ### H1 · `lib/api/auth-headers.ts` (both micro-apps)
 
 The CLI installs ~16 proxy routes (`/api/items`, `/api/files`, `/api/folders`,
