@@ -29,10 +29,15 @@ export function LoginBridge({ fallback }: { fallback: React.ReactNode }) {
     setFramed(inFrame);
     if (!inFrame) return;
 
-    const next = searchParams.get('next');
-    const target = next && next.startsWith('/') ? next : DEFAULT_AUTHENTICATED_ROUTE;
-
     const unsubscribe = onAuthApplied(() => {
+      // Read `next` from the LIVE URL at replace time, never from a captured
+      // useSearchParams snapshot: on a statically prerendered /login the first
+      // render's searchParams are EMPTY, and a handshake that completes inside
+      // that window would replace to the paramless default route — dropping a
+      // deep link's query (?next=/users%3Fsearch%3D...). Deployed-only: dev
+      // renders the page dynamically and hides the race.
+      const next = new URLSearchParams(window.location.search).get('next');
+      const target = next && next.startsWith('/') ? next : DEFAULT_AUTHENTICATED_ROUTE;
       // replace, not assign: the failed /login attempt must not stay in history.
       window.location.replace(target);
     });
@@ -46,7 +51,7 @@ export function LoginBridge({ fallback }: { fallback: React.ReactNode }) {
       unsubscribe();
       stopAsking();
     };
-  }, [searchParams]);
+  }, []);
 
   if (framed === null) return null;
 
