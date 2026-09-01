@@ -15,6 +15,12 @@ This is the **first action** in every microapp or microfrontend operation. The t
 
 ### Response Schema
 
+> This interface lists the fields these skills consume. **The response may contain
+> more** — current platforms also return top-level `workers` (runtime background
+> jobs) and `messaging` (queue connection details). Treat the schema as open: when a
+> step says "every deployed origin", enumerate what is actually in the response, not
+> just what is documented here.
+
 ```typescript
 interface ProjectDetail {
   success: boolean;

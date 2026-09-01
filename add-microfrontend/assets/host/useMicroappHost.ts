@@ -172,16 +172,30 @@ export function useMicroappHost({
 
         case 'MICROAPP_NEEDS_AUTH': {
           const { createClient } = await import('@/lib/supabase/client');
-          const { data } = await createClient().auth.getSession();
-          if (!data.session) {
+          const supabase = createClient();
+          const { data } = await supabase.auth.getSession();
+          // Track the narrowed session in its own variable: reassigning `data`
+          // after the null check widens the type back and fails strict tsc.
+          let session = data.session;
+          if (!session) {
+            // Only the HOST losing its session is a reason to go to login.
             // AGENT: set this to the Main App login route.
             router.push('/login');
             return;
           }
+          // "The host owns refresh" needs code behind it: when the session is
+          // inside the renewal window, getSession() alone returns the SAME
+          // expires_at and the frame asks again forever. Refresh here, actively.
+          // (90 s > the frame's 60 s lead, so the windows always overlap.)
+          const msLeft = (session.expires_at ?? 0) * 1000 - Date.now();
+          if (msLeft < 90_000) {
+            const refreshed = await supabase.auth.refreshSession();
+            if (refreshed.data.session) session = refreshed.data.session;
+          }
           sendToMicroapp(
             bridgeMessage('SET_AUTH', {
-              access_token: data.session.access_token,
-              expires_at: data.session.expires_at ?? 0,
+              access_token: session.access_token,
+              expires_at: session.expires_at ?? 0,
               resource_uri: readScopeCookie(),
             }),
           );

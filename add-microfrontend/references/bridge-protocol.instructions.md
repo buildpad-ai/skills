@@ -72,12 +72,15 @@ Host page renders  ──> <iframe src="https://microapp/...">
 The host owns refresh. The micro-app never holds a refresh token.
 
 ```
-MicroappBridgeProvider sets a timer for expires_at - 60 s
+MicroappBridgeProvider sets a timer for expires_at - 60 s (clamped to >= 5 s)
         │
         ├─ MICROAPP_NEEDS_AUTH ──────────────────> host
-        │                                          supabase.auth.getSession()
-        │                                          (the host client refreshes here)
+        │                                          getSession(); if < 90 s left:
+        │                                          refreshSession()  ← the host is
+        │                                          the ONLY refresh client
         │  <──────────────────────────────────── SET_AUTH { new token }
+        │     (a token whose expires_at does not
+        │      advance is ignored — no loops)
         │
         └─ POST /api/auth/set-session -> new cookie, new timer
 ```
@@ -85,18 +88,21 @@ MicroappBridgeProvider sets a timer for expires_at - 60 s
 ## Sequence: sign-out
 
 ```
-User clicks logout in the host
+User clicks Sign out in the host shell
         │
-        ├─ logoutAllMicroapps()
+        ├─ await logoutAllMicroapps()
         │     LOGOUT ─────────────> every mounted frame
         │                           POST /api/auth/logout on its own origin
         │                           deletes mfe_access_token, mfe_expires_at,
-        │                           daas_resource_uri
-        │  (the host waits 300 ms)
+        │                           daas_resource_uri            (pinned edit L1)
+        │  (the host waits 300 ms — the drain)
         │
-        └─ POST /api/auth/logout on the host -> supabase.auth.signOut()
-           router.push('/login')
+        └─ window.location.href = '/api/auth/logout'
+           the CLI GET route: signOut(), scope cleanup, OAuth SLO
 ```
+
+The `await` is not optional: the `location.href` assignment unloads the page, so an
+unawaited broadcast loses the drain and the frames never finish their requests.
 
 The order matters. The host cannot delete a cookie on a micro-app origin. If the host
 signs out first and the page unloads, the frames never get the message and their

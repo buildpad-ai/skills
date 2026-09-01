@@ -13,14 +13,14 @@ Set up a **microapp architecture** where one **Main App** and multiple **micro-a
 1. **Single Shared DaaS Backend**: All apps (Main App + micro-apps) connect to the **same** DaaS backend instance via the same `NEXT_PUBLIC_BUILDPAD_DAAS_URL`. There is only ONE DaaS backend. Collections for all domains live in this single instance.
 2. **Shared Auth, Shared Data Layer**: All apps share the same Supabase Auth project AND the same DaaS backend. Authentication and data access go through the same infrastructure.
 3. **Direct Calls for Components, Proxy Routes for Your Own Code**: Buildpad UI components (`CollectionList`, `VForm`) call DaaS **directly** from the browser through `DaaSProvider`, which supplies the `Authorization: Bearer <supabase-jwt>` and `X-Resource-Uri` headers. Hand-written fetches go through a Next.js proxy route in the same app. Do not generate `/api/items/[collection]/route.ts` unless the app has hand-written data calls. CORS for the direct path is handled on the DaaS side via `CORS_ORIGINS`. See [authentication-proxy](../authentication-proxy/SKILL.md).
-4. **Collection-Based Domain Boundaries**: Each micro-app "owns" a logical domain of collections (e.g., Users service owns `profiles`, `roles`; Billing service owns `invoices`, `payments`). Ownership is a team/code convention — all collections physically live in the same DaaS instance.
+4. **Collection-Based Domain Boundaries**: Each micro-app "owns" a logical domain of collections (e.g., Users service owns `profiles`, `roles`; Billing service owns `invoices`, `payments`). Ownership is a team/code convention — all collections physically live in the same DaaS instance. **Check every candidate domain against the module skills first — [add-files](../add-files/SKILL.md) and [add-users](../add-users/SKILL.md) — because the module may already provide the whole surface, and a hand-written page in its place leaves the real behaviour untested.**
 5. **Independent Deployment**: Each micro-app deploys independently as a Next.js application. Schema changes in DaaS are shared — coordinate collection/field changes via the DaaS admin or MCP tools.
 6. **Main App Is a Full App**: The Main App handles authentication, navigation, iframe composition, AND can have its own pages and collection data. It is not a thin shell.
 7. **Shared Types via Contracts**: Cross-domain data access uses well-defined TypeScript interfaces. Publish shared types via a `packages/shared-types/` package or shared contract files.
 8. **Backend-First Logic**: Use DaaS runtime extensions (filter/action hooks) for validation, audit logging, and business rules — not Next.js API routes. Extensions are configured once in the shared DaaS and apply regardless of which app triggers the request.
 9. **Independent Testing**: Each micro-app has its own test suite (Playwright E2E + Vitest unit). Cross-service integration tests live in the Main App project.
 10. **Shared RBAC**: Roles and permissions are managed centrally in the single DaaS backend. Each role defines access to specific collections. A user's roles (assigned via the `daas_user_roles` junction table) determine what they can do across ALL apps.
-11. **Iframe Constraints Apply to Every Micro-App**: A framed micro-app cannot use native dialogs, cannot paint a modal outside its frame, and cannot rely on the host cookie. Design domains with that in mind. The rules and their fixes live in [add-microfrontend](../add-microfrontend/SKILL.md).
+11. **Iframe Constraints Apply to Every Micro-App**: A framed micro-app cannot use native dialogs, cannot make a modal cover the host chrome (the overlay and the focus trap end at the frame edge, so one click in the host discards the dialog — route destructive confirmations to the host), and cannot rely on the host cookie — and it renders **content only**: the host owns the sidebar, header, and profile chrome, so the micro-app's own shell appears only when it is opened standalone (pinned edit E1). Design domains with that in mind. The rules and their fixes live in [add-microfrontend](../add-microfrontend/SKILL.md).
 12. **No Function Props from Server Components (React 19)**: In Next.js 16 / React 19, you cannot pass functions as props from Server Components to Client Components. Avoid patterns like `<Anchor component={Link}>` in Server Components — use plain `<Link>` from `next/link` instead. The `component={...}` pattern is safe inside a `'use client'` component.
 13. **Verify Field Names Against DaaS Schema**: Before writing any query, sort, or filter parameter, **always check the actual field names** in the DaaS schema using `mcp_daas_schema` or `mcp_daas_fields`. Do NOT assume field names — they may differ from common conventions (e.g., `created_at` vs `date_created`). Using a non-existent field in `sort` or `filter` causes a DaaS **500 error** with no helpful message, which is hard to debug through the proxy layer.
 14. **Cross-Domain Auth Bridge (Amplify — always required)**: Supabase cookies cannot be shared between `*.amplifyapp.com` subdomains, so every micro-app needs the postMessage auth bridge. The bridge is owned by [add-microfrontend](../add-microfrontend/SKILL.md). Load that skill and copy the files it ships. Never send a refresh token across the bridge — see [auth-bridge](../add-microfrontend/references/auth-bridge.instructions.md).
@@ -77,7 +77,7 @@ Before any code or configuration, call the `get_project_detail` platform MCP too
 ```
 
 This returns:
-- **`project.mainAmplifyUrl`** — Main App's deployed URL (used as `NEXT_PUBLIC_HOST_ORIGIN` in micro-apps)
+- **`project.mainAmplifyUrl`** — Main App's deployed URL (the `HOST_ORIGIN` default in each micro-app's `config/app-urls.ts`; override via `NEXT_PUBLIC_MICROAPP_URL_MAIN`, never `NEXT_PUBLIC_HOST_ORIGIN` — that name is reserved by `lib/origin.ts`)
 - **`project.supabaseUrl`**, **`project.supabaseAnonKey`**, **`project.supabaseServiceRoleKey`** — shared auth credentials
 - **`project.daasUrl`** — shared DaaS backend URL
 - **`project.mainGitUrl`**, **`project.mainGitToken`** — git credentials for cloning/pushing
@@ -100,6 +100,12 @@ Before creating any code, map out which collections belong to which app's domain
 
 **Important**: Any app can _read_ any collection (subject to RBAC). Ownership means the team is responsible for that collection's schema, hooks, and business logic.
 
+**Check each domain against the module skills before you plan any page.** Files maps to
+[add-files](../add-files/SKILL.md) (`buildpad add files-routes`); users, roles, and
+policies map to [add-users](../add-users/SKILL.md) (`buildpad add users-routes`). Where
+a module exists, scaffold it and wrap it. Write a page by hand only for a domain no
+module covers.
+
 ### Step 2: Create or Clone the Micro-App Project
 
 Check if the microapp already exists in the `microapps[]` array from Step 0:
@@ -118,6 +124,13 @@ pnpm install
 mkdir -p /path/to/{{serviceName}}-app
 npx @buildpad/cli@latest bootstrap --cwd /path/to/{{serviceName}}-app
 ```
+
+> The directory name is a local choice and is NOT the platform `microapps[].name` —
+> existing repos may be called `<name>-starter`, `<name>-app`, or anything else.
+> Config keys and env-var names always derive from the platform `name`; routes come
+> from the micro-app's own `DEFAULT_AUTHENTICATED_ROUTE`. Write the mapping table
+> from [add-microfrontend Step 3](../add-microfrontend/SKILL.md) before creating
+> pages.
 
 ### Step 3: Auto-Configure Environment & URL Config (From Context — No User Input)
 
@@ -157,8 +170,13 @@ Full implementation and the security checklist:
 
 Buildpad UI components call DaaS directly from the browser. Hand-written fetches use a proxy route in the same app (Rule 3). Supply the DaaS URL and the Supabase JWT with `DaaSProvider`:
 
+In a Buildpad starter the CLI already installs `components/DaaSProviderWrapper.tsx`
+mounted from `app/(authenticated)/layout.tsx` — keep that. Never move the provider to
+the root layout: root layouts never unmount, so a logout → login cycle delivers a
+stale token (daas-platform Bug 22). The hand-rolled shape, for reference:
+
 ```typescript
-// app/layout.tsx (in every app)
+// app/(authenticated)/layout.tsx-style wiring — NEVER app/layout.tsx (Bug 22)
 import { DaaSProvider } from '@/lib/buildpad/services';
 import { createBrowserClient } from '@supabase/ssr';
 
@@ -185,11 +203,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 ```
 
-DaaS CORS configuration (in DaaS `.env.local` or deployment env):
-```
-CORS_ORIGINS="http://localhost:3000,http://localhost:3001,https://main-app.example.com,https://micro-app.example.com"
-CORS_ALLOW_CREDENTIALS=false
-```
+DaaS CORS is a **settings singleton**, not env vars, and the default
+(`cors_origins: ["*"]`, `cors_allow_credentials: false`) blocks every credentialed
+browser call. Configure it with the runnable `mcp_daas_cors-settings` update in
+[add-microfrontend Step 6](../add-microfrontend/SKILL.md) — origins must be explicit
+and `cors_allow_credentials` must be `true`.
 
 In client components, use `useDaaSContext()` to get `buildUrl` and `getHeaders`:
 
@@ -257,7 +275,10 @@ export default function AdminUsersPage() {
       src={MICRO_APPS.users.url}
       path="/users"
       title="Users Management"
-      allowedParams={['search', 'page', 'sort', 'role']}
+      // Derive this from what the framed page really syncs. A CLI module keeps
+      // search/page/sort private, so those names cannot cross the boundary.
+      // See add-microfrontend Step 4.
+      allowedParams={['user']}
       height="calc(100vh - 100px)"
     />
   );
