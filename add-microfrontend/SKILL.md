@@ -11,12 +11,12 @@ Set up a **client-side composition** architecture where a **Main App** hosts ind
 ## Critical Rules
 
 1. **Iframe-Based Composition**: Micro-apps are loaded via `<iframe>` elements. The Main App manages layout, navigation, and iframe `src` attributes. Each micro-app renders independently inside its iframe sandbox.
-2. **Shared Session Cookie**: Authentication is shared between Main App and micro-apps via Supabase session cookies (same domain). The Main App handles login/logout; micro-apps inherit the session automatically. Never implement separate auth flows in micro-apps.
+2. **Auth Token Bridge (the default)**: The Main App owns the session and owns token refresh. Each micro-app holds a short-lived **access token** in its own cookie, on its own origin, obtained over the postMessage bridge. Micro-apps never hold a refresh token and never implement their own login flow. The bridge is required on Amplify, on a custom domain, and in local development — `localhost:3000` and `localhost:3001` are different origins. A shared parent-domain cookie is an optional extra on a custom domain, never a replacement.
 3. **No Direct DOM Access**: The Main App MUST NOT reach into iframe DOM, and micro-apps MUST NOT access `window.parent` DOM. Communication happens ONLY via `postMessage` with strict origin validation.
 4. **URL Sync via postMessage**: When micro-app query params change (e.g., search, filters), the micro-app posts a message to the host. The host updates its own URL bar to keep URLs in sync. Only explicitly allowlisted params are synced.
 5. **Independent Deployments**: Each micro-app is deployed independently (e.g., via AWS Amplify). Main App only holds the iframe `src` URLs — never bundles micro-app code.
 6. **SSR for Both Layers**: Both Main App pages and micro-app pages use Next.js SSR. The Main App renders the shell layout server-side; the iframe triggers a separate SSR request for the micro-app.
-7. **Auth Proxy in Every App**: Both the Main App and each micro-app must have their own `/api/auth/*` proxy routes. They share the same Supabase project but each app validates sessions independently via server-side middleware.
+7. **Auth Routes in Every App**: Both the Main App and each micro-app have their own `/api/auth/*` routes. Every micro-app additionally needs `set-session` (accepts a host token), `logout` (clears its own cookies), and `token` (hands the stored token to `DaaSProvider`). Each app validates independently in server-side middleware.
 8. **Sandbox Security**: Iframes use `sandbox="allow-scripts allow-same-origin allow-forms allow-popups"` to restrict capabilities while allowing necessary functionality.
 9. **Single Shared DaaS Backend**: All apps (Main App + micro-apps) MUST share the same `NEXT_PUBLIC_BUILDPAD_DAAS_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. There is only ONE DaaS backend instance. **Buildpad UI components call DaaS directly** through `DaaSProvider` (which sends `Authorization: Bearer <supabase-jwt>` and `X-Resource-Uri`); **hand-written fetches go through a proxy route in the same app**. This is the same split as [authentication-proxy](../authentication-proxy/SKILL.md). Do not generate `/api/items/[collection]/route.ts` unless the app has hand-written data calls. Set `CORS_ORIGINS` in the DaaS `.env` to include all app origins.
 10. **Fallback UI**: Always show a loading skeleton inside the iframe container while the micro-app loads, and display an error boundary if the iframe fails to load.
@@ -131,6 +131,15 @@ interface MicroappIframeProps {
   loadTimeoutMs?: number;
 }
 
+/** Read the scope cookie that DaaSProvider.getHeaders forwards as X-Resource-Uri. */
+function readScopeCookie(): string | undefined {
+  const raw = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith('daas_resource_uri='))
+    ?.split('=')[1];
+  return raw ? decodeURIComponent(raw) : undefined;
+}
+
 /** Keep only the allowlisted keys, dropping empty values. */
 function pickParams(params: Record<string, string> | URLSearchParams, allowed: string[]) {
   const source = params instanceof URLSearchParams ? Object.fromEntries(params.entries()) : params;
@@ -241,23 +250,37 @@ export function MicroappIframe({
         });
       }
 
-      // Handle auth expiration from micro-app
-      if (event.data?.type === 'AUTH_EXPIRED') {
-        router.push('/auth/login');
-      }
-
-      // Handle cross-domain auth bridge (Amplify deployments)
+      /**
+       * Cross-domain auth bridge. The HOST OWNS REFRESH.
+       *
+       * SET_AUTH carries access_token + expires_at only. It must NEVER carry
+       * refresh_token: Supabase rotates refresh tokens, and if the host and N
+       * micro-apps each hold the same one, they each refresh independently. The
+       * first wins and the rest reuse a consumed token, which Supabase treats as
+       * possible theft and answers by revoking the whole session family — a forced
+       * sign-out of every app about an hour after sign-in.
+       *
+       * There is no AUTH_EXPIRED message. A frame whose token expired sends
+       * MICROAPP_NEEDS_AUTH again, and getSession() below refreshes on the host.
+       */
       if (event.data?.type === 'MICROAPP_NEEDS_AUTH') {
         import('@/lib/supabase/client').then(({ createClient }) => {
           const supabase = createClient();
           supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session) {
-              sendToMicroapp({
-                type: 'SET_AUTH',
-                access_token: session.access_token,
-                refresh_token: session.refresh_token,
-              });
+            if (!session) {
+              // Only the host losing its session is a reason to go to login.
+              router.push('/auth/login');
+              return;
             }
+            sendToMicroapp({
+              type: 'SET_AUTH',
+              access_token: session.access_token,
+              expires_at: session.expires_at ?? 0,
+              // The scope cookie is set on the HOST origin, so the micro-app origin
+              // never receives it. Without this, every micro-app call resolves at
+              // root scope and DaaS answers 403 on any project using scopes.
+              resource_uri: readScopeCookie(),
+            });
           });
         });
       }
@@ -525,11 +548,15 @@ export function useQueryParamSync({ debounceMs = 300 }: { debounceMs?: number } 
 >
 > **Fix: implement the postMessage auth token bridge** (see the full pattern in [auth-syncing.instructions.md](references/auth-syncing.instructions.md)):
 > 1. Micro-app `/login` page detects it is inside an iframe → sends `MICROAPP_NEEDS_AUTH` to host
-> 2. `MicroappIframe` responds with `SET_AUTH { access_token, refresh_token }` (handled in Step 1's component)
-> 3. Micro-app calls `/api/auth/set-session` with the tokens → local Supabase cookie established
-> 4. Micro-app redirects to authenticated content — no user action required
+> 2. `MicroappIframe` responds with `SET_AUTH { access_token, expires_at, resource_uri }` (Step 1)
+> 3. Micro-app calls `/api/auth/set-session` → its own `httpOnly` token cookie is established
+> 4. Micro-app redirects to `DEFAULT_AUTHENTICATED_ROUTE` — no user action required
+> 5. Before the token expires, the micro-app sends `MICROAPP_NEEDS_AUTH` again
 >
-> Always implement this bridge whenever micro-apps are deployed on Amplify or any other platform that assigns distinct random-subdomain URLs.
+> **The bridge is the default deployment model, not an Amplify workaround.** It is
+> also required in local development: `localhost:3000` and `localhost:3001` are
+> different origins. On a custom domain a shared parent-domain cookie can be added on
+> top, but the bridge still works and stays the documented path.
 
 **Set up the auth bridge in every micro-app:**
 
@@ -537,31 +564,82 @@ export function useQueryParamSync({ debounceMs = 300 }: { debounceMs?: number } 
 
 ```typescript
 // app/api/auth/set-session/route.ts
-import { createClient } from '@/lib/supabase/server';
+// The host owns refresh. This route never receives or stores a refresh token.
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
+export const MFE_TOKEN_COOKIE = 'mfe_access_token';
+export const MFE_EXPIRES_COOKIE = 'mfe_expires_at';
+
 export async function POST(request: NextRequest) {
+  let body: { access_token?: string; expires_at?: number; resource_uri?: string };
   try {
-    const { access_token, refresh_token } = await request.json();
-
-    if (!access_token || !refresh_token) {
-      return NextResponse.json(
-        { error: 'Missing access_token or refresh_token' },
-        { status: 400 },
-      );
-    }
-
-    const supabase = await createClient();
-    const { error } = await supabase.auth.setSession({ access_token, refresh_token });
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 401 });
-    }
-
-    return NextResponse.json({ success: true });
+    body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
+
+  const { access_token, expires_at, resource_uri } = body;
+  if (!access_token || typeof expires_at !== 'number') {
+    return NextResponse.json({ error: 'Missing access_token or expires_at' }, { status: 400 });
+  }
+
+  // This route is public: anything on the page can call it. Only a token the Auth
+  // server accepts may set a cookie.
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => [], setAll: () => {} } },
+  );
+  const { data, error } = await supabase.auth.getUser(access_token);
+  if (error || !data.user) {
+    return NextResponse.json({ error: 'Invalid access token' }, { status: 401 });
+  }
+
+  const cookieStore = await cookies();
+  const maxAge = Math.max(Math.floor(expires_at - Date.now() / 1000), 0);
+
+  // SameSite=None is required: these are set and read inside a cross-site frame.
+  cookieStore.set(MFE_TOKEN_COOKIE, access_token, {
+    httpOnly: true, secure: true, sameSite: 'none', path: '/', maxAge,
+  });
+  cookieStore.set(MFE_EXPIRES_COOKIE, String(expires_at), {
+    httpOnly: false, secure: true, sameSite: 'none', path: '/', maxAge,
+  });
+  // Scope must cross the origin, or every call resolves at root scope → 403.
+  if (resource_uri) {
+    cookieStore.set('daas_resource_uri', resource_uri, {
+      httpOnly: false, secure: true, sameSite: 'none', path: '/', maxAge,
+    });
+  }
+
+  return NextResponse.json({ success: true });
+}
+```
+
+**1b. Create `/api/auth/token/route.ts`** — the micro-app has no Supabase session, so
+`DaaSProviderWrapper` cannot call `getSession()`. It reads the token from here instead.
+Do NOT add this route to `PUBLIC_ROUTES`: the middleware must validate the cookie first.
+
+```typescript
+// app/api/auth/token/route.ts
+import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get('mfe_access_token')?.value;
+  const expiresAt = Number(cookieStore.get('mfe_expires_at')?.value ?? 0);
+
+  if (!accessToken) {
+    return NextResponse.json({ errors: [{ message: 'Unauthorized' }] }, { status: 401 });
+  }
+
+  return NextResponse.json(
+    { access_token: accessToken, expires_at: expiresAt },
+    { headers: { 'Cache-Control': 'no-store' } },
+  );
 }
 ```
 
@@ -614,12 +692,12 @@ export default function LoginPage() {
       if (event.origin !== HOST_ORIGIN) return;
       if (event.data?.type !== 'SET_AUTH') return;
 
-      const { access_token, refresh_token } = event.data;
+      const { access_token, expires_at, resource_uri } = event.data;
       try {
         const res = await fetch('/api/auth/set-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ access_token, refresh_token }),
+          body: JSON.stringify({ access_token, expires_at, resource_uri }),
         });
         if (res.ok) {
           // replace, not href: the failed /login attempt must not stay in history.
@@ -682,6 +760,11 @@ export function broadcastToMicroapps(message: Record<string, unknown>) {
   for (const frame of frames) frame.window.postMessage(message, frame.origin);
 }
 
+/** Push a new tenant/scope to every mounted micro-app. Call after a scope switch. */
+export function broadcastScope(resourceUri: string) {
+  broadcastToMicroapps({ type: 'SET_SCOPE', resource_uri: resourceUri });
+}
+
 export async function logoutAllMicroapps() {
   broadcastToMicroapps({ type: 'LOGOUT' });
   // Give each frame one tick to fire its own /api/auth/logout request.
@@ -723,16 +806,17 @@ export async function POST() {
 
 ```typescript
 // Micro-app: app/api/auth/logout/route.ts
-import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { MFE_EXPIRES_COOKIE, MFE_TOKEN_COOKIE } from '../set-session/route';
 
 export async function POST() {
-  const supabase = await createClient();
-  // scope: 'local' clears this app's cookies without touching other sessions.
-  await supabase.auth.signOut({ scope: 'local' });
-
-  (await cookies()).delete('daas_resource_uri');
+  const cookieStore = await cookies();
+  cookieStore.delete(MFE_TOKEN_COOKIE);
+  cookieStore.delete(MFE_EXPIRES_COOKIE);
+  // Bug 20: a stale scope cookie is forwarded as X-Resource-Uri for the next user
+  // and causes an immediate 403 FORBIDDEN_SCOPE.
+  cookieStore.delete('daas_resource_uri');
 
   return NextResponse.json({ success: true });
 }
@@ -746,41 +830,33 @@ server — shorten the JWT expiry for the project.
 
 ```typescript
 // Micro-app: middleware.ts
+// The micro-app has no Supabase session of its own. It validates the access token
+// that the host handed it over the bridge.
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request });
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => request.cookies.getAll(),
-        setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
-          });
-        },
-      },
-    },
-  );
+  const { pathname, search } = request.nextUrl;
 
   // Skip the public routes from the ONE route table above.
-  if (isPublic(request.nextUrl.pathname)) return response;
+  if (isPublic(pathname)) return NextResponse.next({ request });
 
-  // getUser, never getSession: getUser validates the token against the Auth server on
-  // every request, so a sign-out that happened in the Main App is observed here.
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    const loginUrl = new URL(LOGIN_ROUTE, request.url);
-    loginUrl.searchParams.set('next', request.nextUrl.pathname + request.nextUrl.search);
-    return NextResponse.redirect(loginUrl);
+  const token = request.cookies.get('mfe_access_token')?.value;
+  if (token) {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { cookies: { getAll: () => [], setAll: () => {} } },
+    );
+    // getUser, never getSession: getUser validates the token against the Auth server
+    // on every request, so a sign-out that happened in the Main App is observed here.
+    const { data, error } = await supabase.auth.getUser(token);
+    if (!error && data.user) return NextResponse.next({ request });
   }
 
-  return response;
+  const loginUrl = new URL(LOGIN_ROUTE, request.url);
+  loginUrl.searchParams.set('next', pathname + search);
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {
@@ -789,18 +865,66 @@ export const config = {
 };
 ```
 
-**Micro-app notifies host on auth expiration (client-side):**
+**Micro-app renews its token before it expires.**
+
+There is no `AUTH_EXPIRED` message. Ejecting the user to the host login page was wrong:
+only the micro-app's copy of the session had failed, while the host session was still
+valid. A frame that needs a token simply asks for one again.
+
+Add this to `MicroappBridgeProvider` (Step 4). It must run on a plain page load too,
+because the handshake happens on `/login` and is followed by a full navigation.
 
 ```typescript
-// Micro-app: lib/auth-guard.ts
-'use client';
+// components/MicroappBridgeProvider.tsx — inside the message effect
+function scheduleRenewal(expiresAt: number) {
+  clearTimeout(renewalTimerRef.current);
+  const leadMs = expiresAt * 1000 - Date.now() - 60_000;
+  if (leadMs <= 0) {
+    postToHost({ type: 'MICROAPP_NEEDS_AUTH' });
+    return;
+  }
+  renewalTimerRef.current = setTimeout(() => {
+    postToHost({ type: 'MICROAPP_NEEDS_AUTH' });
+  }, leadMs);
+}
 
-export function notifyAuthExpired(hostOrigin: string) {
-  if (window.parent !== window) {
-    window.parent.postMessage({ type: 'AUTH_EXPIRED' }, hostOrigin);
+// On mount, pick up the deadline left by the previous page load.
+const storedExpiry = Number(
+  document.cookie.split('; ').find((r) => r.startsWith('mfe_expires_at='))?.split('=')[1] ?? 0,
+);
+if (storedExpiry) scheduleRenewal(storedExpiry);
+
+// SET_AUTH handler: store the token, then re-arm.
+if (event.data?.type === 'SET_AUTH') {
+  const { access_token, expires_at, resource_uri } = event.data;
+  const res = await fetch('/api/auth/set-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ access_token, expires_at, resource_uri }),
+  });
+  if (res.ok) {
+    scheduleRenewal(expires_at);
+    router.refresh();
   }
 }
+
+// SET_SCOPE handler: the host switched tenant.
+if (event.data?.type === 'SET_SCOPE') {
+  document.cookie =
+    `daas_resource_uri=${encodeURIComponent(event.data.resource_uri)}; path=/; SameSite=None; Secure`;
+  router.refresh();
+}
 ```
+
+**Micro-app `DaaSProviderWrapper` reads the token from `/api/auth/token`**, not from a
+Supabase browser client. Every other rule in
+[daas-platform](../daas-platform/SKILL.md) still applies: put the wrapper in
+`app/(authenticated)/layout.tsx`, pass `token` as a sync prop, gate `ready` on a
+non-null token, and keep `getHeaders` reading the `daas_resource_uri` cookie.
+
+> **Confirm the refresh model against your Supabase version.** Sign in, wait for the
+> access token to expire, then use the host and two micro-apps. All three must stay
+> signed in. If they do not, the bridge is still leaking a refresh token somewhere.
 
 ### Step 6: Auto-Configure Environment & URL Config (From Context — No User Input)
 
@@ -1016,7 +1140,8 @@ users-microapp/                            # Independent micro-app
 │   │   │   ├── login/route.ts
 │   │   │   ├── logout/route.ts
 │   │   │   ├── user/route.ts
-│   │   │   ├── set-session/route.ts       # Cross-domain auth bridge (Amplify)
+│   │   │   ├── set-session/route.ts       # Accepts the host access token
+│   │   │   ├── token/route.ts             # Hands the token to DaaSProviderWrapper
 │   │   │   └── logout/route.ts            # Clears THIS app's own cookies on LOGOUT
 │   │   └── items/[collection]/route.ts    # ONLY if this app has hand-written fetches
 ├── hooks/
@@ -1107,7 +1232,7 @@ The complete agent workflow with zero user input for URLs/credentials:
 4. Auto-generate .env.local from context (no placeholders)
 5. Create MicroappIframe component (with MICROAPP_NEEDS_AUTH handler — always include)
 6. Create host route pages in Main App for each microapp
-7. Implement auth bridge in every micro-app (set-session route + iframe-aware login page)
+7. Implement auth bridge in every micro-app (set-session + token + logout routes, iframe-aware login page, renewal timer)
 8. Set up URL syncing (proxy routes only if the app has hand-written fetches)
 9. Write tests
 10. git push micro-app → Amplify deploys automatically
@@ -1122,7 +1247,7 @@ The complete agent workflow with zero user input for URLs/credentials:
 | CSS isolation       | iframe — styles do not leak between apps                |
 | JS isolation        | Separate execution contexts per iframe                  |
 | Communication       | `postMessage` with origin validation only               |
-| Auth                | Shared Supabase session cookie (same domain)            |
+| Auth                | Host-owned session; per-origin access token via bridge  |
 | Data                | Single shared DaaS backend — access controlled via RBAC |
 | Deployment          | Independent deployments (Amplify)                       |
 
