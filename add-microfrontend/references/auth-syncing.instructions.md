@@ -347,7 +347,7 @@ Each micro-app also has auth routes, primarily for:
 
 - **Session refresh**: The micro-app's middleware refreshes the token when calling `getUser()`
 - **Auth routes**: The micro-app's API routes (`/api/auth/*`) manage Supabase SSR cookies — these remain as Next.js server routes
-- **Data access**: The micro-app calls DaaS directly using `buildUrl('/api/items/...')` + `getHeaders()` from `useDaaSContext()` — no proxy routes for data
+- **Data access**: Buildpad components call DaaS directly via `buildUrl('/api/items/...')` + `getHeaders()` from `useDaaSContext()`. Hand-written fetches use a proxy route in the same app.
 
 ```typescript
 // Micro-app: app/api/auth/user/route.ts
@@ -398,28 +398,21 @@ const supabase = createServerClient(
 
 ## Data Access with Shared DaaS
 
-Since all apps share the same DaaS backend, the auth token determines access:
+All apps share one DaaS backend, so the auth token decides what the user can reach.
+DaaS enforces collection-level and record-level permissions by role, regardless of
+which app made the request.
 
-```typescript
-// Both Main App and micro-app proxy to the SAME DaaS URL
-// app/api/items/[collection]/route.ts
-const DAAS_URL = process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL!; // Same URL everywhere
+The call path follows the same split as
+[authentication-proxy](../../authentication-proxy/SKILL.md):
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { collection } = await params;
-  const headers = await getAuthHeaders(); // Extract token from Supabase session
+| Caller                                            | Path                                          |
+| ------------------------------------------------- | --------------------------------------------- |
+| Buildpad UI components (`CollectionList`, `VForm`) | Direct to DaaS, through `DaaSProvider`.       |
+| Your own hand-written fetches                      | Through a proxy route in the same app.        |
 
-  // DaaS RBAC determines which records the user can see
-  const response = await fetch(
-    `${DAAS_URL}/items/${collection}?${searchParams.toString()}`,
-    { headers },
-  );
-
-  return NextResponse.json(await response.json(), { status: response.status });
-}
-```
-
-The DaaS backend enforces collection-level and record-level permissions based on the authenticated user's role, regardless of which app (Main or micro) made the request.
+Do not create `/api/items/[collection]/route.ts` unless the app has hand-written data
+calls. `DaaSProvider.getHeaders` is what sends `X-Resource-Uri` on the direct path;
+a proxy route in front of a Buildpad component only adds a layer it never uses.
 
 ## Security Checklist
 

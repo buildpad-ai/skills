@@ -30,7 +30,7 @@ Each micro-app maps to a **bounded context** — a cohesive set of collections m
 - **Overlapping ownership**: Two micro-apps both writing to the same collection — assign clear ownership
 - **Nano-services**: One collection per micro-app — too much overhead
 - **Circular dependencies**: App A depends on App B's collections which depend on App A's collections
-- **Creating data proxy routes**: Adding Next.js proxy routes for DaaS items/fields/files — call DaaS directly instead
+- **A proxy route for a Buildpad component**: Buildpad components call DaaS through `DaaSProvider`. Add a proxy route only for hand-written fetches.
 
 ## Shared DaaS Instance
 

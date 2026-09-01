@@ -18,7 +18,7 @@ Set up a **client-side composition** architecture where a **Main App** hosts ind
 6. **SSR for Both Layers**: Both Main App pages and micro-app pages use Next.js SSR. The Main App renders the shell layout server-side; the iframe triggers a separate SSR request for the micro-app.
 7. **Auth Proxy in Every App**: Both the Main App and each micro-app must have their own `/api/auth/*` proxy routes. They share the same Supabase project but each app validates sessions independently via server-side middleware.
 8. **Sandbox Security**: Iframes use `sandbox="allow-scripts allow-same-origin allow-forms allow-popups"` to restrict capabilities while allowing necessary functionality.
-9. **Single Shared DaaS Backend**: All apps (Main App + micro-apps) MUST share the same `NEXT_PUBLIC_BUILDPAD_DAAS_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. There is only ONE DaaS backend instance. Each app calls the shared DaaS backend **directly** using `Authorization: Bearer <supabase-jwt>` headers — no Next.js proxy routes needed for data. Set `CORS_ORIGINS` in the DaaS `.env` to include all app origins.
+9. **Single Shared DaaS Backend**: All apps (Main App + micro-apps) MUST share the same `NEXT_PUBLIC_BUILDPAD_DAAS_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. There is only ONE DaaS backend instance. **Buildpad UI components call DaaS directly** through `DaaSProvider` (which sends `Authorization: Bearer <supabase-jwt>` and `X-Resource-Uri`); **hand-written fetches go through a proxy route in the same app**. This is the same split as [authentication-proxy](../authentication-proxy/SKILL.md). Do not generate `/api/items/[collection]/route.ts` unless the app has hand-written data calls. Set `CORS_ORIGINS` in the DaaS `.env` to include all app origins.
 10. **Fallback UI**: Always show a loading skeleton inside the iframe container while the micro-app loads, and display an error boundary if the iframe fails to load.
 11. **Main App Is a Full App**: The Main App is NOT just a thin shell — it can have its own pages, collections, and data. It additionally serves as the host for micro-app iframes.
 12. **No Native Browser Dialogs in Micro-Apps**: `window.confirm()`, `window.alert()`, and `window.prompt()` are **blocked inside iframes** by the browser sandbox. Micro-apps MUST use Mantine `Modal` (or `modals.openConfirmModal` from `@mantine/modals`) for confirmation dialogs, alerts, and user input prompts. Never rely on native browser dialogs in any micro-app code.
@@ -48,7 +48,7 @@ All apps connect to the SAME backend:
 ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
 │  Main App   │  │  Micro-App  │  │  Micro-App  │
 │  (Next.js)  │  │  A (Next.js)│  │  B (Next.js)│
-│  /api/items │  │  /api/items │  │  /api/items │
+│ own cookie  │  │ own cookie  │  │ own cookie  │
 └──────┬──────┘  └──────┬──────┘  └──────┬──────┘
        │                │                │
        └────────────────┼────────────────┘
@@ -73,7 +73,7 @@ User → Main App (SSR) → Render AdminShell with <iframe src>
                          ↓
                   Browser loads iframe → Micro-App (SSR) → Render page inside iframe
                                          ↓
-                  Micro-App /api/items/* → Single shared DaaS Backend → Supabase DB
+                  Micro-App components → Single shared DaaS Backend → Supabase DB
 ```
 
 ## Implementation Steps
@@ -899,48 +899,20 @@ export const HOST_ORIGIN =
 >
 > Write the actual resolved values into `config/app-urls.ts` as the default fallbacks, and write the actual infrastructure values into `.env.local`. The env var override name for microapps is `NEXT_PUBLIC_` + name uppercased with hyphens as underscores + `_URL` (e.g., `users-app` → `NEXT_PUBLIC_USERS_APP_URL`).
 
-### Step 7: API Proxy Routes (Both Apps)
+### Step 7: Proxy Routes for Your Own Code (Only If Needed)
 
-Both Main App and micro-apps use the same proxy pattern pointing to the same DaaS:
+Buildpad UI components (`CollectionList`, `VForm`) call DaaS **directly** from the
+browser through `DaaSProvider`, which supplies the `Authorization: Bearer` and
+`X-Resource-Uri` headers. They must not be proxied.
 
-```typescript
-// app/api/items/[collection]/route.ts  (same in Main App and each micro-app)
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthHeaders } from '@/lib/api/auth-headers';
+Hand-written `fetch` calls in your own code go through a Next.js proxy route in the
+same app, exactly as in
+[authentication-proxy](../authentication-proxy/SKILL.md).
 
-const DAAS_URL = process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL!;
+**Do not generate `app/api/items/[collection]/route.ts` unless the app actually has
+hand-written data calls.** Generating it by default adds a layer that the Buildpad
+components never use, and it contradicts the direct-call rule.
 
-type RouteParams = { params: Promise<{ collection: string }> };
-
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { collection } = await params;
-  const headers = await getAuthHeaders();
-  const { searchParams } = new URL(request.url);
-
-  const response = await fetch(
-    `${DAAS_URL}/items/${collection}?${searchParams.toString()}`,
-    { headers },
-  );
-
-  const data = await response.json();
-  return NextResponse.json(data, { status: response.status });
-}
-
-export async function POST(request: NextRequest, { params }: RouteParams) {
-  const { collection } = await params;
-  const headers = await getAuthHeaders();
-  const body = await request.json();
-
-  const response = await fetch(`${DAAS_URL}/items/${collection}`, {
-    method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  const data = await response.json();
-  return NextResponse.json(data, { status: response.status });
-}
-```
 
 ### Step 8: Add Playwright Tests
 
@@ -1017,7 +989,7 @@ my-app/                                    # Main App
 │   │   │   ├── logout/route.ts
 │   │   │   ├── user/route.ts
 │   │   │   └── callback/route.ts
-│   │   └── items/[collection]/route.ts    # DaaS proxy (same backend)
+│   │   └── items/[collection]/route.ts    # ONLY if this app has hand-written fetches
 │   └── auth/
 │       └── login/page.tsx                 # Login page
 ├── components/
@@ -1046,7 +1018,7 @@ users-microapp/                            # Independent micro-app
 │   │   │   ├── user/route.ts
 │   │   │   ├── set-session/route.ts       # Cross-domain auth bridge (Amplify)
 │   │   │   └── logout/route.ts            # Clears THIS app's own cookies on LOGOUT
-│   │   └── items/[collection]/route.ts    # DaaS proxy (SAME backend as Main App)
+│   │   └── items/[collection]/route.ts    # ONLY if this app has hand-written fetches
 ├── hooks/
 │   └── useQueryParamSync.ts               # URL sync via postMessage
 ├── config/
@@ -1136,7 +1108,7 @@ The complete agent workflow with zero user input for URLs/credentials:
 5. Create MicroappIframe component (with MICROAPP_NEEDS_AUTH handler — always include)
 6. Create host route pages in Main App for each microapp
 7. Implement auth bridge in every micro-app (set-session route + iframe-aware login page)
-8. Set up URL syncing, API proxy routes
+8. Set up URL syncing (proxy routes only if the app has hand-written fetches)
 9. Write tests
 10. git push micro-app → Amplify deploys automatically
 11. Update Main App with new iframe integration → push → deploy
