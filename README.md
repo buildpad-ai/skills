@@ -90,8 +90,8 @@ The core methodology: every feature is specified as `requirements.md` (EARS) →
 | [add-buildpad](add-buildpad) | Install Buildpad UI Copy & Own components via CLI |
 | [add-files](add-files) | Scaffold the Files module: library, detail view, drag-and-drop upload |
 | [add-users](add-users) | Scaffold the Users module: /users, /roles, /policies admin pages with permissions matrix |
-| [add-microapp](add-microapp) | Microapp architecture: Main App + micro-apps on one DaaS backend |
-| [add-microfrontend](add-microfrontend) | Micro-frontend architecture via client-side iframe composition |
+| [add-microapp](add-microapp) | Domain boundaries and repo bootstrap: Main App + micro-apps on one DaaS backend (load first) |
+| [add-microfrontend](add-microfrontend) | The composition mechanism: iframe host, postMessage bridge, auth/URL/scope syncing, CSP (load second) |
 | [add-multitenancy](add-multitenancy) | Multi-tenancy (delegates to manage-scope) |
 | [add-external-oauth](add-external-oauth) | External OAuth/OIDC identity provider integration with PKCE proxy flow |
 | [worker-messaging](worker-messaging) | Offload long-running work to a Buildpad runtime worker over RabbitMQ (topic-exchange job convention; Next.js producer + worker consumer/chaining; connection via Platform MCP) |

@@ -1,4 +1,3 @@
-````markdown
 # Context Discovery & Auto-Configuration
 
 ## Overview
@@ -56,125 +55,30 @@ interface ProjectDetail {
 
 ## Deriving Configuration from Context
 
-Configuration is split into two categories:
+Configuration is split in two:
 
-| Category                                                                        | Where It Lives                          | Why                                                                                    |
-| ------------------------------------------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------- |
-| **Infrastructure secrets** (Supabase URL, anon key, service role key, DaaS URL) | `.env.local` + Amplify console env vars | Sensitive credentials — never committed to git                                         |
-| **Application URLs** (Main App URL, microapp URLs)                          | `config/app-urls.ts` committed to git   | Dynamic URLs that must be available at Amplify build time without manual env var setup |
+| Category                                                          | Where it lives                            | Why                                                             |
+| ----------------------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------- |
+| Infrastructure secrets (Supabase URL, keys, DaaS URL)             | `.env.local` and the Amplify console      | Sensitive. Never committed.                                      |
+| Application URLs (Main App URL, micro-app URLs, host origin)      | `config/app-urls.ts`, committed to git    | Must exist at Amplify build time with no console configuration.  |
 
-### Infrastructure Environment Variables (`.env.local` + Amplify Console)
+The file shapes, the generation rules, and the failure modes are in one place:
+[app-urls config](app-urls-config.instructions.md).
 
-Use the response to auto-populate `.env.local` for any app — **never ask the user for these values**:
-
-#### Main App `.env.local`
-
-```env
-# Auto-populated from get_project_detail → project.* (also set in Amplify console)
-NEXT_PUBLIC_SUPABASE_URL={{project.supabaseUrl}}
-NEXT_PUBLIC_SUPABASE_ANON_KEY={{project.supabaseAnonKey}}
-SUPABASE_SERVICE_ROLE_KEY={{project.supabaseServiceRoleKey}}
-NEXT_PUBLIC_BUILDPAD_DAAS_URL={{project.daasUrl}}
-
-# Optional: local dev overrides for app URLs (overrides config/app-urls.ts defaults)
-# NEXT_PUBLIC_HOST_ORIGIN=http://localhost:3000
-# NEXT_PUBLIC_USERS_APP_URL=http://localhost:3001
-```
-
-#### Micro-App `.env.local`
-
-```env
-# Auto-populated — same shared backend for all apps (also set in Amplify console)
-NEXT_PUBLIC_SUPABASE_URL={{project.supabaseUrl}}
-NEXT_PUBLIC_SUPABASE_ANON_KEY={{project.supabaseAnonKey}}
-NEXT_PUBLIC_BUILDPAD_DAAS_URL={{project.daasUrl}}
-
-# Optional: local dev override for host origin (overrides config/app-urls.ts default)
-# NEXT_PUBLIC_HOST_ORIGIN=http://localhost:3000
-```
-
-### Application URL Config (Committed to Git — `config/app-urls.ts`)
-
-App URLs (Main App + microapp Amplify URLs) are stored in a **committed TypeScript config file** rather than environment variables. This ensures URLs are available at Amplify build time without manual env var setup in the Amplify console.
-
-Environment variables serve as **optional overrides** for local development (e.g., `localhost` URLs).
-
-#### Main App `config/app-urls.ts`
-
-```typescript
-// config/app-urls.ts
-// Auto-generated from get_project_detail. Committed to git.
-//
-// These URLs are baked into the build so Amplify deployments work without
-// manually setting URL env vars in the Amplify console.
-//
-// For local development, override via .env.local:
-//   NEXT_PUBLIC_HOST_ORIGIN=http://localhost:3000
-//   NEXT_PUBLIC_USERS_APP_URL=http://localhost:3001
-
-/** Main App deployed URL */
-export const MAIN_APP_URL =
-  process.env.NEXT_PUBLIC_HOST_ORIGIN || '{{project.mainAmplifyUrl}}';
-
-/** Microapp deployed URLs (used as iframe src in the Main App) */
-export const MICROAPP_URLS = {
-  {{#each microapps}}
-  '{{name}}': process.env.NEXT_PUBLIC_{{UPPERCASE(name)}}_URL || '{{amplifyUrl}}',
-  {{/each}}
-} as const;
-
-export type MicroappKey = keyof typeof MICROAPP_URLS;
-```
-
-#### Micro-App `config/app-urls.ts`
-
-```typescript
-// config/app-urls.ts
-// Auto-generated from get_project_detail. Committed to git.
-//
-// For local development, override via .env.local:
-//   NEXT_PUBLIC_HOST_ORIGIN=http://localhost:3000
-
-/** Main App URL (host origin for postMessage security validation) */
-export const HOST_ORIGIN =
-  process.env.NEXT_PUBLIC_HOST_ORIGIN || "{{project.mainAmplifyUrl}}";
-```
-
-> **⚠️ CRITICAL — `config/app-urls.ts` Generation Rules:**
->
-> 1. The **hardcoded string literal** (right side of `||`) MUST be the **actual deployed Amplify URL** resolved from `get_project_detail`. NEVER use `localhost`, `127.0.0.1`, or any placeholder URL as the hardcoded default.
-> 2. The **env var** (left side of `||`) is a **single** `process.env.NEXT_PUBLIC_*` override for local development. NEVER chain multiple env vars.
-> 3. Each export line must have **exactly one** `process.env.*` and **exactly one** hardcoded URL string.
->
-> ```typescript
-> // ❌ WRONG — localhost as default, chained env vars
-> process.env.NEXT_PUBLIC_HOST_ORIGIN || process.env.NEXT_PUBLIC_HOST_ORIGIN_MAIN || 'http://localhost:3000'
->
-> // ❌ WRONG — localhost as default
-> 'users-app': process.env.NEXT_PUBLIC_USERS_APP_URL || 'http://localhost:3001',
->
-> // ✅ CORRECT — actual Amplify URL as default, single env var override
-> process.env.NEXT_PUBLIC_HOST_ORIGIN || 'https://main.d1234abcde.amplifyapp.com'
-> 'users-app': process.env.NEXT_PUBLIC_USERS_APP_URL || 'https://main.d5678fghij.amplifyapp.com',
-> ```
-
-> **Why this pattern?** Infrastructure variables (Supabase, DaaS) are static and set once when the Amplify app is created. But app URLs change whenever a microapp is added — storing them in committed code means a `git push` is all that's needed to propagate URL changes through Amplify builds.
 
 ### Service Registry (Auto-Generated `lib/services.ts`)
 
 Generate the service registry from the microapps list, importing URLs from the committed config:
 
 ```typescript
-// lib/services.ts — auto-generated from get_project_detail response
-import { MICROAPP_URLS, type MicroappKey } from '@/config/app-urls';
+// lib/services.ts — generated from the get_project_detail response.
+import { MICROAPP_URLS } from '@/config/app-urls';
 
 export const MICRO_APPS = {
-  {{#each microapps}}
-  '{{name}}': {
-    url: MICROAPP_URLS['{{name}}'],
-    label: '{{titleCase(name)}}',
-  },
-  {{/each}}
+  // AGENT: replace this block with one entry per item in microapps[].
+  // Keep the shape exactly. Do not emit template syntax into a TypeScript file.
+  'users-app': { url: MICROAPP_URLS['users-app'], label: 'Users' },
+  'billing-app': { url: MICROAPP_URLS['billing-app'], label: 'Billing' },
 } as const;
 
 export type MicroAppKey = keyof typeof MICRO_APPS;
@@ -259,4 +163,3 @@ If any critical value is missing, report it to the user with a specific remediat
 | Skipping context discovery           | All subsequent steps use wrong/placeholder values | Always call `get_project_detail` first  |
 | Using placeholder env vars           | App won't connect to real backend                 | Derive all from context response        |
 | Manually constructing Amplify URLs   | URL format may change                             | Use resolved `amplifyUrl` from tool     |
-````

@@ -1,4 +1,3 @@
-````markdown
 # Service Boundary Patterns
 
 ## Overview
@@ -177,4 +176,3 @@ Team adds field to 'profiles' collection
   → Notify consuming teams (Billing may display user data)
   → All apps pull latest shared-types
 ```
-````
