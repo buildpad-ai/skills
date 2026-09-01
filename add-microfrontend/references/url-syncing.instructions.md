@@ -41,12 +41,9 @@ export function useQueryParamSync({
   const searchParams = useSearchParams();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Notify host on mount
-  useEffect(() => {
-    if (window.parent !== window) {
-      window.parent.postMessage({ type: "MICROAPP_LOADED" }, hostOrigin);
-    }
-  }, [hostOrigin]);
+  // MICROAPP_LOADED is NOT sent from here. It belongs in MicroappBridgeProvider in the
+  // micro-app root layout, so that a page which does not use this hook still reports
+  // that it loaded. See iframe-composition.instructions.md.
 
   const updateQueryParams = useCallback(
     (params: Record<string, string | null>) => {
@@ -174,20 +171,30 @@ Internal micro-app params (e.g., `_tab`, `_modal`) are ignored by the host.
 
 ## Bidirectional Sync
 
-For host-to-micro-app sync (e.g., the Main App has a global filter), forward params via the iframe `src`:
+The iframe `src` carries the initial params **once**, at mount. After that, host-to-micro-app changes travel as a `SET_QUERY_PARAMS` message.
+
+> **Never recompute `src` from `searchParams`.** Doing so creates a loop: the micro-app posts `QUERY_PARAMS_CHANGE`, the host calls `router.replace()`, `searchParams` changes, the computed `src` changes, React writes the new `src` attribute, and the browser reloads the frame. Every debounced keystroke remounts the micro-app and drops focus and input state.
 
 ```typescript
-function buildIframeSrc(base, path, searchParams, allowedParams) {
-  const url = new URL(path, base);
-  for (const param of allowedParams) {
-    const value = searchParams.get(param);
-    if (value) url.searchParams.set(param, value);
+// Host: computed ONCE per (src, path). searchParams is deliberately not a dependency.
+const iframeSrc = useMemo(() => {
+  const url = new URL(path, src);
+  for (const [key, value] of Object.entries(initialParamsRef.current ?? {})) {
+    url.searchParams.set(key, value);
   }
   return url.toString();
-}
+}, [src, path]);
+
+// Host: a later change (browser back/forward, a host filter) is a message.
+useEffect(() => {
+  const current = pickParams(new URLSearchParams(searchParams.toString()), allowedParams);
+  if (serializeParams(current) === lastFromMicroappRef.current) return; // echo, skip
+  if (!loadedRef.current) return;
+  sendToMicroapp({ type: 'SET_QUERY_PARAMS', params: current });
+}, [searchParams, sendToMicroapp]);
 ```
 
-When the Main App URL changes (e.g., browser back/forward), the iframe `src` updates, causing a re-load of the micro-app with the correct params.
+The micro-app applies `SET_QUERY_PARAMS` with `router.replace()` and records the value, so `useQueryParamSync` does not post it straight back.
 
 ## Security
 
@@ -212,10 +219,22 @@ window.addEventListener("message", (event) => {
 });
 ```
 
+## Echo Suppression (required on both sides)
+
+Without this, the two apps push the same value back and forth forever.
+
+- The **host** records the set it received in `lastFromMicroappRef`. Before it sends `SET_QUERY_PARAMS`, it compares the current host params against that value and skips a match.
+- The **micro-app** records the set it received in `lastFromHostRef`. Before it posts `QUERY_PARAMS_CHANGE`, it compares and skips a match.
+
+## History
+
+Iframe navigations enter the browser's joint session history. Use `router.replace()` for search, filter, sort, and page changes on both sides, or the host back button walks through invisible micro-app states.
+
 ## Edge Cases
 
 1. **Rapid typing**: Debounce prevents flooding the host with messages (default: 300ms)
-2. **Browser back/forward**: Main App URL changes trigger iframe `src` update
-3. **Initial load**: Micro-app reads initial params from its own URL (forwarded by `buildIframeSrc`)
-4. **Empty params**: Explicitly delete params when value is null/empty to keep URLs clean
+2. **Browser back/forward**: the host sends `SET_QUERY_PARAMS`; the frame is not reloaded
+3. **Initial load**: the micro-app reads initial params from its own URL, baked into `src` at mount
+4. **Loaded late**: the host re-sends the current params on `MICROAPP_LOADED`, in case the host URL moved while the frame was loading
+5. **Empty params**: Explicitly delete params when value is null/empty to keep URLs clean
 ````

@@ -66,22 +66,26 @@ Always show a loading skeleton while the iframe content loads:
 
 ### Error Handling
 
-Handle iframe load failures gracefully:
+> **`<iframe onError>` is dead code.** It does not fire for HTTP errors, network failures, or a frame blocked by CSP. A cross-origin load failure is opaque to the host, so an `onError` handler never runs and the error `Alert` never shows.
+
+The only reliable failure signal is the **absence** of `MICROAPP_LOADED`. Use a watchdog:
 
 ```typescript
-<iframe
-  onError={() => {
-    setHasError(true);
-    setIsLoading(false);
-  }}
-/>
-
-{hasError && (
-  <Alert color="red" title="Failed to load">
-    The embedded application could not be loaded.
-  </Alert>
-)}
+useEffect(() => {
+  loadedRef.current = false;
+  setIsLoading(true);
+  setHasError(false);
+  const timer = setTimeout(() => {
+    if (!loadedRef.current) {
+      setHasError(true);
+      setIsLoading(false);
+    }
+  }, loadTimeoutMs); // default 15000, for a cold Amplify SSR start
+  return () => clearTimeout(timer);
+}, [iframeSrc, loadTimeoutMs, attempt]);
 ```
+
+`MICROAPP_ERROR` only helps when the micro-app already loaded, which is the case that is not an error. Send `MICROAPP_LOADED` from `MicroappBridgeProvider` in the micro-app **root layout**, not from `useQueryParamSync`: a page that does not use that hook would otherwise never report that it loaded.
 
 ## Navigation Patterns
 
