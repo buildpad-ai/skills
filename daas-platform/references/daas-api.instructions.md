@@ -340,16 +340,18 @@ Aggregate responses use a nested format (no pagination meta):
 | DELETE | `/api/relations/:id`                | Delete relation (admin)       |
 
 ### Files
- 
- | Method | Endpoint                 | Description                                  |
- | ------ | ------------------------ | -------------------------------------------- |
- | GET    | `/api/files`             | List files                                   |
- | POST   | `/api/files/signed-url`  | Request presigned upload URL & UUID          |
- | POST   | `/api/files`             | Register uploaded file metadata (or upload)  |
- | GET    | `/api/files/:id`         | Get file metadata                            |
- | PATCH  | `/api/files/:id`         | Update file metadata                         |
- | DELETE | `/api/files/:id`         | Delete file                                  |
- | POST   | `/api/files/import`      | Import from URL                              |
+
+| Method | Endpoint                  | Description                                                              |
+| ------ | ------------------------- | ------------------------------------------------------------------------ |
+| GET    | `/api/files`              | List files                                                               |
+| POST   | `/api/files`              | Upload file (multipart), or register a signed upload with `upload_token` |
+| POST   | `/api/files/signed-url`   | Mint a signed upload URL + `uploadToken` (DaaS ≥ 0.1.93)                 |
+| DELETE | `/api/files/signed-url`   | Discard an uploaded object that was never registered (`upload_token`)    |
+| GET    | `/api/files/:id`          | Get file metadata                                                        |
+| PATCH  | `/api/files/:id`          | Update file metadata                                                     |
+| DELETE | `/api/files/:id`          | Delete file                                                              |
+| GET    | `/api/files/:id/download` | Get a signed download URL                                                |
+| POST   | `/api/files/import`       | Import from URL                                                          |
 
 ### Assets (File Content)
 
