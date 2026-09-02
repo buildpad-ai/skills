@@ -72,19 +72,21 @@ DaaS supports named content versions with delta-based storage. Versions can be p
 
 **Status: Fully built-in. NEVER build custom file upload/storage.**
 
-DaaS provides comprehensive file management with Supabase Storage backend, including upload, metadata, thumbnails, and hierarchical folders.
+DaaS provides comprehensive file management with Supabase Storage backend, including upload, direct-to-storage signed uploads for large files (DaaS ≥ 0.1.93), metadata, thumbnails, and hierarchical folders.
 
 | What | How |
 |------|-----|
-| Upload file | `POST /api/files` (multipart) |
+| Upload file | `POST /api/files` (multipart) through the app's `/api/files` proxy |
+| Large upload, direct to storage (DaaS ≥ 0.1.93) | `POST /api/files/signed-url` → `PUT uploadUrl` → `POST /api/files` with `{ upload_token }` — `useFiles().uploadFiles` does this for you |
+| Discard a failed signed upload | `DELETE /api/files/signed-url` with `{ upload_token }` |
 | List/search files | `GET /api/files` with filters |
 | Create folders | `POST /api/folders` |
 | MCP tool | `mcp_daas_files` |
 | UI components | `FileInterface`, `FileImage`, `Files`, `Upload` from Buildpad |
 
-**Lifecycle events:** Folder CRUD operations emit `daas_folders.items.create/update/delete` events. File operations already emitted events via `FilesService`.
+**Lifecycle events:** Folder CRUD operations emit `daas_folders.items.create/update/delete` events. File operations emit events via `FilesService`.
 
-**DO NOT build:** custom upload API routes, custom file storage logic, custom thumbnail generation, custom folder management.
+**DO NOT build:** custom upload API routes (including minting your own signed URLs with `supabase.storage.createSignedUploadUrl`), custom file storage logic, direct inserts into `daas_files`, custom thumbnail generation, custom folder management. The app's `app/api/files/**` routes are thin proxies installed by the CLI, not places for upload logic.
 
 ---
 
