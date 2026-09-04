@@ -6,6 +6,12 @@ argument-hint: "[microapp name] [host route, e.g. /admin/users]"
 
 # Add Micro-Frontend (Iframe Composition)
 
+> **Composition mode.** For micro-apps that are Next.js apps built and deployed by this
+> project, [add-microfrontend-zones](../add-microfrontend-zones/SKILL.md) (Multi-Zones,
+> one origin, no iframe) is the default — field-tested 2–4× faster to first paint and
+> without the auth bridge. Use this skill when a micro-app is not a Next.js app, is
+> third-party or untrusted code, or must render inside a page of another app.
+
 This skill owns the **composition mechanism**: the host component, the bridge
 protocol, auth and URL and scope syncing, sandbox flags, and CSP.
 
