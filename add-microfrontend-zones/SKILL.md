@@ -10,7 +10,7 @@ Set up a **path-based composition** with Next.js Multi-Zones. The **Main App** i
 
 This skill is the default for Next.js micro-apps. The [`add-microfrontend`](../add-microfrontend/SKILL.md) skill (iframe composition) is the fallback. Read the next section before you start.
 
-**Field-tested.** On 2026-09-04 this skill was applied to three live Buildpad projects (`@buildpad/cli` 1.11.1, Next.js 16.3.3): a Main App plus the `users-management` and `files-management` micro-apps that had been composed with the iframe skill. All ten acceptance checks in `assets/tests/zones.spec.ts` passed on production builds. Cold time-to-shell on the Users module was 0.7 s (zones) against 2.9 s (iframe) on the same machine; the conversion deleted 3,266 lines of bridge code. Every rule marked *(trial)* below exists because the first draft got it wrong.
+**Field-tested.** On 2026-09-04 this skill was applied to three live Buildpad projects (`@buildpad/cli` 1.11.1, Next.js 16.3.3): a Main App plus the `users-management` and `files-management` micro-apps that had been composed with the iframe skill. All eleven acceptance checks in `assets/tests/zones.spec.ts` passed on local production builds and again on the deployed Amplify origin, in Chromium and WebKit. Cold time-to-shell on the Users module: 0.7 s zones vs 2.9 s iframe on the same machine, and **0.54 s vs 2.33 s on the deployed origins** (Files 0.50 s vs 2.78 s); the conversion deleted 3,266 lines of bridge code. Every rule marked *(trial)* below exists because the first draft got it wrong.
 
 ## Choose the composition mode
 
@@ -495,7 +495,7 @@ Do not forward the viewer `Host` header. Forward cookies and query strings. Keep
 
 Amplify "Rewrites and redirects" 200 rules can also proxy a path to an external URL. They reach public targets only, and CloudFront drops some request headers on the way. Use them only if `next.config.ts` rewrites fail on Amplify.
 
-The 2026-09-04 trial verified Steps 1–10 on production builds behind a local Main App; the Amplify rewrite path itself was not exercised, because deploying the trial branches would have replaced the live iframe apps. Verify it with `assets/tests/zones.spec.ts` against the deployed origin (`ZONES_BASE=https://…`) on the first deployment.
+Verified on Amplify (2026-09-04): `next.config.ts` rewrites from the Main App's compute reach the zone apps unchanged — a zone chunk requested through the Main App answers `200` with `cache-control: public, max-age=31536000, immutable` (`x-cache: Miss from cloudfront`, i.e. served by the rewrite), cookies and `Set-Cookie` pass through, and the login bounce lands on the public origin from a zone opened directly. Run `assets/tests/zones.spec.ts` against the deployed origin (`ZONES_BASE=https://…`, `--project chromium` and `--project webkit`) after every first deployment of a new zone.
 
 ### End-to-End Automated Workflow Summary
 

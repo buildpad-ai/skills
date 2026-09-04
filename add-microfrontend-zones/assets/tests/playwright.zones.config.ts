@@ -8,6 +8,7 @@ export default defineConfig({
   timeout: 120_000,
   retries: 0,
   reporter: [['list']],
+  // `--project chromium` for the default run; `--project webkit` for the Safari pass.
   use: {
     baseURL: process.env.ZONES_BASE || 'http://localhost:3000',
   },
@@ -16,6 +17,11 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, storageState: 'playwright/.auth/zones-user.json' },
+      dependencies: ['setup'],
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'], storageState: 'playwright/.auth/zones-user.json' },
       dependencies: ['setup'],
     },
   ],
