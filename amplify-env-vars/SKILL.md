@@ -1,6 +1,6 @@
 ---
 name: amplify-env-vars
-description: Manage AWS Amplify environment variables for the project's main app or a microservice via Buildpad platform MCP tools (amplify_get_env_vars, amplify_set_env_vars). Use when a deployment needs env vars read, set, updated, or removed without opening the Amplify Console.
+description: Manage AWS Amplify environment variables for the project's main app or a microapp via Buildpad platform MCP tools (amplify_get_env_vars, amplify_set_env_vars). Use when a deployment needs env vars read, set, updated, or removed without opening the Amplify Console.
 ---
 
 # Amplify Environment Variables — Agentic Management via MCP Tools

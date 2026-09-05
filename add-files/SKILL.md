@@ -23,7 +23,7 @@ Like all Buildpad UI, the Files module is CLI-installed and owned as source. Do 
 node --version && pnpm --version && npx --version
 ```
 
-Requires Node.js v24 LTS and pnpm v10+ (see [add-buildpad](../add-buildpad/SKILL.md) for install guidance). The module **must** render under the authenticated layout (`buildpad init` generates `app/(authenticated)/` with a `DaaSProviderWrapper`) so `DaaSProvider` header injection is in scope — the hooks call your `/api/files/*`, `/api/folders/*`, and `/api/assets/*` proxy routes.
+Requires Node.js v24 LTS and pnpm v10+ (see [add-buildpad](../add-buildpad/SKILL.md) for install guidance). The module **must** render under the authenticated layout (`buildpad init` generates `app/(authenticated)/` with a `DaaSProviderWrapper`) so `DaaSProvider` header injection is in scope — the hooks call your `/api/files/*`, `/api/folders/*`, and `/api/assets/*` proxy routes. Inside the module use `useDaaSContext` (it throws when mounted outside the wrapper, which surfaces the layout mistake early); `useDaaSContextOptional` exists for components that must also render without a provider.
 
 **DaaS CORS must be configured first.** `FileManager`/`FileDetail` fetch authenticated DaaS endpoints (`/users/me`, `/permissions/me`, file/folder items) from the browser with `credentials: 'include'`. DaaS's default `cors_origins: ["*"]` is **incompatible** with credentialed requests — the browser blocks every preflight (`Access-Control-Allow-Origin header must not be the wildcard '*'`). Set explicit origins before mounting the module (see [daas-platform](../daas-platform/SKILL.md) "CORS must use explicit origins" — Bugs 17+25 — and [debugging-and-error-recovery](../debugging-and-error-recovery/SKILL.md)). This is not Files-specific: it affects every authenticated Buildpad component.
 
@@ -44,7 +44,27 @@ npx @buildpad/cli@latest add api-routes --cwd /path/to/project
 
 > **If the CLI command fails, `@buildpad/cli` IS published to npm** — verify with `npm view @buildpad/cli version` before assuming otherwise or reaching for a local clone. The CLI fetches its registry from `raw.githubusercontent.com`, so confirm the environment can reach **both** npm and the GitHub raw CDN. A local clone is only needed for CLI development, never to consume components.
 
-`api-routes` includes exactly the routes this module needs: `app/api/files/route.ts`, `app/api/files/[id]/route.ts`, `app/api/files/import/route.ts`, `app/api/folders/route.ts`, `app/api/folders/[id]/route.ts`, and `app/api/assets/[id]/route.ts`.
+`api-routes` includes exactly the routes this module needs: `app/api/files/route.ts`, `app/api/files/[id]/route.ts`, `app/api/files/[id]/download/route.ts`, `app/api/files/import/route.ts`, `app/api/folders/route.ts`, `app/api/folders/[id]/route.ts`, and `app/api/assets/[id]/route.ts`. Each one is a thin proxy that forwards the request and the session's `Authorization` header to DaaS — none of them talks to Supabase Storage or `daas_files` directly. CLI releases that ship the direct-to-storage upload add one more proxy, `app/api/files/signed-url/route.ts` (see below).
+
+## How Uploads Work
+
+Uploads go through `useFiles().uploadFiles` — never hand-write the upload flow or the routes behind it.
+
+On CLI releases up to 2.2.0 the hook sends `multipart/form-data` to `POST /api/files`; the proxy forwards it to DaaS, which stores the object in Supabase Storage and creates the `daas_files` record. Both hops buffer the whole body, so uploads are bounded by the request body limit.
+
+DaaS 0.1.93 added a direct-to-storage path for large files. CLI releases that ship `app/api/files/signed-url/route.ts` (a proxy to DaaS `POST`/`DELETE /api/files/signed-url`) use it from `uploadFiles` automatically:
+
+1. `POST /api/files/signed-url` with `{ filename_download, type, filesize, folder? }` — the first three are required, and `folder` must be an existing `daas_folders` id — returns `201 { data: { uploadUrl, token, uploadToken, primaryKey, storagePath, filenameDisk, storageBucket } }`.
+2. `PUT uploadUrl` with the raw bytes and `Content-Type: file.type`. This request goes to the Supabase Storage origin, not to your app, so **that host must allow cross-origin `PUT` from the app origin** — otherwise step 1 succeeds and step 2 fails with a CORS error.
+3. `POST /api/files` (JSON) with `{ upload_token: uploadToken, filename_download, title?, description? }` returns `201 { data: <file> }`. DaaS takes `id`, `filename_disk`, `storage`, and `folder` from the token and reads `filesize` and `type` back from the stored object — any of those fields sent by the client are ignored.
+
+If step 2 or 3 fails, the hook calls `DELETE /api/files/signed-url` with `{ upload_token }` (`204`) so the object is not orphaned in the bucket. Tokens are bound to the user who requested them, expire after two hours, and are single-use.
+
+Against a DaaS instance older than 0.1.93 (no `/api/files/signed-url`), the hook detects the `404` on the first upload and falls back to multipart for the rest of the session. No configuration is needed either way.
+
+Size and MIME limits come from the Supabase bucket (Supabase Studio → bucket settings), falling back to the DaaS env vars `FILES_MAX_UPLOAD_SIZE` (default 100 MB) and `FILES_MIME_TYPE_ALLOW_LIST` (default: all types). `FILES_STORAGE_BUCKET_ALLOW_LIST` limits which buckets a signed upload may target (default `files`).
+
+**Never insert into `daas_files` directly, and never mint signed URLs from the app.** Bypassing DaaS skips its permission, size, type, bucket, and ownership checks, and the column default `storage = 'local'` names a bucket that does not exist — every later `/api/assets/:id` call then fails with `FILE_NOT_FOUND` ("Failed to retrieve file"). Through DaaS, `storage` comes from the upload token and defaults to the `files` bucket.
 
 ## The Routes
 
@@ -142,6 +162,8 @@ import { getAssetUrl } from "@/lib/buildpad/types";
 getAssetUrl(id, { width: 240, height: 240, fit: "cover" }); // grid thumbnail
 getAssetUrl(id, { download: true });                         // download link
 ```
+
+Never put a raw DaaS URL (`https://<daas-host>/api/assets/:id`) in an `<img src>`, `<video src>`, `<iframe src>`, or `<a href>`: the browser sends no `Authorization` header, so DaaS answers `401 Unauthorized`. Always go through the app's `/api/assets/[id]` proxy, which attaches the session token — `getAssetUrl` already builds those URLs (`getAssetUrl(id)` for previews, `getAssetUrl(id, { download: true })` for downloads).
 
 ## Preview Behaviour (Details tab)
 

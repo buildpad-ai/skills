@@ -725,59 +725,117 @@ export async function PATCH(request: NextRequest) {
 
 ## Files API Endpoints
 
-### Upload Files
+File routes in a Buildpad app are **proxies**. DaaS owns upload, storage, metadata, permissions, and the size/MIME limits — see [builtin-features](../../daas-platform/references/builtin-features.instructions.md) ("NEVER build custom file upload/storage"). `npx @buildpad/cli@latest add api-routes` installs them; the examples below show what those templates do so you can recognise them and never re-implement them.
+
+### Upload and Register — `app/api/files/route.ts`
+
+`POST /api/files` accepts two bodies, and the proxy forwards either one untouched:
+
+- `multipart/form-data` with a `file` part (plus optional `title`, `description`, `folder`, `storage`) — DaaS stores the object and creates the `daas_files` record. Both hops buffer the body, so this path is bounded by the request body limit.
+- JSON `{ upload_token, filename_download, title?, description? }` — registers a file already uploaded through a signed URL (next section). DaaS takes `id`, `filename_disk`, `storage`, and `folder` from the token and reads `filesize` and `type` back from the stored object; client values for those fields are ignored. A JSON post without a token from a non-admin has `id`, `filename_disk`, `storage`, and `filesize` stripped, so a caller cannot point a record at an arbitrary storage object.
 
 ```typescript
-// app/api/files/route.ts
+// app/api/files/route.ts — installed by `add api-routes`
+import { type NextRequest, NextResponse } from "next/server";
+import { getAuthHeaders, getDaasUrl } from "@/lib/api/auth-headers";
+
+export async function GET(request: NextRequest) {
+  try {
+    const daasUrl = getDaasUrl();
+    const headers = await getAuthHeaders();
+    const searchParams = request.nextUrl.searchParams.toString();
+    const url = `${daasUrl}/api/files${searchParams ? `?${searchParams}` : ""}`;
+
+    const response = await fetch(url, { headers, cache: "no-store" });
+    const data = await response.json();
+    return NextResponse.json(data, { status: response.status });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Proxy error";
+    return NextResponse.json({ errors: [{ message }] }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  try {
+    const daasUrl = getDaasUrl();
+    // Forward the Authorization header and the body exactly as received.
+    // Do not parse the body here: multipart keeps its boundary and JSON
+    // keeps its upload_token — DaaS validates both.
+    const authHeaders = await getAuthHeaders();
+    const headers: Record<string, string> = {};
+    if (authHeaders["Authorization"]) {
+      headers["Authorization"] = authHeaders["Authorization"];
+    }
+    const contentType = request.headers.get("content-type");
+    if (contentType) headers["Content-Type"] = contentType;
 
-  if (error || !user) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    const body = await request.arrayBuffer();
+    const response = await fetch(`${daasUrl}/api/files`, {
+      method: "POST",
+      headers,
+      body,
+      cache: "no-store",
+    });
+
+    const data = await response.json();
+    return NextResponse.json(data, { status: response.status });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Proxy error";
+    return NextResponse.json({ errors: [{ message }] }, { status: 500 });
   }
-
-  const formData = await request.formData();
-  const file = formData.get("file") as File;
-  const folder = formData.get("folder") as string | null;
-  const title = formData.get("title") as string | null;
-
-  if (!file) {
-    return NextResponse.json({ error: "No file provided" }, { status: 400 });
-  }
-
-  // Upload to Supabase Storage
-  const filename = `${Date.now()}-${file.name}`;
-  const { data: uploadData, error: uploadError } = await supabase.storage
-    .from("files")
-    .upload(filename, file);
-
-  if (uploadError) throw uploadError;
-
-  // Create metadata record
-  const { data, error: dbError } = await supabase
-    .from("daas_files")
-    .insert({
-      filename_disk: uploadData.path,
-      filename_download: file.name,
-      title: title || file.name,
-      type: file.type,
-      filesize: file.size,
-      folder,
-      uploaded_by: user.id,
-      uploaded_on: new Date().toISOString(),
-    })
-    .select()
-    .single();
-
-  if (dbError) throw dbError;
-
-  return NextResponse.json({ data }, { status: 201 });
 }
 ```
+
+### Direct-to-Storage Upload — `app/api/files/signed-url/route.ts`
+
+Requires DaaS ≥ 0.1.93. Large files skip both request-body limits by going straight to Supabase Storage. `useFiles().uploadFiles` performs the three client-visible steps; the app route only proxies step 1 and the cleanup call:
+
+1. `POST /api/files/signed-url` with `{ filename_download, type, filesize, folder?, storage? }` → `201 { data: { uploadUrl, token, uploadToken, primaryKey, storagePath, filenameDisk, storageBucket } }`. DaaS checks `create` permission on `daas_files`, the bucket allow-list (`FILES_STORAGE_BUCKET_ALLOW_LIST`, default `files`), and the bucket's size and MIME limits before minting the URL with its service-role client.
+2. `PUT uploadUrl` with the raw bytes and `Content-Type: <file type>`. This goes to the storage host, which must allow cross-origin `PUT` from the app origin.
+3. `POST /api/files` (JSON) with `upload_token` — see above.
+
+If step 2 or 3 fails: `DELETE /api/files/signed-url` with `{ upload_token }` → `204` removes the orphaned object. It needs only the token (not `create` permission) and is refused once the file has been registered. Tokens are bound to the requesting user, valid for two hours, and single-use.
+
+```typescript
+// app/api/files/signed-url/route.ts — proxy for POST and DELETE
+import { type NextRequest, NextResponse } from "next/server";
+import { getAuthHeaders, getDaasUrl } from "@/lib/api/auth-headers";
+
+async function proxy(request: NextRequest, method: "POST" | "DELETE") {
+  try {
+    const daasUrl = getDaasUrl();
+    const headers = await getAuthHeaders();
+
+    const body = await request.text();
+    const response = await fetch(`${daasUrl}/api/files/signed-url`, {
+      method,
+      headers: { ...headers, "Content-Type": "application/json" },
+      body,
+      cache: "no-store",
+    });
+
+    if (response.status === 204) {
+      return new NextResponse(null, { status: 204 });
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data, { status: response.status });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Proxy error";
+    return NextResponse.json({ errors: [{ message }] }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  return proxy(request, "POST");
+}
+
+export async function DELETE(request: NextRequest) {
+  return proxy(request, "DELETE");
+}
+```
+
+**Do not** mint signed URLs from the app with `supabase.storage.createSignedUploadUrl`, and do not insert into `daas_files` from the app. That skips DaaS's permission, size, MIME, bucket, and folder checks, lets any signed-in user register a record that points at somebody else's object, and leaves `storage` at the column default `'local'` — a bucket that does not exist — so every `/api/assets/:id` call fails with `FILE_NOT_FOUND`.
 
 ## Permissions Check
 

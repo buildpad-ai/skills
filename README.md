@@ -94,6 +94,7 @@ The core methodology: every feature is specified as `requirements.md` (EARS) →
 | [add-microfrontend](add-microfrontend) | The composition mechanism: iframe host, postMessage bridge, auth/URL/scope syncing, CSP (load second) |
 | [add-multitenancy](add-multitenancy) | Multi-tenancy (delegates to manage-scope) |
 | [add-external-oauth](add-external-oauth) | External OAuth/OIDC identity provider integration with PKCE proxy flow |
+| [add-i18n](add-i18n) | Internationalization: `app/[lang]` routing, middleware locale negotiation, dictionaries + I18nProvider, LanguageSwitcher, DaaS content translations |
 | [worker-messaging](worker-messaging) | Offload long-running work to a Buildpad runtime worker over RabbitMQ (topic-exchange job convention; Next.js producer + worker consumer/chaining; connection via Platform MCP) |
 
 ### DaaS platform reference

@@ -72,19 +72,21 @@ DaaS supports named content versions with delta-based storage. Versions can be p
 
 **Status: Fully built-in. NEVER build custom file upload/storage.**
 
-DaaS provides comprehensive file management with Supabase Storage backend, including upload, metadata, thumbnails, and hierarchical folders.
+DaaS provides comprehensive file management with Supabase Storage backend, including upload, direct-to-storage signed uploads for large files (DaaS ≥ 0.1.93), metadata, thumbnails, and hierarchical folders.
 
 | What | How |
 |------|-----|
-| Upload file | `POST /api/files` (multipart) |
+| Upload file | `POST /api/files` (multipart) through the app's `/api/files` proxy |
+| Large upload, direct to storage (DaaS ≥ 0.1.93) | `POST /api/files/signed-url` → `PUT uploadUrl` → `POST /api/files` with `{ upload_token }` — `useFiles().uploadFiles` does this for you |
+| Discard a failed signed upload | `DELETE /api/files/signed-url` with `{ upload_token }` |
 | List/search files | `GET /api/files` with filters |
 | Create folders | `POST /api/folders` |
 | MCP tool | `mcp_daas_files` |
 | UI components | `FileInterface`, `FileImage`, `Files`, `Upload` from Buildpad |
 
-**Lifecycle events:** Folder CRUD operations emit `daas_folders.items.create/update/delete` events. File operations already emitted events via `FilesService`.
+**Lifecycle events:** Folder CRUD operations emit `daas_folders.items.create/update/delete` events. File operations emit events via `FilesService`.
 
-**DO NOT build:** custom upload API routes, custom file storage logic, custom thumbnail generation, custom folder management.
+**DO NOT build:** custom upload API routes (including minting your own signed URLs with `supabase.storage.createSignedUploadUrl`), custom file storage logic, direct inserts into `daas_files`, custom thumbnail generation, custom folder management. The app's `app/api/files/**` routes are thin proxies installed by the CLI, not places for upload logic.
 
 ---
 
@@ -114,33 +116,17 @@ DaaS provides scheduled background task execution with cron expressions, timezon
 
 DaaS provides a complete role-based access control system: Roles → Policies → Permissions with field-level and item-level filtering, all enforced at the database level via RLS.
 
-There are **two independent permission dimensions**, both fully built-in:
-
-| Dimension | Stored on | Answers |
-|---|---|---|
-| **Record-Level Access** | `daas_permissions` rows | "Can this user CRUD collection X, on which fields, matching which filter?" |
-| **Module-Level Access** | `daas_policies.module_access` (JSONB), keyed by the `daas_module_access_keys` registry | "Does this user hold capability `reports:export`?" — gates buttons, pages, nav items, workflow transitions |
-
 | What | How |
 |------|-----|
 | Create role | `mcp_daas_roles` |
 | Create policy | `mcp_daas_policies` |
-| Assign permissions (collection CRUD) | `mcp_daas_permissions` |
-| Register a capability key | `mcp_daas_module_access_keys` (admin only) |
-| Grant a capability key | `mcp_daas_policies` → `data.module_access` |
-| Check current user permissions | `GET /api/permissions/me` (returns `data`, `isAdmin`, `moduleAccess`) |
-| UI permission gating | `usePermissions` hook — `canPerform()` for collections, `hasModuleAccess()` for capabilities; `CollectionList` gates itself |
-
-Both dimensions resolve against the **active scope** (Resource URI), so grants
-respect multi-tenant boundaries.
+| Assign permissions | `mcp_daas_permissions` |
+| Check current user permissions | `GET /api/permissions/me` |
+| UI permission gating | `usePermissions` hook, `CollectionList` built-in permission gates |
 
 **Lifecycle events:** Access/role assignment operations emit events: `daas_access.items.create/update/delete` (policy assignments), `daas_user_roles.items.create/delete` (role assignments). Use these to react to permission changes (e.g., sending a notification when a user is granted a new role, or invalidating permission caches when access records change).
 
-**DO NOT build:** custom permission tables, custom capability-flag columns on `daas_policies` (use `module_access`), manual `isAdmin` checks against a custom field, role-name checks like `user.role === 'manager'`, custom role assignment UI, manual access control middleware.
-
-For a capability gate that collection CRUD cannot express, use the
-[grant-module-access](../../grant-module-access/SKILL.md) skill — never invent
-your own flag storage.
+**DO NOT build:** custom permission tables, manual `isAdmin` checks against a custom field, custom role assignment UI, manual access control middleware.
 
 ---
 
