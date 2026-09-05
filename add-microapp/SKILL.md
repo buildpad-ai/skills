@@ -1,6 +1,6 @@
 ---
 name: add-microapp
-description: Set up a microapp architecture where one Main App and multiple micro-apps all share a single DaaS backend. Each micro-app owns a domain of collections within the shared DaaS, has its own API proxy routes, and is composed via iframe in the Main App. Use when the user says add-microapp, microapp, service boundary, or needs to split a large app into domain-focused micro-apps.
+description: Split an app into a Main App plus domain-focused micro-apps that share one DaaS backend. Covers domain boundaries, collection ownership, shared RBAC, cross-domain contracts, and repo bootstrap. Load this skill FIRST to decide the split, then load add-microfrontend-zones (Multi-Zones, the default for Next.js micro-apps) or add-microfrontend (iframe composition and the auth bridge) to wire the composition. Use when the user says add-microapp, microapp, service boundary, or needs to split a large app into domain-focused micro-apps.
 argument-hint: "[service name] [domain, e.g. users, billing, analytics]"
 ---
 
@@ -12,28 +12,28 @@ Set up a **microapp architecture** where one **Main App** and multiple **micro-a
 
 1. **Single Shared DaaS Backend**: All apps (Main App + micro-apps) connect to the **same** DaaS backend instance via the same `NEXT_PUBLIC_BUILDPAD_DAAS_URL`. There is only ONE DaaS backend. Collections for all domains live in this single instance.
 2. **Shared Auth, Shared Data Layer**: All apps share the same Supabase Auth project AND the same DaaS backend. Authentication and data access go through the same infrastructure.
-3. **Direct DaaS Calls**: Each app (Main App and micro-apps) calls DaaS **directly** from the browser using `Authorization: Bearer <supabase-jwt>` headers. CORS is handled on the DaaS side via `CORS_ORIGINS` env var. No Next.js proxy routes are needed for DaaS data.
-4. **Collection-Based Domain Boundaries**: Each micro-app "owns" a logical domain of collections (e.g., Users service owns `profiles`, `roles`; Billing service owns `invoices`, `payments`). Ownership is a team/code convention — all collections physically live in the same DaaS instance.
+3. **Direct Calls for Components, Proxy Routes for Your Own Code**: Buildpad UI components (`CollectionList`, `VForm`) call DaaS **directly** from the browser through `DaaSProvider`, which supplies the `Authorization: Bearer <supabase-jwt>` and `X-Resource-Uri` headers. Hand-written fetches go through a Next.js proxy route in the same app. Do not generate `/api/items/[collection]/route.ts` unless the app has hand-written data calls. CORS for the direct path is handled on the DaaS side via `CORS_ORIGINS`. See [authentication-proxy](../authentication-proxy/SKILL.md).
+4. **Collection-Based Domain Boundaries**: Each micro-app "owns" a logical domain of collections (e.g., Users service owns `profiles`, `roles`; Billing service owns `invoices`, `payments`). Ownership is a team/code convention — all collections physically live in the same DaaS instance. **Check every candidate domain against the module skills first — [add-files](../add-files/SKILL.md) and [add-users](../add-users/SKILL.md) — because the module may already provide the whole surface, and a hand-written page in its place leaves the real behaviour untested.**
 5. **Independent Deployment**: Each micro-app deploys independently as a Next.js application. Schema changes in DaaS are shared — coordinate collection/field changes via the DaaS admin or MCP tools.
 6. **Main App Is a Full App**: The Main App handles authentication, navigation, iframe composition, AND can have its own pages and collection data. It is not a thin shell.
 7. **Shared Types via Contracts**: Cross-domain data access uses well-defined TypeScript interfaces. Publish shared types via a `packages/shared-types/` package or shared contract files.
 8. **Backend-First Logic**: Use DaaS runtime extensions (filter/action hooks) for validation, audit logging, and business rules — not Next.js API routes. Extensions are configured once in the shared DaaS and apply regardless of which app triggers the request.
 9. **Independent Testing**: Each micro-app has its own test suite (Playwright E2E + Vitest unit). Cross-service integration tests live in the Main App project.
 10. **Shared RBAC**: Roles and permissions are managed centrally in the single DaaS backend. Each role defines access to specific collections. A user's roles (assigned via the `daas_user_roles` junction table) determine what they can do across ALL apps.
-11. **No Native Browser Dialogs in Micro-Apps**: Since micro-apps run inside iframes, `window.confirm()`, `window.alert()`, and `window.prompt()` are **blocked by the browser sandbox**. Use Mantine `Modal` (or `modals.openConfirmModal`) for all confirmation dialogs.
-12. **No Function Props from Server Components (React 19)**: In Next.js 16 / React 19, you cannot pass functions as props from Server Components to Client Components. Avoid patterns like `<Anchor component={Link}>` in Server Components — use plain `<Link>` from `next/link` instead.
+11. **Iframe Constraints Apply to Every Micro-App** (iframe composition only — under [add-microfrontend-zones](../add-microfrontend-zones/SKILL.md) Rules 11 and 14 do not apply): A framed micro-app cannot use native dialogs, cannot make a modal cover the host chrome (the overlay and the focus trap end at the frame edge, so one click in the host discards the dialog — route destructive confirmations to the host), and cannot rely on the host cookie — and it renders **content only**: the host owns the sidebar, header, and profile chrome, so the micro-app's own shell appears only when it is opened standalone (pinned edit E1). Design domains with that in mind. The rules and their fixes live in [add-microfrontend](../add-microfrontend/SKILL.md).
+12. **No Function Props from Server Components (React 19)**: In Next.js 16 / React 19, you cannot pass functions as props from Server Components to Client Components. Avoid patterns like `<Anchor component={Link}>` in Server Components — use plain `<Link>` from `next/link` instead. The `component={...}` pattern is safe inside a `'use client'` component.
 13. **Verify Field Names Against DaaS Schema**: Before writing any query, sort, or filter parameter, **always check the actual field names** in the DaaS schema using `mcp_daas_schema` or `mcp_daas_fields`. Do NOT assume field names — they may differ from common conventions (e.g., `created_at` vs `date_created`). Using a non-existent field in `sort` or `filter` causes a DaaS **500 error** with no helpful message, which is hard to debug through the proxy layer.
-14. **Cross-Domain Auth Bridge (Amplify — always required)**: On AWS Amplify, every app gets a random subdomain like `main.dXXXX.amplifyapp.com`. Because `amplifyapp.com` is a public suffix, **Supabase cookies cannot be shared between apps** — the micro-app sees no session and redirects to `/login`, forcing users to log in again. Fix: implement the postMessage token bridge in every micro-app — the login page sends `MICROAPP_NEEDS_AUTH`, the Main App's `MicroappIframe` responds with `SET_AUTH { access_token, refresh_token }`, and the micro-app calls `/api/auth/set-session` to establish local cookies. See [add-microfrontend auth-syncing](../add-microfrontend/references/auth-syncing.instructions.md) for the full implementation.
+14. **Cross-Domain Auth Bridge (Amplify — always required)**: Supabase cookies cannot be shared between `*.amplifyapp.com` subdomains, so every micro-app needs the postMessage auth bridge. The bridge is owned by [add-microfrontend](../add-microfrontend/SKILL.md). Load that skill and copy the files it ships. Never send a refresh token across the bridge — see [auth-bridge](../add-microfrontend/references/auth-bridge.instructions.md).
 
 ## Architecture
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │  Main App  (my-app)                                            │
-│  - Auth (login/logout)                                         │
+│  - Auth (login/logout), session and token refresh              │
 │  - Navigation & iframe composition                             │
 │  - Own pages (dashboard, settings, etc.)                       │
-│  - /api/items/* → shared DaaS                                  │
+│  - Components → shared DaaS directly                           │
 └─────────┬──────────────────────┬───────────────────┬───────────┘
           │                      │                   │
           ▼                      ▼                   ▼
@@ -42,7 +42,7 @@ Set up a **microapp architecture** where one **Main App** and multiple **micro-a
 │  (micro-app)     │  │  (micro-app)     │  │  (micro-app)     │
 │  ┌─────────────┐ │  │  ┌─────────────┐ │  │  ┌─────────────┐ │
 │  │ Next.js App │ │  │  │ Next.js App │ │  │  │ Next.js App │ │
-│  │ /api/items  │ │  │  │ /api/items  │ │  │  │ /api/items  │ │
+│  │ own cookie  │ │  │  │ own cookie  │ │  │  │ own cookie  │ │
 │  └──────┬──────┘ │  │  └──────┬──────┘ │  │  └──────┬──────┘ │
 └─────────┼────────┘  └─────────┼────────┘  └─────────┼────────┘
           │                     │                     │
@@ -77,7 +77,7 @@ Before any code or configuration, call the `get_project_detail` platform MCP too
 ```
 
 This returns:
-- **`project.mainAmplifyUrl`** — Main App's deployed URL (used as `NEXT_PUBLIC_HOST_ORIGIN` in micro-apps)
+- **`project.mainAmplifyUrl`** — Main App's deployed URL (the `HOST_ORIGIN` default in each micro-app's `config/app-urls.ts`; override via `NEXT_PUBLIC_MICROAPP_URL_MAIN`, never `NEXT_PUBLIC_HOST_ORIGIN` — that name is reserved by `lib/origin.ts`)
 - **`project.supabaseUrl`**, **`project.supabaseAnonKey`**, **`project.supabaseServiceRoleKey`** — shared auth credentials
 - **`project.daasUrl`** — shared DaaS backend URL
 - **`project.mainGitUrl`**, **`project.mainGitToken`** — git credentials for cloning/pushing
@@ -100,6 +100,12 @@ Before creating any code, map out which collections belong to which app's domain
 
 **Important**: Any app can _read_ any collection (subject to RBAC). Ownership means the team is responsible for that collection's schema, hooks, and business logic.
 
+**Check each domain against the module skills before you plan any page.** Files maps to
+[add-files](../add-files/SKILL.md) (`buildpad add files-routes`); users, roles, and
+policies map to [add-users](../add-users/SKILL.md) (`buildpad add users-routes`). Where
+a module exists, scaffold it and wrap it. Write a page by hand only for a domain no
+module covers.
+
 ### Step 2: Create or Clone the Micro-App Project
 
 Check if the microapp already exists in the `microapps[]` array from Step 0:
@@ -119,233 +125,58 @@ mkdir -p /path/to/{{serviceName}}-app
 npx @buildpad/cli@latest bootstrap --cwd /path/to/{{serviceName}}-app
 ```
 
+> The directory name is a local choice and is NOT the platform `microapps[].name` —
+> existing repos may be called `<name>-starter`, `<name>-app`, or anything else.
+> Config keys and env-var names always derive from the platform `name`; routes come
+> from the micro-app's own `DEFAULT_AUTHENTICATED_ROUTE`. Write the mapping table
+> from [add-microfrontend Step 3](../add-microfrontend/SKILL.md) before creating
+> pages.
+
 ### Step 3: Auto-Configure Environment & URL Config (From Context — No User Input)
 
-**ALL values come from `get_project_detail` response.** Never use placeholder URLs.
+**ALL values come from the `get_project_detail` response.** Never use placeholder URLs.
 
-Configuration is split into two parts:
-- **`.env.local`** — infrastructure secrets (Supabase, DaaS). Also set in Amplify console.
-- **`config/app-urls.ts`** — application URLs, **committed to git**. Available at build time without Amplify env vars.
+Configuration is split in two:
 
-Each micro-app `.env.local` (auto-generated from context):
+- `.env.local` — infrastructure secrets (Supabase, DaaS). Also set in the Amplify console.
+- `config/app-urls.ts` — application URLs, committed to git, available at build time.
 
-```env
-# Auto-populated from get_project_detail → project.* (also set in Amplify console)
-NEXT_PUBLIC_SUPABASE_URL={{project.supabaseUrl}}
-NEXT_PUBLIC_SUPABASE_ANON_KEY={{project.supabaseAnonKey}}
-
-# DaaS Backend (SAME URL for ALL apps — single shared instance)
-NEXT_PUBLIC_BUILDPAD_DAAS_URL={{project.daasUrl}}
-
-# Optional: local dev override for host origin (overrides config/app-urls.ts default)
-# NEXT_PUBLIC_HOST_ORIGIN=http://localhost:3000
-```
-
-Each micro-app `config/app-urls.ts` (**committed to git**):
-
-```typescript
-// config/app-urls.ts — committed to git, auto-generated from get_project_detail
-// For local development, override via .env.local:
-//   NEXT_PUBLIC_HOST_ORIGIN=http://localhost:3000
-
-/** Main App URL (host origin for postMessage security validation) */
-export const HOST_ORIGIN =
-  process.env.NEXT_PUBLIC_HOST_ORIGIN || '{{project.mainAmplifyUrl}}';
-```
-
-Main App `.env.local` (auto-generated from context):
-
-```env
-# Auto-populated from get_project_detail → project.* (also set in Amplify console)
-NEXT_PUBLIC_SUPABASE_URL={{project.supabaseUrl}}
-NEXT_PUBLIC_SUPABASE_ANON_KEY={{project.supabaseAnonKey}}
-SUPABASE_SERVICE_ROLE_KEY={{project.supabaseServiceRoleKey}}
-
-# DaaS Backend (SAME URL as micro-apps)
-NEXT_PUBLIC_BUILDPAD_DAAS_URL={{project.daasUrl}}
-
-# Optional: local dev overrides for app URLs (overrides config/app-urls.ts defaults)
-# NEXT_PUBLIC_HOST_ORIGIN=http://localhost:3000
-# NEXT_PUBLIC_USERS_APP_URL=http://localhost:3001
-```
-
-Main App `config/app-urls.ts` (**committed to git**):
-
-```typescript
-// config/app-urls.ts — committed to git, auto-generated from get_project_detail
-// These URLs are baked into the build so Amplify deployments work without
-// manually setting URL env vars in the Amplify console.
-//
-// For local development, override via .env.local:
-//   NEXT_PUBLIC_HOST_ORIGIN=http://localhost:3000
-//   NEXT_PUBLIC_USERS_APP_URL=http://localhost:3001
-
-/** Main App deployed URL */
-export const MAIN_APP_URL =
-  process.env.NEXT_PUBLIC_HOST_ORIGIN || '{{project.mainAmplifyUrl}}';
-
-/** Microapp deployed URLs (used as iframe src in the Main App) */
-export const MICROAPP_URLS = {
-  {{#each microapps}}
-  '{{name}}': process.env.NEXT_PUBLIC_{{UPPERCASE(name)}}_URL || '{{amplifyUrl}}',
-  {{/each}}
-} as const;
-
-export type MicroappKey = keyof typeof MICROAPP_URLS;
-```
-
-> **⚠️ CRITICAL — `config/app-urls.ts` Generation Rules:**
->
-> 1. The **hardcoded string literal** (right side of `||`) MUST be the **actual deployed Amplify URL** resolved from `get_project_detail`. NEVER use `localhost`, `127.0.0.1`, or any placeholder URL as the hardcoded default.
-> 2. The **env var** (left side of `||`) is a **single** `process.env.NEXT_PUBLIC_*` override for local development. NEVER chain multiple env vars.
-> 3. Each export line must have **exactly one** `process.env.*` and **exactly one** hardcoded URL string.
->
-> ```typescript
-> // ❌ WRONG — localhost as default, chained env vars
-> process.env.NEXT_PUBLIC_HOST_ORIGIN || process.env.NEXT_PUBLIC_HOST_ORIGIN_MAIN || 'http://localhost:3000'
->
-> // ❌ WRONG — localhost as default
-> 'users-app': process.env.NEXT_PUBLIC_USERS_APP_URL || 'http://localhost:3001',
->
-> // ✅ CORRECT — actual Amplify URL as default, single env var override
-> process.env.NEXT_PUBLIC_HOST_ORIGIN || 'https://main.d1234abcde.amplifyapp.com'
-> 'users-app': process.env.NEXT_PUBLIC_USERS_APP_URL || 'https://main.d5678fghij.amplifyapp.com',
-> ```
->
-> Write the actual resolved values into `config/app-urls.ts` as the default fallbacks, and write the actual infrastructure values into `.env.local`. For example, if `project.daasUrl` is `https://acme.buildpad-daas.xtremax.com`, write exactly that string. The env var override name for microapps is `NEXT_PUBLIC_` + the service name uppercased with hyphens as underscores + `_URL` (e.g., `users-app` → `NEXT_PUBLIC_USERS_APP_URL`).
+Write both files for the Main App and for every micro-app. The file shapes, the
+generation rules, and the failure modes are in one place:
+[app-urls config](references/app-urls-config.instructions.md).
 
 ### Step 4: Auth Bridge for Cross-Domain Sessions (ALWAYS Required on Amplify)
 
-Microapps are composed via iframes in the Main App. On Amplify, each app has a different `*.amplifyapp.com` subdomain — these are treated as completely separate origins by browsers, so **Supabase cookies from the Main App are invisible to the micro-app**. Without the auth bridge the user sees a login prompt every time they navigate to a micro-app section, even though they are already logged in to the Main App.
+On Amplify each app gets a different `*.amplifyapp.com` subdomain. `amplifyapp.com` is
+a public suffix, so the browser treats each subdomain as a separate site and Supabase
+cookies from the Main App are invisible to the micro-app. Without the bridge, the user
+sees a login prompt in every micro-app section.
 
-**In every micro-app, implement these three pieces:**
+The bridge is owned by
+[add-microfrontend](../add-microfrontend/SKILL.md). Load that skill and copy the files
+it ships. Do not reimplement the bridge here.
 
-**1. Create `app/api/auth/set-session/route.ts`:**
+Two rules matter while you bootstrap the repos:
 
-```typescript
-import { createClient } from '@/lib/supabase/server';
-import { NextRequest, NextResponse } from 'next/server';
+1. Every micro-app needs `app/api/auth/set-session/route.ts`,
+   `app/api/auth/logout/route.ts`, and `app/api/auth/token/route.ts`.
+2. Every micro-app `config/app-urls.ts` needs `HOST_ORIGIN` and
+   `DEFAULT_AUTHENTICATED_ROUTE`.
 
-export async function POST(request: NextRequest) {
-  try {
-    const { access_token, refresh_token } = await request.json();
-    if (!access_token || !refresh_token) {
-      return NextResponse.json({ error: 'Missing tokens' }, { status: 400 });
-    }
-    const supabase = await createClient();
-    const { error } = await supabase.auth.setSession({ access_token, refresh_token });
-    if (error) return NextResponse.json({ error: error.message }, { status: 401 });
-    return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
-  }
-}
-```
-
-**2. Allow the route in middleware public routes (`lib/supabase/middleware.ts`):**
-
-```typescript
-// lib/supabase/middleware.ts — ONE route table. Every route name in the micro-app
-// must come from here. A redirect target that does not match the file structure is
-// the classic cause of a redirect loop inside the frame.
-export const LOGIN_ROUTE = '/login';
-
-export const PUBLIC_ROUTES = [
-  LOGIN_ROUTE,
-  '/api/auth/set-session',
-  '/api/auth/logout',
-];
-
-// The matcher must exclude static assets only. Do NOT exclude auth routes by prefix:
-// '/api/auth/set-session' starts with 'api', not 'auth'.
-```
-
-**3. Update `app/login/page.tsx` to detect iframe context:**
-
-```typescript
-'use client';
-import { useEffect, useState } from 'react';
-import { HOST_ORIGIN } from '@/config/app-urls';
-import { Center, Loader, Stack, Text } from '@mantine/core';
-
-export default function LoginPage() {
-  const [isInIframe, setIsInIframe] = useState(false);
-  const [iframeAuthFailed, setIframeAuthFailed] = useState(false);
-
-  useEffect(() => {
-    const inIframe = window.parent !== window;
-    setIsInIframe(inIframe);
-    if (!inIframe) return;
-
-    window.parent.postMessage({ type: 'MICROAPP_NEEDS_AUTH' }, HOST_ORIGIN);
-
-    async function handleMessage(event: MessageEvent) {
-      if (event.origin !== HOST_ORIGIN) return;
-      if (event.data?.type !== 'SET_AUTH') return;
-      const { access_token, refresh_token } = event.data;
-      const res = await fetch('/api/auth/set-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ access_token, refresh_token }),
-      });
-      if (res.ok) {
-        // replace, not href: the failed /login attempt must not stay in history.
-        // DEFAULT_AUTHENTICATED_ROUTE comes from config/app-urls.ts. Never hardcode.
-        window.location.replace(DEFAULT_AUTHENTICATED_ROUTE);
-      } else {
-        setIframeAuthFailed(true);
-      }
-    }
-
-    window.addEventListener('message', handleMessage);
-    const timeout = setTimeout(() => setIframeAuthFailed(true), 3000);
-    return () => {
-      window.removeEventListener('message', handleMessage);
-      clearTimeout(timeout);
-    };
-  }, []);
-
-  if (isInIframe && !iframeAuthFailed) {
-    return (
-      <Center h="100vh">
-        <Stack align="center" gap="sm">
-          <Loader size="md" />
-          <Text size="sm" c="dimmed">Authenticating…</Text>
-        </Stack>
-      </Center>
-    );
-  }
-
-  return <div>{/* existing login form */}</div>;
-}
-```
-
-**In the Main App's `MicroappIframe` component**, ensure the `MICROAPP_NEEDS_AUTH` handler is present (the add-microfrontend skill includes this automatically). If you are creating the Main App manually, add this inside the `handleMessage` function:
-
-```typescript
-if (event.data?.type === 'MICROAPP_NEEDS_AUTH') {
-  import('@/lib/supabase/client').then(({ createClient }) => {
-    const supabase = createClient();
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage(
-          { type: 'SET_AUTH', access_token: session.access_token, refresh_token: session.refresh_token },
-          resolvedOrigin,
-        );
-      }
-    });
-  });
-}
-```
-
-> See [auth-syncing.instructions.md](../add-microfrontend/references/auth-syncing.instructions.md) for the complete pattern with security checklist.
+Full implementation and the security checklist:
+[auth-bridge](../add-microfrontend/references/auth-bridge.instructions.md).
 
 ### Step 5: Configure Direct DaaS Access (Both Apps)
 
-All apps call DaaS directly from the browser — no Next.js proxy routes needed for data. Wrap the root layout with `DaaSProvider` to supply the DaaS URL and Supabase JWT:
+Buildpad UI components call DaaS directly from the browser. Hand-written fetches use a proxy route in the same app (Rule 3). Supply the DaaS URL and the Supabase JWT with `DaaSProvider`:
+
+In a Buildpad starter the CLI already installs `components/DaaSProviderWrapper.tsx`
+mounted from `app/(authenticated)/layout.tsx` — keep that. Never move the provider to
+the root layout: root layouts never unmount, so a logout → login cycle delivers a
+stale token (daas-platform Bug 22). The hand-rolled shape, for reference:
 
 ```typescript
-// app/layout.tsx (in every app)
+// app/(authenticated)/layout.tsx-style wiring — NEVER app/layout.tsx (Bug 22)
 import { DaaSProvider } from '@/lib/buildpad/services';
 import { createBrowserClient } from '@supabase/ssr';
 
@@ -372,11 +203,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 ```
 
-DaaS CORS configuration (in DaaS `.env.local` or deployment env):
-```
-CORS_ORIGINS="http://localhost:3000,http://localhost:3001,https://main-app.example.com,https://micro-app.example.com"
-CORS_ALLOW_CREDENTIALS=false
-```
+DaaS CORS is a **settings singleton**, not env vars, and the default
+(`cors_origins: ["*"]`, `cors_allow_credentials: false`) blocks every credentialed
+browser call. Configure it with the runnable `mcp_daas_cors-settings` update in
+[add-microfrontend Step 6](../add-microfrontend/SKILL.md) — origins must be explicit
+and `cors_allow_credentials` must be `true`.
 
 In client components, use `useDaaSContext()` to get `buildUrl` and `getHeaders`:
 
@@ -430,6 +261,9 @@ export const MICRO_APPS = {
 
 **Agent rule:** When generating `lib/services.ts`, iterate over the actual `microapps[]` array from context — do not use example entries. Import URLs from `config/app-urls.ts` rather than reading `process.env` directly.
 
+`MicroappIframe` ships with [add-microfrontend](../add-microfrontend/SKILL.md). Copy it
+from there. Do not write your own.
+
 ```typescript
 // my-app/app/admin/users/page.tsx
 import { MicroappIframe } from '@/components/MicroappIframe';
@@ -441,7 +275,10 @@ export default function AdminUsersPage() {
       src={MICRO_APPS.users.url}
       path="/users"
       title="Users Management"
-      allowedParams={['search', 'page', 'sort', 'role']}
+      // Derive this from what the framed page really syncs. A CLI module keeps
+      // search/page/sort private, so those names cannot cross the boundary.
+      // See add-microfrontend Step 4.
+      allowedParams={['user']}
       height="calc(100vh - 100px)"
     />
   );
@@ -627,12 +464,13 @@ workspace/
 │   │   │   └── analytics/page.tsx   # → Analytics micro-app iframe
 │   │   ├── api/
 │   │   │   └── auth/                # Auth routes (Supabase SSR cookies)
-│   │   └── auth/login/page.tsx      # Login page
+│   │   └── login/page.tsx           # Login page
 │   ├── components/
-│   │   └── MicroappIframe.tsx
+│   │   └── MicroappIframe.tsx       # from add-microfrontend
 │   ├── config/
 │   │   └── app-urls.ts             # Deployed URLs (committed to git)
 │   ├── lib/
+│   │   ├── bridge/                  # from add-microfrontend
 │   │   └── services.ts             # Micro-app registry (imports from config)
 │   ├── .env.local                   # Infrastructure secrets only
 │   └── tests/
@@ -644,12 +482,15 @@ workspace/
 │   │   ├── users/                   # Users pages
 │   │   ├── roles/                   # Roles pages
 │   │   ├── api/
-│   │   │   └── auth/                # Own auth routes (Supabase SSR cookies)
+│   │   │   └── auth/                # set-session, logout, token, user
+│   │   ├── login/page.tsx           # renders LoginBridge
 │   │   └── ...
+│   ├── components/                  # MicroappBridgeProvider, LoginBridge
 │   ├── config/
-│   │   └── app-urls.ts             # Host origin URL (committed to git)
+│   │   └── app-urls.ts             # HOST_ORIGIN + DEFAULT_AUTHENTICATED_ROUTE
 │   ├── hooks/
 │   │   └── useQueryParamSync.ts
+│   ├── lib/bridge/                  # bridge-protocol.ts
 │   ├── .env.local                   # Infrastructure secrets only
 │   └── tests/
 │
@@ -689,7 +530,7 @@ workspace/
 | Navigation         | Sidebar, header, tabs      | Internal routes only       |
 | Layout             | AppShell wrapper           | Page content only          |
 | Data collections   | Own domain collections     | Own domain collections     |
-| API routes         | `/api/auth/*`, `/api/items/*` | `/api/items/*`, `/api/auth/*` |
+| API routes         | `/api/auth/*` (+ `/api/items/*` only for hand-written fetches) | `/api/auth/*` incl. `set-session`, `logout`, `token` (+ `/api/items/*` only for hand-written fetches) |
 | DaaS backend       | Shared (same URL)          | Shared (same URL)          |
 | Deployment         | Independent (Amplify)      | Independent (Amplify)      |
 | Testing            | Integration + E2E          | Unit + API + E2E           |
@@ -785,11 +626,11 @@ The complete agent workflow with zero user input for URLs/credentials:
     └── New → bootstrap project
 4.  Auto-generate .env.local for infrastructure vars (no placeholders)
 5.  Auto-generate config/app-urls.ts with deployed URLs (committed to git)
-6.  Implement auth bridge in every micro-app (set-session route + login page)
+6.  Load add-microfrontend and copy the bridge files into every app
 7.  Auto-generate lib/services.ts importing from config/app-urls.ts
 8.  Create domain collections in DaaS via MCP
 9.  Set up RBAC for cross-domain access
-10. Set up DaaSProvider in root layout (URL + getToken callback)
+10. Set up DaaSProvider in (authenticated)/layout.tsx (URL + token + getHeaders)
 11. Write tests
 12. git push → Amplify deploys automatically
 13. Update Main App with new service integration → push → deploy
@@ -812,7 +653,7 @@ The complete agent workflow with zero user input for URLs/credentials:
 - [Context discovery & auto-configuration](references/context-discovery.instructions.md)
 - [Service boundary patterns](references/service-boundaries.instructions.md)
 - [Cross-domain data access](references/cross-service-communication.instructions.md)
+- [App URL config (`config/app-urls.ts`)](references/app-urls-config.instructions.md)
 - [Deployment topology](references/deployment-topology.instructions.md)
+- [add-microfrontend](../add-microfrontend/SKILL.md) — iframe composition and the auth bridge
 
-````
-`````

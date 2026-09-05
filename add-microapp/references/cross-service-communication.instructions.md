@@ -1,11 +1,10 @@
-````markdown
 # Cross-Domain Data Access
 
 ## Overview
 
 In the single shared DaaS architecture, all micro-apps connect to the **same DaaS backend**. Cross-domain data access is straightforward — any app can query any collection directly from the browser, subject to the user's RBAC permissions.
 
-Apps call DaaS **directly** using `Authorization: Bearer <supabase-jwt>` headers. No Next.js proxy routes are needed. CORS is configured on DaaS via `CORS_ORIGINS`.
+Buildpad UI components call DaaS **directly** through `DaaSProvider`, which supplies the `Authorization: Bearer <supabase-jwt>` and `X-Resource-Uri` headers. CORS for that path is configured on DaaS via `CORS_ORIGINS`. Hand-written fetches go through a proxy route in the same app. The examples below use the direct path because they run inside components.
 
 ## Data Access Patterns
 
@@ -304,7 +303,6 @@ The user's role determines what data they can access across all apps:
 | ------------------------------- | -------------------------------- | --------------------------------------------- |
 | API-to-API calls between apps   | Unnecessary — same DaaS backend  | Query the collection directly                 |
 | Duplicating collections per app | Schema drift, data inconsistency | One collection, shared access                 |
-| Creating data proxy API routes  | Unnecessary extra layer          | Call DaaS directly with useDaaSContext headers|
+| A proxy route for a Buildpad component | Unnecessary extra layer  | Let the component call DaaS through DaaSProvider|
 | Hardcoding collection names     | Fragile to schema changes        | Use constants/enums from shared-types         |
 | Ignoring fetch errors           | Silent failures                  | Handle 403, 404, 500 gracefully               |
-````
