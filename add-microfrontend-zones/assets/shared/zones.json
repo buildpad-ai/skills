@@ -1,0 +1,12 @@
+{
+  "mainAppUrl": "{{project.mainAmplifyUrl}}",
+  "ownPrefix": "",
+  "zones": [
+    {
+      "name": "{{microapp.name}}",
+      "label": "{{Label}}",
+      "prefix": "{{prefix}}",
+      "url": "{{microapp.amplifyUrl}}"
+    }
+  ]
+}
