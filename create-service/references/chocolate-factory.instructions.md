@@ -31,15 +31,21 @@ Every code sample below reads `process.env.CHOCOLATE_FACTORY_AGENT_ID` for the c
 pnpm add @the-chocolate-factory/sdk
 ```
 
-## 2. Embed the chat widget (the common case) — credentials stay server-side
+## 2. Embed the chat widget (the common case)
 
-**`baseUrl: ''` and `apiKey: 'proxied'` in the widget config below are deliberate, not leftover placeholders** — see the rationale in this section, and the SDK-bug callout in step (b) before "fixing" them.
+<!-- Buildpad apps deploy to Amplify Hosting. Confirmed in production: the proxy
+     pattern below breaks there for chat, even though it works in pnpm dev. -->
+> **Amplify caveat — read before wiring the widget/`ChatClient` to a proxy route.** Amplify Hosting runs Next.js API routes as Lambda functions with a hard ~30s response limit *and* buffered invocation (nothing reaches the caller until the function returns, unless the Lambda is on a streaming invoke mode Amplify Hosting doesn't expose). A proxy route forwarding the widget's SSE stream (step 2a below) works fine in `pnpm dev` — Node's dev server writes chunks straight to the socket — but in production the response silently accumulates inside the Lambda and the connection dies once ~30s passes, as a raw 500 (the Lambda's own hard timeout) or a 504 (Amplify's SSR layer cutting off a slow buffered response first). **Default to the direct-from-browser pattern in step 2b below for the widget and `ChatClient`, not the proxy.** The proxy pattern (2a) still applies as-is to `AgentClient` one-off calls (step 3) — those resolve well under 30s and never stream an SSE response back to the browser, so they aren't affected.
 
-The chat widget runs in the **browser**, so the SDK would normally need `apiKey`/`agentId`/`baseUrl` client-side. **Default to not doing that.** Chocolate Factory onboarding always issues Buildpad a project-scoped `cf_...` key (see `onboardChocolateFactoryProject` in `src/lib/chocolate-factory/onboarding.ts` — no `agent` object is ever sent, so no narrower `agk_...` key is provisioned this way), and a project key grants access to every agent in the project — so treat the credential as something that must never reach the browser, and route the widget's calls through a backend proxy instead.
+**`baseUrl: ''` and `apiKey: 'proxied'` in the proxy-based widget config in step 2a are deliberate, not leftover placeholders**, for a project that has confirmed it isn't deploying to Amplify (or is chat-widget-only in local dev) — see the rationale in that section, and the SDK-bug callout before "fixing" them.
 
-This works because `ChatClient`'s URL builder is relative when `baseUrl` is `''` — it calls `/api/agents/<agentId>/run` on whatever origin it's running from. Point that at your own app instead of Chocolate Factory's, and implement that one route as a thin proxy that injects the real key server-side. **Pass `baseUrl: ''` explicitly — don't omit the key entirely** (see why in step (b) below).
+### 2a. Proxied (credentials stay server-side; breaks on Amplify — see caveat above)
 
-### a. The proxy route — this is the actual credential boundary
+The chat widget runs in the **browser**, so the SDK would normally need `apiKey`/`agentId`/`baseUrl` client-side. Chocolate Factory onboarding always issues Buildpad a project-scoped `cf_...` key (see `onboardChocolateFactoryProject` in `src/lib/chocolate-factory/onboarding.ts` — no `agent` object is ever sent, so no narrower `agk_...` key is provisioned this way), and a project key grants access to every agent in the project — so keeping the credential off the browser is the safer shape *when it's deployable*. On Amplify it isn't, for chat (see caveat above), which is why step 2b is the default there.
+
+This works because `ChatClient`'s URL builder is relative when `baseUrl` is `''` — it calls `/api/agents/<agentId>/run` on whatever origin it's running from. Point that at your own app instead of Chocolate Factory's, and implement that one route as a thin proxy that injects the real key server-side. **Pass `baseUrl: ''` explicitly — don't omit the key entirely** (see why below).
+
+#### The proxy route — this is the actual credential boundary
 
 **This route uses raw `fetch`, not the SDK — that's deliberate, not an oversight.** It isn't "calling an agent"; it's a byte-for-byte reverse proxy for the browser's own `ChatClient` instance (step b below), which already built the exact request body and expects to parse the exact SSE response itself. `ChatClient`/`AgentClient` from `@the-chocolate-factory/sdk/server` don't expose a way to forward an unmodified body in and stream an unmodified response back out — `AgentClient.run({ stream: true })` parses the SSE into plain text chunks (dropping tool-call frames), and `ChatClient` is a full stateful client, not a pass-through. Re-encoding through either would mean decoding the stream just to re-encode it, for no security or correctness benefit over forwarding the bytes as-is. Everywhere else in this doc that actually calls an agent (step 3) goes through `AgentClient` — use that, not raw `fetch`, unless you're building this exact kind of transparent proxy.
 
@@ -88,7 +94,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 }
 ```
 
-### b. Client code: point the SDK at itself, not at Chocolate Factory
+#### Client code: point the SDK at itself, not at Chocolate Factory
 
 ```typescript
 // app/api/chocolate-factory/agent-id/route.ts — the only thing the browser needs, and it isn't a secret
@@ -156,7 +162,61 @@ export function ChocolateFactoryWidget() {
 
 Render `<ChocolateFactoryWidget />` once near the root layout (e.g. in `app/layout.tsx`). `mount()` accepts more `ChatWidgetConfig` options — `avatarUrl`, `position`, `theme.primaryColor`, `theme.borderRadius`, `initialOpen`, `promptSuggestions` — see the SDK's own `chat-sdk.md` for the full list.
 
-**Why not just fetch the real key into the browser?** Chocolate Factory's own docs do allow it (`docs/authentication.md`: *"For browser chat widgets, the Agent Key is necessarily visible to the end-user... as long as you restrict keys to read-only chat and the agent has appropriate guardrails"*) — but that guidance assumes a narrower, agent-scoped `agk_...` key. Chocolate Factory onboarding only ever issues Buildpad a project-scoped `cf_...` key (see `onboardChocolateFactoryProject` in `src/lib/chocolate-factory/onboarding.ts` — no `agent` object is sent, so no `agk_...` key is provisioned this way), which spans every agent in the project, so the proxy above is this doc's default. (If Chocolate Factory ever issues a properly agent-scoped `agk_...` key through this flow instead, skipping the proxy and fetching credentials straight to the browser becomes a valid alternative — it just isn't the current default.)
+**Why not just fetch the real key into the browser?** Chocolate Factory's own docs do allow it (`docs/authentication.md`: *"For browser chat widgets, the Agent Key is necessarily visible to the end-user... as long as you restrict keys to read-only chat and the agent has appropriate guardrails"*) — but that guidance assumes a narrower, agent-scoped `agk_...` key. Chocolate Factory onboarding only ever issues Buildpad a project-scoped `cf_...` key (see `onboardChocolateFactoryProject` in `src/lib/chocolate-factory/onboarding.ts` — no `agent` object is sent, so no `agk_...` key is provisioned this way), which spans every agent in the project — worth calling out to the user even though step 2b fetches it to the browser anyway by default on Amplify, since streaming has to work in production. (If Chocolate Factory ever issues a properly agent-scoped `agk_...` key through this flow instead, that narrows the blast radius of step 2b's exposure, but doesn't change which pattern to default to.)
+
+### 2b. Direct from the browser (default on Amplify) — credential is intentionally exposed
+
+Since no Amplify Lambda sits in the path, real SSE streaming reaches the browser as it's generated — the same code that works in `pnpm dev` also works once deployed. The tradeoff, accepted deliberately for this to work at all on Amplify: `CHOCOLATE_FACTORY_API_KEY` is exposed to any client that loads the page, and it's the project-scoped `cf_...` key (grants access to every agent in the project), not a narrower agent-scoped one. Tell the user this explicitly if they haven't already accepted it — it's a real security tradeoff, not a formality.
+
+**Expose only what the browser needs**, via a tiny route — don't inline these into a client bundle as `NEXT_PUBLIC_*` vars, since that bakes them into the build rather than reading live env state:
+
+```typescript
+// app/api/chocolate-factory/env/route.ts
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  return NextResponse.json({
+    baseUrl: process.env.CHOCOLATE_FACTORY_BASE_URL,
+    apiKey: process.env.CHOCOLATE_FACTORY_API_KEY,
+    agentId: process.env.CHOCOLATE_FACTORY_AGENT_ID,
+  });
+}
+```
+
+Then point the widget or `ChatClient` at Chocolate Factory directly instead of at `''`:
+
+```tsx
+// components/ChocolateFactoryWidget.tsx
+'use client';
+
+import { useEffect, useRef } from 'react';
+import ChocolateFactory from '@the-chocolate-factory/sdk';
+
+export function ChocolateFactoryWidget() {
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    if (mounted.current) return;
+    mounted.current = true;
+
+    fetch('/api/chocolate-factory/env')
+      .then((res) => res.json())
+      .then(({ baseUrl, apiKey, agentId }) => {
+        const cf = new ChocolateFactory({ apiKey, agentId, baseUrl });
+        cf.chat.mount(document.body, {
+          title: 'AI Assistant',
+          welcomeMessage: 'Hi! How can I help you today?',
+        });
+      });
+  }, []);
+
+  return null;
+}
+```
+
+`X-Conversation-Id` threading (see Observability below) still works the same way — `ChatClient` reads it straight off Chocolate Factory's own response now, with no proxy hop to preserve it across.
+
+**If Chocolate Factory's platform-user auth applies to this project** (bearer a Supabase JWT instead of `cf-api-key` — check Chocolate Factory's own `docs/authentication.md` for whether "platform users" mode is set up here), that's a better fit than exposing the raw project key, since it scopes access to what that signed-in user should see rather than the whole project. It isn't Buildpad's automated default today — only use it if the user asks for it or the project is already set up for it.
 
 ## 3. Beyond chat: agent output can drive any UI
 
@@ -215,7 +275,7 @@ The calling component then renders `chartData` with whatever charting/graph libr
 
 ### Custom chat UI (build your own interface)
 
-If it *is* a chat-style UI but the widget's fixed panel/theme doesn't fit, use `ChatClient` directly instead of `cf.chat.mount(...)` and render the message list yourself. It's event-driven — subscribe with `.on(...)` before calling `send()`, or streamed chunks arrive with nothing listening. Runs in the **browser**, so reuse the exact same proxy route and placeholder-`apiKey`/explicit-`baseUrl: ''` pattern from step 2 rather than fetching real credentials to the client.
+If it *is* a chat-style UI but the widget's fixed panel/theme doesn't fit, use `ChatClient` directly instead of `cf.chat.mount(...)` and render the message list yourself. It's event-driven — subscribe with `.on(...)` before calling `send()`, or streamed chunks arrive with nothing listening. Runs in the **browser**, so it has the same Amplify constraint as the widget in step 2: default to the direct-connection pattern from step 2b (fetch real credentials from `/api/chocolate-factory/env`, pass them straight to `ChatClient`), not the proxy from step 2a, unless this project has confirmed it isn't deploying to Amplify.
 
 ```tsx
 // components/CustomChat.tsx
@@ -232,17 +292,13 @@ export function CustomChat() {
   const [streaming, setStreaming] = useState(false);
 
   useEffect(() => {
-    fetch('/api/chocolate-factory/agent-id')
+    fetch('/api/chocolate-factory/env')
       .then((res) => res.json())
-      .then(({ agentId }) => {
-        // apiKey is a placeholder and baseUrl is explicit '' for the same reason
-        // as the widget in step 2 — calls land on our own /api/agents/[agentId]/run
-        // proxy route, which holds the real key, not on Chocolate Factory directly.
-        // (This direct-ChatClient path doesn't actually hit the SDK's baseUrl-omission
-        // bug from step 2 — that only fires through cf.chat.mount()'s internal
-        // CfChatWidget.configure() — but stay consistent so this snippet is never
-        // copy-pasted into a mount() call without the fix.)
-        const client = new ChatClient({ apiKey: 'proxied', agentId, baseUrl: '' });
+      .then(({ baseUrl, apiKey, agentId }) => {
+        // Real credentials, fetched straight from Chocolate Factory's own env route
+        // (step 2b) — calling Chocolate Factory directly avoids the Amplify Lambda
+        // proxy hop that breaks SSE streaming in production (see step 2's caveat).
+        const client = new ChatClient({ apiKey, agentId, baseUrl });
         client.on('status-change', ({ status }) => setStreaming(status === 'streaming'));
         client.on('message-chunk', () => setMessages([...client.messages]));
         client.on('message-end', () => setMessages([...client.messages]));
