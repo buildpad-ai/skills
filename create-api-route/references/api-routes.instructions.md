@@ -16,6 +16,8 @@ All API routes follow DaaS-compatible patterns with:
 - Authentication via JWT or static tokens
 - Permission enforcement via RLS and RBAC
 
+**Important — Amplify's ~30s limit applies to every route here.** Amplify Hosting runs API routes as Lambda functions: a slow buffered response gets a clean 504 around 28s, and a `ReadableStream`/streamed response doesn't actually reach the browser before that either — Lambda invocations are buffered by default on this platform, so a stream just fails differently (a raw 500 at the 30s hard timeout) instead of succeeding. This isn't configurable and only shows up after deploying (`next dev` has no Lambda in the path). If a route calls something slow (an external API, a long computation) or needs to stream progressively, don't build it as a single request/response call — either have the client call it repeatedly within a time budget until the work reports done, or offload it to a worker (see the `worker-messaging` skill) instead of waiting on it inline.
+
 **Important:** For authorization patterns, see [api-authorization.instructions.md](./api-authorization.instructions.md) which covers:
 
 - Authentication methods (Cookie, JWT, Static Token)
