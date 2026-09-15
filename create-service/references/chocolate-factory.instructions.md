@@ -1,11 +1,11 @@
 ````instructions
 ---
 name: Chocolate Factory API Reference
-description: How to embed a Chocolate Factory chat widget, drive any other AI-powered UI (charts, dashboards, generated documents) from an agent, or build a custom chat interface, using the official SDK once Chocolate Factory is connected via the Buildpad platform's Connectors page
+description: How to embed a Chocolate Factory chat widget, drive any other AI-powered UI (charts, dashboards, generated documents) from an agent, or build a custom chat interface, by calling the raw `/api/agents/{agentId}/run` HTTP endpoint directly — no SDK — once Chocolate Factory is connected via the Buildpad platform's Connectors page
 applyTo: "**/*.{ts,tsx,js}"
 ---
 
-# Chocolate Factory, via the official SDK
+# Chocolate Factory, via the raw Run Endpoint (no SDK)
 
 This doc assumes Chocolate Factory is already connected for this project (check `get_project_detail`'s `connectors[]` before writing any of this). Unlike some other providers, Chocolate Factory is **self-hosted per deployment**, so it has no fixed `apiBaseUrl` — its base URL is itself one of its own env vars. `connectors[]` guarantees exactly two: `CHOCOLATE_FACTORY_API_KEY` and `CHOCOLATE_FACTORY_BASE_URL` — always read the exact names from `connectors[]`, don't hardcode them.
 
@@ -19,156 +19,63 @@ Every code sample below reads `process.env.CHOCOLATE_FACTORY_AGENT_ID` for the c
 
 **Running locally (`pnpm dev`):** the same `connectors[]` entry also carries `envVars` — the actual decrypted values, not just the names — for `CHOCOLATE_FACTORY_API_KEY`/`CHOCOLATE_FACTORY_BASE_URL` only. Write them into `.env.local` (don't commit, don't log them) and restart `pnpm dev`, since Next.js only reads `.env.local` at process start. Add the user-supplied `CHOCOLATE_FACTORY_AGENT_ID` value there too.
 
-**Deploying:** connecting Chocolate Factory on the Connectors page only stores the credential in Buildpad — it does **not** push `CHOCOLATE_FACTORY_API_KEY`/`_BASE_URL` to the deployed app's Amplify environment. After adding the widget or an API route that reads them, also push that same `envVars` map with `amplify_set_env_vars` and follow with `amplify_redeploy` (see the `amplify-env-vars` skill) — otherwise the code works locally but the deployed app has no value to read. Include the user-supplied `CHOCOLATE_FACTORY_AGENT_ID` (or `_<LABEL>`) value in that same `amplify_set_env_vars` call — it isn't in `connectors[]`'s `envVars`, so it has to be added alongside it explicitly.
+**Deploying:** connecting Chocolate Factory on the Connectors page only stores the credential in Buildpad — it does **not** push `CHOCOLATE_FACTORY_API_KEY`/`_BASE_URL` to the deployed app's Amplify environment. After adding any code that reads them, also push that same `envVars` map with `amplify_set_env_vars` and follow with `amplify_redeploy` (see the `amplify-env-vars` skill) — otherwise the code works locally but the deployed app has no value to read. Include the user-supplied `CHOCOLATE_FACTORY_AGENT_ID` (or `_<LABEL>`) value in that same `amplify_set_env_vars` call — it isn't in `connectors[]`'s `envVars`, so it has to be added alongside it explicitly.
 
-**Important — none of this runs from a DaaS custom service.** Custom services (`create-service` skill) execute as sandboxed JS with no `import`/`require` support, so the npm package can't load there — that sandbox is why Stripe's own reference doc calls the raw REST API instead. Chocolate Factory has an official SDK (`@the-chocolate-factory/sdk`); every pattern below runs from real Next.js code (Client Components and/or server-side API routes), where npm packages and `process.env` are both available.
+## No official SDK — call the HTTP endpoint directly
 
-**Two entry points — pick based on where the code runs.** The main `@the-chocolate-factory/sdk` entry point (the default `ChocolateFactory` class, `ChatClient`, the widget) bundles a browser-only custom element (`class CfChatWidget extends HTMLElement`), so importing it from a Next.js **API route or Server Component** crashes at import time with `ReferenceError: HTMLElement is not defined` — Node has no `HTMLElement` global. Use `@the-chocolate-factory/sdk/server` instead for anything that runs server-side (`AgentClient`, and `ChatClient` if you ever need it outside the browser); it has no DOM dependency. Reserve the main entry point for Client Components (`'use client'`) — the widget and `ChatClient` examples in step 2 and the custom chat UI below.
+There is exactly one HTTP entry point: `POST /api/agents/{agentId}/run` on `CHOCOLATE_FACTORY_BASE_URL`. Do **not** add `@the-chocolate-factory/sdk` (or any wrapper package) as a dependency — this project calls the endpoint with plain `fetch`, both from server-side API routes and directly from the browser. That keeps the integration to zero extra npm dependencies and avoids being coupled to an SDK's own bundling assumptions (e.g. browser-only custom elements that crash if ever imported server-side).
 
-## 1. Install the SDK
+### Headers
 
-```bash
-pnpm add @the-chocolate-factory/sdk
-```
+| Header | Required | Description |
+|---|---|---|
+| `Content-Type` | Yes | `application/json`, or `multipart/form-data` for file uploads |
+| `Accept` | No | `application/json` (default) or `text/event-stream` |
+| `cf-api-key` | Yes (machine-to-machine) | The project-scoped `cf_...` key from `connectors[]` |
 
-## 2. Embed the chat widget (the common case)
+`Authorization: Bearer <supabase_jwt>` is the alternative auth mode for platform users with an active Supabase session — not the default for a Buildpad app calling its own connected agent; use `cf-api-key` unless the user asks specifically for platform-user auth.
 
-<!-- Buildpad apps deploy to Amplify Hosting. Confirmed in production: the proxy
-     pattern below breaks there for chat, even though it works in pnpm dev. -->
-> **Amplify caveat — read before wiring the widget/`ChatClient` to a proxy route.** Amplify Hosting runs Next.js API routes as Lambda functions with a hard ~30s response limit *and* buffered invocation (nothing reaches the caller until the function returns, unless the Lambda is on a streaming invoke mode Amplify Hosting doesn't expose). A proxy route forwarding the widget's SSE stream (step 2a below) works fine in `pnpm dev` — Node's dev server writes chunks straight to the socket — but in production the response silently accumulates inside the Lambda and the connection dies once ~30s passes, as a raw 500 (the Lambda's own hard timeout) or a 504 (Amplify's SSR layer cutting off a slow buffered response first). **Default to the direct-from-browser pattern in step 2b below for the widget and `ChatClient`, not the proxy.** The proxy pattern (2a) still applies as-is to `AgentClient` one-off calls (step 3) — those resolve well under 30s and never stream an SSE response back to the browser, so they aren't affected.
+### Request body — three execution modes, chosen by which field you send
 
-**`baseUrl: ''` and `apiKey: 'proxied'` in the proxy-based widget config in step 2a are deliberate, not leftover placeholders**, for a project that has confirmed it isn't deploying to Amplify (or is chat-widget-only in local dev) — see the rationale in that section, and the SDK-bug callout before "fixing" them.
+| Field | Modes | Description |
+|---|---|---|
+| `message` | 1 (persisted) | Latest user turn only; Chocolate Factory loads/persists history server-side keyed by `conversationId` |
+| `messages` | 2 (stateless) | Full client-owned transcript, sent in full on every request; nothing stored server-side |
+| `conversationId` | 1 | Optional UUID; omit on the first turn, then reuse the `conversationId` the first response returned |
+| `vars` | 1, 2, 3 | Template variables injected into the agent's system prompt; can combine with `message`/`messages` or be sent alone (Mode 3: prompt-only, no user turn) |
 
-### 2a. Proxied (credentials stay server-side; breaks on Amplify — see caveat above)
+Provide either `message` or `messages`, never both. Default to **Mode 1 (persisted)** for a chat UI — it's the simplest to wire (no client-side transcript management) and matches what Chocolate Factory's own `/monitoring` dashboard expects for threaded conversations.
 
-The chat widget runs in the **browser**, so the SDK would normally need `apiKey`/`agentId`/`baseUrl` client-side. Chocolate Factory onboarding always issues Buildpad a project-scoped `cf_...` key (see `onboardChocolateFactoryProject` in `src/lib/chocolate-factory/onboarding.ts` — no `agent` object is ever sent, so no narrower `agk_...` key is provisioned this way), and a project key grants access to every agent in the project — so keeping the credential off the browser is the safer shape *when it's deployable*. On Amplify it isn't, for chat (see caveat above), which is why step 2b is the default there.
+### Response — always request `Accept: application/json` in this project
 
-This works because `ChatClient`'s URL builder is relative when `baseUrl` is `''` — it calls `/api/agents/<agentId>/run` on whatever origin it's running from. Point that at your own app instead of Chocolate Factory's, and implement that one route as a thin proxy that injects the real key server-side. **Pass `baseUrl: ''` explicitly — don't omit the key entirely** (see why below).
-
-#### The proxy route — this is the actual credential boundary
-
-**This route uses raw `fetch`, not the SDK — that's deliberate, not an oversight.** It isn't "calling an agent"; it's a byte-for-byte reverse proxy for the browser's own `ChatClient` instance (step b below), which already built the exact request body and expects to parse the exact SSE response itself. `ChatClient`/`AgentClient` from `@the-chocolate-factory/sdk/server` don't expose a way to forward an unmodified body in and stream an unmodified response back out — `AgentClient.run({ stream: true })` parses the SSE into plain text chunks (dropping tool-call frames), and `ChatClient` is a full stateful client, not a pass-through. Re-encoding through either would mean decoding the stream just to re-encode it, for no security or correctness benefit over forwarding the bytes as-is. Everywhere else in this doc that actually calls an agent (step 3) goes through `AgentClient` — use that, not raw `fetch`, unless you're building this exact kind of transparent proxy.
-
-```typescript
-// app/api/agents/[agentId]/run/route.ts
-import { NextRequest } from 'next/server';
-
-export async function POST(request: NextRequest, { params }: { params: Promise<{ agentId: string }> }) {
-  const { agentId } = await params;
-
-  // Ignore whatever agentId a client sends — always target the one this
-  // project is actually connected to. Otherwise a tampered request could
-  // redirect our real credential at a different agent in the org.
-  if (agentId !== process.env.CHOCOLATE_FACTORY_AGENT_ID) {
-    return new Response('Not found', { status: 404 });
-  }
-
-  const upstream = await fetch(
-    `${process.env.CHOCOLATE_FACTORY_BASE_URL}/api/agents/${agentId}/run`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'cf-api-key': process.env.CHOCOLATE_FACTORY_API_KEY!, // real key never leaves the server
-      },
-      body: await request.text(), // forward the SDK's request body as-is
-    }
-  );
-
-  // Stream the SSE response straight through — the browser only ever talks to this route.
-  // X-Conversation-Id must survive the hop (see the Observability section below) — the
-  // SDK reads it off the first turn's response and echoes it back on every later turn so
-  // the server threads the whole exchange into one conversation record. Dropping it here
-  // makes every message look like a new, un-threaded conversation in Chocolate Factory's
-  // monitoring dashboard, even though the chat UI itself still looks fine.
-  const responseHeaders: Record<string, string> = {
-    'Content-Type': upstream.headers.get('Content-Type') ?? 'text/event-stream',
-  };
-  const conversationId = upstream.headers.get('X-Conversation-Id');
-  if (conversationId) responseHeaders['X-Conversation-Id'] = conversationId;
-
-  return new Response(upstream.body, {
-    status: upstream.status,
-    headers: responseHeaders,
-  });
+```json
+{
+  "text": "Generated output from the agent",
+  "usage": { "inputTokens": 123, "outputTokens": 456, "totalTokens": 579 },
+  "finishReason": "stop",
+  "conversationId": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
-#### Client code: point the SDK at itself, not at Chocolate Factory
+`text/event-stream` (SSE, the AI SDK UI Message Stream protocol) is the other option the endpoint supports, and it's what a hand-rolled chat widget reaches for to get progressive token-by-token output. Whether it's safe to use depends entirely on where the call happens — see the Amplify caveat below:
 
-```typescript
-// app/api/chocolate-factory/agent-id/route.ts — the only thing the browser needs, and it isn't a secret
-import { NextResponse } from 'next/server';
+- **Direct from the browser** (no Next.js API route in the path) — SSE is fine. There's no Lambda buffering the stream, so a chat widget can request `Accept: text/event-stream` and render deltas as they arrive.
+- **Routed through a Next.js API route** — always `Accept: application/json`, never SSE. Amplify's Lambda buffers the whole response before the caller sees anything, so a "stream" proxied this way just arrives all at once anyway, and a slow one can hit the Lambda's own timeout first. Render `data.text` once the full JSON response arrives.
 
-export async function GET() {
-  return NextResponse.json({ agentId: process.env.CHOCOLATE_FACTORY_AGENT_ID });
-}
-```
+## 🔴 Amplify caveat — this is why the pattern below looks the way it does
 
-```tsx
-// components/ChocolateFactoryWidget.tsx
-'use client';
+Buildpad apps deploy to **AWS Amplify Hosting**, which runs Next.js API routes as Lambda functions with two properties that break the "obvious" integration:
 
-import { useEffect, useRef } from 'react';
-import ChocolateFactory from '@the-chocolate-factory/sdk';
+1. **Buffered invocation.** Nothing reaches the caller until the Lambda function returns — there is no streaming-response invoke mode exposed. An SSE stream proxied through a Next.js API route accumulates silently inside the Lambda instead of trickling out chunk-by-chunk, so a chat UI built around `Accept: text/event-stream` through a proxy route works in `pnpm dev` (Node's dev server writes straight to the socket) and then **breaks in production** the moment a response takes more than an instant.
+2. **~30 second hard timeout.** Whether streamed or not, a Lambda-backed API route that takes too long to resolve dies as a raw 500 (the Lambda's own timeout) or a 504 (Amplify's SSR layer cutting off a slow response first).
 
-export function ChocolateFactoryWidget() {
-  const mounted = useRef(false);
+**The fix: call `CHOCOLATE_FACTORY_BASE_URL` directly from the browser and skip both problems at once** — no Lambda sits in the request path at all, so there's nothing to buffer and nothing to time out mid-response (Chocolate Factory's own server still has to finish generating within whatever its own timeout is, but that's outside Amplify's 30s Lambda budget entirely). This is the default for chat UI. Because there's no Lambda in the path, the browser is also free to request `Accept: text/event-stream` for progressive rendering — that's the one place in this doc where SSE is the recommended choice, not just a tolerated one.
 
-  useEffect(() => {
-    if (mounted.current) return;
-    mounted.current = true;
+**The tradeoff, accepted deliberately:** `CHOCOLATE_FACTORY_API_KEY` is exposed to any client that loads the page. It's the project-scoped `cf_...` key (grants access to every agent in the project, not narrowed to one agent) — tell the user this explicitly if they haven't already accepted it; it's a real security tradeoff, not a formality. A proxy route that injects the key server-side would avoid this, but only works for calls that reliably finish well under ~30s **and never stream** — see "When a server-side proxy is still fine" below.
 
-    fetch('/api/chocolate-factory/agent-id')
-      .then((res) => res.json())
-      .then(({ agentId }) => {
-        const cf = new ChocolateFactory({
-          apiKey: 'proxied', // placeholder — ChatClient requires a non-empty apiKey/agentKey,
-                              // but the proxy route above ignores whatever is sent and injects
-                              // the real key itself, so this value is never checked or forwarded
-          agentId,
-          // Pass baseUrl explicitly as '' — do NOT omit this key. cf.chat.mount() routes
-          // through CfChatWidget.configure(), which rebuilds this config as a fresh object
-          // literal naming `baseUrl: cfg.baseUrl`. If baseUrl was never set, that read is
-          // `undefined`, but naming it here still creates the key — which then overwrites
-          // ChatClient's own '' default via its constructor's object spread, leaving
-          // `this.config.baseUrl` as `undefined` and crashing the first message send with
-          // "Cannot read properties of undefined (reading 'replace')" inside `_buildUrl()`.
-          // An explicit '' survives that spread intact and still resolves to the relative
-          // URL we want (/api/agents/<agentId>/run), landing on the proxy route above.
-          baseUrl: '',
-        });
-        cf.chat.mount(document.body, {
-          title: 'AI Assistant',
-          welcomeMessage: 'Hi! How can I help you today?',
-          theme: {
-            // Matches this app's own brand color instead of the SDK's default blue.
-            // `theme.primaryColor` is applied as a raw CSS custom property
-            // (`--cf-primary-color`) on the widget's host element, so a CSS
-            // variable *reference* works here, not just a literal color — it
-            // resolves through the cascade and stays in sync if the brand
-            // color ever changes. Buildpad-generated apps use Mantine, so this
-            // is Mantine's own semantic primary-color variable; use whatever
-            // this project's actual brand color variable is if it's not Mantine.
-            primaryColor: 'var(--mantine-primary-color-filled)',
-          },
-        });
-      });
-  }, []);
+### The pattern: a tiny env route + direct fetch from the browser
 
-  return null;
-}
-```
-
-Render `<ChocolateFactoryWidget />` once near the root layout (e.g. in `app/layout.tsx`). `mount()` accepts more `ChatWidgetConfig` options — `avatarUrl`, `position`, `theme.primaryColor`, `theme.borderRadius`, `initialOpen`, `promptSuggestions` — see the SDK's own `chat-sdk.md` for the full list.
-
-**Why not just fetch the real key into the browser?** Chocolate Factory's own docs do allow it (`docs/authentication.md`: *"For browser chat widgets, the Agent Key is necessarily visible to the end-user... as long as you restrict keys to read-only chat and the agent has appropriate guardrails"*) — but that guidance assumes a narrower, agent-scoped `agk_...` key. Chocolate Factory onboarding only ever issues Buildpad a project-scoped `cf_...` key (see `onboardChocolateFactoryProject` in `src/lib/chocolate-factory/onboarding.ts` — no `agent` object is sent, so no `agk_...` key is provisioned this way), which spans every agent in the project — worth calling out to the user even though step 2b fetches it to the browser anyway by default on Amplify, since streaming has to work in production. (If Chocolate Factory ever issues a properly agent-scoped `agk_...` key through this flow instead, that narrows the blast radius of step 2b's exposure, but doesn't change which pattern to default to.)
-
-### 2b. Direct from the browser (default on Amplify) — credential is intentionally exposed
-
-Since no Amplify Lambda sits in the path, real SSE streaming reaches the browser as it's generated — the same code that works in `pnpm dev` also works once deployed. The tradeoff, accepted deliberately for this to work at all on Amplify: `CHOCOLATE_FACTORY_API_KEY` is exposed to any client that loads the page, and it's the project-scoped `cf_...` key (grants access to every agent in the project), not a narrower agent-scoped one. Tell the user this explicitly if they haven't already accepted it — it's a real security tradeoff, not a formality.
-
-**Expose only what the browser needs**, via a tiny route — don't inline these into a client bundle as `NEXT_PUBLIC_*` vars, since that bakes them into the build rather than reading live env state:
+Don't inline credentials into the client bundle as `NEXT_PUBLIC_*` vars — that bakes them into the build rather than reading live env state. Instead, expose them through a route the browser calls once on mount:
 
 ```typescript
 // app/api/chocolate-factory/env/route.ts
@@ -183,204 +90,199 @@ export async function GET() {
 }
 ```
 
-Then point the widget or `ChatClient` at Chocolate Factory directly instead of at `''`:
+Then call the run endpoint straight from the client component, with plain `fetch` — no SDK:
 
 ```tsx
-// components/ChocolateFactoryWidget.tsx
+// components/ChocolateFactoryChat.tsx
 'use client';
 
-import { useEffect, useRef } from 'react';
-import ChocolateFactory from '@the-chocolate-factory/sdk';
+import { useEffect, useRef, useState } from 'react';
 
-export function ChocolateFactoryWidget() {
-  const mounted = useRef(false);
+interface ChatTurn {
+  role: 'user' | 'assistant';
+  text: string;
+}
+
+export function ChocolateFactoryChat() {
+  const [turns, setTurns] = useState<ChatTurn[]>([]);
+  const [sending, setSending] = useState(false);
+  const configRef = useRef<{ baseUrl: string; apiKey: string; agentId: string } | null>(null);
+  const conversationIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    if (mounted.current) return;
-    mounted.current = true;
-
     fetch('/api/chocolate-factory/env')
       .then((res) => res.json())
-      .then(({ baseUrl, apiKey, agentId }) => {
-        const cf = new ChocolateFactory({ apiKey, agentId, baseUrl });
-        cf.chat.mount(document.body, {
-          title: 'AI Assistant',
-          welcomeMessage: 'Hi! How can I help you today?',
-        });
-      });
+      .then((config) => { configRef.current = config; });
   }, []);
 
+  async function send(text: string) {
+    const config = configRef.current;
+    if (!config || sending) return;
+    setSending(true);
+    setTurns((prev) => [...prev, { role: 'user', text }]);
+
+    // Add an empty assistant turn and append streamed deltas into it.
+    let assistantIndex = -1;
+    setTurns((prev) => { assistantIndex = prev.length; return [...prev, { role: 'assistant', text: '' }]; });
+
+    try {
+      const res = await fetch(`${config.baseUrl}/api/agents/${config.agentId}/run`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream', // browser-direct call — SSE is fine here, see Amplify caveat above
+          'cf-api-key': config.apiKey,
+        },
+        body: JSON.stringify({
+          conversationId: conversationIdRef.current, // undefined on the first turn
+          message: { role: 'user', parts: [{ type: 'text', text }] },
+        }),
+      });
+
+      const headerConversationId = res.headers.get('X-Conversation-Id');
+      if (headerConversationId) conversationIdRef.current = headerConversationId;
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? `Request failed (${res.status})`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue;
+          const payload = line.slice(5).trim();
+          if (!payload || payload === '[DONE]') continue;
+          const chunk = JSON.parse(payload);
+          if (chunk.conversationId) conversationIdRef.current = chunk.conversationId;
+          const delta = chunk.delta ?? chunk.textDelta;
+          if (typeof delta === 'string') {
+            setTurns((prev) => {
+              const next = [...prev];
+              next[assistantIndex] = { ...next[assistantIndex], text: next[assistantIndex].text + delta };
+              return next;
+            });
+          }
+        }
+      }
+    } finally {
+      setSending(false);
+    }
+  }
+
+  // ...render `turns`, an input, and call send(input) on submit
   return null;
 }
 ```
 
-`X-Conversation-Id` threading (see Observability below) still works the same way — `ChatClient` reads it straight off Chocolate Factory's own response now, with no proxy hop to preserve it across.
+`conversationId` can come back either as the `X-Conversation-Id` response header (readable as soon as headers arrive, before the body finishes streaming) or as a field on an individual SSE chunk — check both, since which one the agent actually sends isn't guaranteed by this doc. Store it (a `ref`, component state, or `localStorage` if the conversation should survive a refresh) and echo it back on every later turn so Chocolate Factory appends to the same conversation record instead of starting a new one each time — this is what makes the exchange show up as one thread in Chocolate Factory's own `/monitoring` dashboard.
 
-**If Chocolate Factory's platform-user auth applies to this project** (bearer a Supabase JWT instead of `cf-api-key` — check Chocolate Factory's own `docs/authentication.md` for whether "platform users" mode is set up here), that's a better fit than exposing the raw project key, since it scopes access to what that signed-in user should see rather than the whole project. It isn't Buildpad's automated default today — only use it if the user asks for it or the project is already set up for it.
+The exact SSE chunk shape isn't nailed down by this doc beyond "AI SDK UI Message Stream protocol" — `delta`/`textDelta` above is a best-effort field-name guess. Wrap chunk parsing in try/catch and skip frames that don't match rather than crashing the stream, and verify the actual field names against a real agent response before shipping.
 
-## 3. Beyond chat: agent output can drive any UI
+Render this component directly on the page where the chat should appear (e.g. the dashboard home page) — no special mount point needed, since this is a plain React component, not a custom-element widget.
 
-`AgentClient.run()` calls the agent as a plain function — text (or `vars`) in, text out; pass `stream: true` for progressive output instead of a single JSON result. The chat widget is just one consumer of that text; the same call works for a dashboard card, a chart, a generated document, a form autofill, an email draft, anything. **The agent's system prompt decides the output shape, not the SDK** — if the UI needs structured data (e.g. to feed a chart), the agent must be instructed (in its own system prompt, configured on the Chocolate Factory side) to respond with well-formed JSON; the SDK itself only ever returns `result.text` as a plain string.
+### When a server-side proxy route is still fine
 
-### One-off text generation
+The direct-from-browser pattern above is the default for chat. A server-side call is still fine — and keeps the credential off the browser, which is strictly better when it works — for a **one-off, non-streaming** call that reliably finishes in a few seconds: a dashboard summary, a generated description, a template-driven document. Route it through a normal API route with `Accept: application/json` and don't stream — see the Amplify caveat above for why a server-routed call can't use SSE the way the browser-direct chat widget does:
 
 ```typescript
 // app/api/summarize/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { AgentClient } from '@the-chocolate-factory/sdk/server';
 
 export async function POST(request: NextRequest) {
   const { message, vars } = await request.json();
-  const agent = new AgentClient({
-    apiKey: process.env.CHOCOLATE_FACTORY_API_KEY,
-    agentId: process.env.CHOCOLATE_FACTORY_AGENT_ID,
-    baseUrl: process.env.CHOCOLATE_FACTORY_BASE_URL,
-  });
-  const result = await agent.run({ message, vars }); // { text, usage, finishReason }
-  return NextResponse.json(result);
+
+  const res = await fetch(
+    `${process.env.CHOCOLATE_FACTORY_BASE_URL}/api/agents/${process.env.CHOCOLATE_FACTORY_AGENT_ID}/run`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'cf-api-key': process.env.CHOCOLATE_FACTORY_API_KEY!,
+      },
+      body: JSON.stringify({ message, vars }),
+    }
+  );
+
+  const data = await res.json();
+  if (!res.ok) return NextResponse.json({ error: data.error }, { status: res.status });
+  return NextResponse.json(data); // { text, usage, finishReason, conversationId }
 }
 ```
 
-`agent.run({ message, vars, stream: true })` returns an async generator of text chunks instead, for progressive output (e.g. a document rendering line-by-line as it's generated). (`agent.stream({ message, vars })` still works as a deprecated alias for the same call.)
+Never route a `text/event-stream` request through a Next.js API route — that's exactly the pattern the Amplify caveat above rules out.
 
 ### Structured output for non-chat UI (e.g. a chart)
 
-Same call, but the agent's system prompt is written to return JSON instead of prose, and the route parses it before handing it to the client:
+Same endpoint, `vars`-only (Mode 3, no `message`/`messages`), and the agent's system prompt (configured on the Chocolate Factory side, not something this doc controls) is written to return JSON instead of prose:
 
 ```typescript
 // app/api/sales-summary/route.ts
 import { NextResponse } from 'next/server';
-import { AgentClient } from '@the-chocolate-factory/sdk/server';
 
 export async function GET() {
-  const agent = new AgentClient({
-    apiKey: process.env.CHOCOLATE_FACTORY_API_KEY,
-    agentId: process.env.CHOCOLATE_FACTORY_AGENT_ID, // configured to respond with JSON only
-    baseUrl: process.env.CHOCOLATE_FACTORY_BASE_URL,
-  });
+  const res = await fetch(
+    `${process.env.CHOCOLATE_FACTORY_BASE_URL}/api/agents/${process.env.CHOCOLATE_FACTORY_AGENT_ID}/run`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'cf-api-key': process.env.CHOCOLATE_FACTORY_API_KEY!,
+      },
+      // Template-driven: no `message`/`messages`, just vars — the agent's own
+      // system prompt is a Handlebars template that only needs runtime vars.
+      body: JSON.stringify({ vars: { salesData: await getSalesRows() } }),
+    }
+  );
 
-  // Template-driven: no `message`, just data — see agent-sdk.md's
-  // "Template-driven execution" for when the agent's own prompt is a
-  // Handlebars template that only needs runtime vars, not an instruction.
-  const result = await agent.run({ vars: { salesData: await getSalesRows() } });
+  const data = await res.json();
+  if (!res.ok) return NextResponse.json({ error: data.error }, { status: res.status });
 
   // { labels: string[], values: number[] } — shape is a contract with
-  // that agent's system prompt, not something the SDK enforces.
-  const chartData = JSON.parse(result.text);
+  // that agent's system prompt, not something the endpoint enforces.
+  const chartData = JSON.parse(data.text);
   return NextResponse.json(chartData);
 }
 ```
 
-The calling component then renders `chartData` with whatever charting/graph library the app already uses — nothing chat-specific about it from here on. Because the SDK doesn't validate the shape, wrap `JSON.parse` in a try/catch and treat a parse failure as the agent misbehaving (bad prompt or model drift), not a client bug.
+Because the endpoint doesn't validate the shape of `text`, wrap `JSON.parse` in a try/catch and treat a parse failure as the agent misbehaving (bad prompt or model drift), not a client bug.
 
-### Custom chat UI (build your own interface)
+## File attachments
 
-If it *is* a chat-style UI but the widget's fixed panel/theme doesn't fit, use `ChatClient` directly instead of `cf.chat.mount(...)` and render the message list yourself. It's event-driven — subscribe with `.on(...)` before calling `send()`, or streamed chunks arrive with nothing listening. Runs in the **browser**, so it has the same Amplify constraint as the widget in step 2: default to the direct-connection pattern from step 2b (fetch real credentials from `/api/chocolate-factory/env`, pass them straight to `ChatClient`), not the proxy from step 2a, unless this project has confirmed it isn't deploying to Amplify.
+Attach files as `FileUIPart` entries in the `parts` array of `message` (or the last item of `messages`):
 
-```tsx
-// components/CustomChat.tsx
-'use client';
-
-import { useEffect, useRef, useState } from 'react';
-import { ChatClient } from '@the-chocolate-factory/sdk';
-import type { UIMessage } from '@the-chocolate-factory/sdk';
-
-export function CustomChat() {
-  const clientRef = useRef<ChatClient | null>(null);
-  const [messages, setMessages] = useState<UIMessage[]>([]);
-  const [input, setInput] = useState('');
-  const [streaming, setStreaming] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/chocolate-factory/env')
-      .then((res) => res.json())
-      .then(({ baseUrl, apiKey, agentId }) => {
-        // Real credentials, fetched straight from Chocolate Factory's own env route
-        // (step 2b) — calling Chocolate Factory directly avoids the Amplify Lambda
-        // proxy hop that breaks SSE streaming in production (see step 2's caveat).
-        const client = new ChatClient({ apiKey, agentId, baseUrl });
-        client.on('status-change', ({ status }) => setStreaming(status === 'streaming'));
-        client.on('message-chunk', () => setMessages([...client.messages]));
-        client.on('message-end', () => setMessages([...client.messages]));
-        client.on('error', (e) => console.error('Chat error:', e.error?.message));
-        clientRef.current = client;
-      });
-  }, []);
-
-  const handleSend = async () => {
-    if (!clientRef.current || !input.trim()) return;
-    const text = input;
-    setInput('');
-    await clientRef.current.send({ text });
-  };
-
-  return (
-    <div>
-      {messages.map((m) => (
-        <div key={m.id}>
-          {m.parts.map((p, i) => p.type === 'text' && <p key={i}>{p.text}</p>)}
-        </div>
-      ))}
-      <input value={input} onChange={(e) => setInput(e.target.value)} disabled={streaming} />
-      <button onClick={handleSend} disabled={streaming}>Send</button>
-    </div>
-  );
+```json
+{
+  "type": "file",
+  "url": "https://example.com/report.pdf",
+  "filename": "report.pdf",
+  "mediaType": "application/pdf"
 }
 ```
 
-`send({ text, vars, conversationId })`: `vars` injects Handlebars template variables into the agent's system prompt, same as `agent.run`'s `vars` above. Server-side persistence is automatic on every send now (see Observability below) — pass `conversationId` only when you want to resume a *specific* existing conversation instead of the one `ChatClient` is already tracking (e.g. reopening a past thread by ID). Also available: `clearHistory()`, `loadHistory(messages)` (restore from `localStorage` on mount), `setSessionId(id)`.
-
-### Tool call visibility (`ChatClient`/widget only)
-
-If the agent has MCP tools attached, `ChatClient` (and the pre-built widget, which uses the same events internally) can show which tool ran and with what input/output. **This is not available from `AgentClient`** — `agent.run()`'s JSON response only ever carries `{ text, usage, finishReason }`, and `agent.run({ stream: true })` only extracts plain text deltas from the SSE stream, discarding tool-call frames entirely. So a backend-only integration (step 3 above) has no way to know which tools an agent used; tool visibility requires going through the browser-side chat client.
-
-Two ways to read tool calls off `ChatClient`:
-
-```typescript
-// 1. Events, fired on each tool state transition — good for a live "using tool X…" badge.
-client.on('tool-start', (e) => {
-  console.log(`Started: ${e.tool?.name}`); // input isn't guaranteed populated yet here
-});
-client.on('tool-end', (e) => {
-  // Fires once state reaches output-available / output-error / output-denied.
-  console.log(`${e.tool?.name}`, { input: e.tool?.input, output: e.tool?.output, state: e.tool?.state });
-});
-
-// 2. Reading it directly off message parts — good for rendering after the fact
-// (e.g. re-hydrating from loadHistory()), not just live during a send().
-for (const part of message.parts) {
-  const isTool = part.type === 'dynamic-tool' || part.type.startsWith('tool-');
-  if (!isTool) continue;
-  const toolName = part.type === 'dynamic-tool' ? part.toolName : part.type.slice('tool-'.length);
-  console.log(toolName, part.state, part.input, part.output); // part.errorText set if state is output-error
-}
-```
-
-`state` moves through `input-streaming` → `input-available` → one of `output-available` / `output-error` / `output-denied`. Only trust `input`/`output` once state has reached one of those three terminal values — treat earlier states as still-arriving.
-
-For the server-side `AgentClient` calls above, `apiKey` is the right field to pass the real credential as, regardless of whether the connected key is an org-level `cf_...` key or an agent-scoped `agk_...` key — the SDK sends it as `cf-api-key`, matching how this connector's credential is used everywhere else in this project. `AgentClient` needs no proxy in the first place: it only ever runs from a Next.js API route (never `'use client'`), so the real key never leaves the server to begin with — the proxy pattern in step 2 exists specifically because `ChatClient`/the widget run in the browser. Import it from `@the-chocolate-factory/sdk/server` there, not the main entry point (see the callout right after step 1) — same reasoning, `AgentClient`'s only job is running server-side, and the `/server` entry point is the one build of the SDK that's actually safe to load in Node.
-
-## Observability — conversation history in Chocolate Factory's `/monitoring` dashboard
-
-`ChatClient` (and therefore the pre-built widget) persists every conversation server-side automatically — no opt-in needed. On the first `send()`, the request carries no id; Chocolate Factory creates a conversation record and returns its id via the `X-Conversation-Id` response header. `ChatClient` reads that header and stores it internally (`chat.sessionId`, `string | undefined` — `undefined` until that first response lands), then echoes it back as `id` on every later turn so the server appends to the same record instead of starting a new one. This is what makes a user's whole exchange show up as one threaded conversation in Chocolate Factory's own `/monitoring` module, instead of one row per message. `userId` (constructor config) is optional and only affects attribution — which end-user a conversation is tagged with — it has no effect on whether persistence happens.
-
-**This is why the `X-Conversation-Id` header must survive the proxy hop unmodified.** The proxy route in step (a) above forwards it explicitly for this exact reason — if a proxy route strips response headers down to just `Content-Type` (e.g. by copy-pasting an older version of this pattern, or a hand-rolled streaming proxy), the header never reaches the browser, `chat.sessionId` stays `undefined` forever, and every message sent through the widget lands as its own disconnected, un-threaded conversation server-side. The chat UI itself keeps working fine (its own `chat.messages` array is unaffected) — this failure is only visible in Chocolate Factory's monitoring dashboard or if the agent's later turns lose context of earlier ones, so it's easy to ship without noticing. If a user reports "the agent doesn't remember what I said two messages ago" or "monitoring shows every message as a new conversation," check the proxy's response headers first.
-
-`AgentClient.run()` (step 3, one-off/backend calls) is a stateless function call, not a chat conversation — it has no `conversationId`/`sessionId` concept and nothing here applies to it; each call is independent by design.
+`url` is either an HTTPS URL to an already-hosted file, or a `data:` URL (base64) that Chocolate Factory uploads server-side automatically. Supported: JPEG/PNG/GIF/WebP images and PDF/TXT/MD/DOCX/XLSX/XLS documents, 25MB max per file.
 
 ## Errors
 
-`agent.run()` throws on a non-2xx response with a message like `Agent run failed (<status>): <body>` — wrap backend/`AgentClient` calls in try/catch (this also covers the structured-output pattern above: a thrown error means no `result.text` to `JSON.parse`). `ChatClient` surfaces the same failures through its `'error'` event instead of a rejected promise — always wire that listener. The pre-built widget handles its own errors internally (shown inline in the chat panel); no extra handling needed for it.
+A non-2xx response has a JSON body shaped `{ "error": "..." }` — always check `res.ok` before reading `data.text`, and surface `data.error` to the user/log rather than a generic message.
 
 | Status | Meaning |
 |---|---|
+| 400 | Bad request — agent inactive, or both/neither of `message`/`messages` provided |
 | 401 | Missing or invalid `cf-api-key` |
 | 403 | Key doesn't have access to this agent |
 | 404 | Agent not found |
-| 400 | Bad request, or the agent is inactive |
 | 500 | Chocolate Factory server error |
 
 ## Beyond this
 
-For anything not covered here (widget theming details, the HTML attribute/CDN embed API, `agentPayload` for forwarding extra data to MCP integrations, etc.), see the `@the-chocolate-factory/sdk` package's own docs. This doc bootstraps the common cases — chat widget, agent-as-a-function for any UI, custom chat UI — not a full mirror of the SDK.
+For anything not covered here (the `x-agent-payload` header for forwarding extra data to MCP integrations, retrieving stored history via `GET /api/agents/{agentId}/conversations/{conversationId}`, multipart file uploads from non-browser callers, etc.), consult Chocolate Factory's own Run Endpoint reference. This doc bootstraps the common cases for a Buildpad/Amplify app — direct-from-browser streaming chat, a non-streaming server-side proxy for one-off calls, and structured/template-driven output — not a full mirror of every endpoint capability.
 ````
