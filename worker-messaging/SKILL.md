@@ -11,6 +11,19 @@ background **worker**, or when one worker needs to **hand work to another worker
 Communication is over the project's **RabbitMQ** broker using a single, standard
 convention so producers never need to know which worker handles a job.
 
+> **Why "too slow for request/response" is a hard rule here, not just good practice.**
+> Amplify runs every API route as a Lambda with a ~30s response ceiling and buffered
+> (non-streaming) invocations — confirmed in practice: a slow call gets a clean 504
+> around 28s, and a streamed response fails differently (a raw 500 at the 30s hard
+> timeout) instead of succeeding, since nothing reaches the caller until the Lambda
+> returns. It isn't configurable, and it only shows up after deploying — `next dev`
+> has no Lambda in the path. If the task doesn't need retries, scheduling, or to
+> outlive a single request beyond that ~30s window, a lighter option than standing up
+> a worker is **client-driven chunking**: the client repeatedly calls your API route
+> within a time budget per call, each round trip well under 30s, until the work
+> reports done. Reach for a worker (this skill) when the task should keep running
+> independent of the browser, retry on failure, or run on a schedule instead.
+
 > **The producer never waits for a reply.** Offload is fire-and-forget. If a worker
 > produces a follow-up message, it's for **another worker** to consume — never for
 > the Next.js app to consume.
