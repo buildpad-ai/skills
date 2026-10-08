@@ -47,16 +47,18 @@ The module works against both DaaS backends (the Supabase-backed DaaS and the Go
 The Workflows module is **opt-in** — it is not part of `bootstrap`.
 
 ```bash
-# Add the module: six page shells, components/ui/workflow-management/ (22 files),
-# the workflow hooks, types and editor logic, and three sidebar entries under "Automation"
+# 1. Install the diagram library first. The diagram is drawn with React Flow
+#    (@xyflow/react, MIT). `add` only installs a dependency when it can ask on a
+#    terminal; run by an agent, a script or CI it prints the command and then
+#    fails its own validation on the missing module.
+cd /path/to/project && pnpm add "@xyflow/react@^12.9.3"
+
+# 2. Add the module: six page shells, components/ui/workflow-management/ (22 files),
+#    the workflow hooks, types and editor logic, and three sidebar entries under "Automation"
 npx @buildpad/cli@latest add workflows-routes --cwd /path/to/project
 ```
 
-The diagram is drawn with React Flow (`@xyflow/react`, MIT). `add` offers to install it, pinned to `^12.9.3`. If the prompt was declined or the run had no terminal, install it yourself, then validate:
-
-```bash
-cd /path/to/project && pnpm add "@xyflow/react@^12.9.3"
-```
+If step 2 was run first and exited with `Cannot find module '@xyflow/react'`, nothing is broken: run step 1, then `npx @buildpad/cli@latest validate --cwd /path/to/project`.
 
 Do not import its stylesheet anywhere: `workflow-diagram.tsx` imports `@xyflow/react/dist/style.css` itself.
 
@@ -182,6 +184,8 @@ These hooks are for administering workflows. To read an item's workflow state or
 - Gate your navigation links too, so a user without read access to `daas_wf_definition` does not see the Automation group.
 - **Who may run a command.** A command stores `policies` (policy ids) and `module_access_keys`. A caller who holds any listed policy **or** any listed key may run it. **A command with neither list is open to every authenticated user.** The Command dialog edits `policies`; it keeps stored `module_access_keys` on save and shows a notice that the command is gated by them, but has no field to edit them — set keys through the API (see [grant-module-access](../grant-module-access/SKILL.md)).
 - An assignment's Filter Rule must be a JSON object (or empty). The form refuses anything else before it sends a request.
+- An action's Parameters must be a JSON object too; the Go engine refuses a whole definition that holds anything else there.
+- A definition answered without its `workflow_json` (a read grant that withholds the field) is shown with a notice and cannot be saved over. Do not treat a missing document as an empty machine in custom code.
 
 ## Post-Install Validation
 
