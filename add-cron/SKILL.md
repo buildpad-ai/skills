@@ -45,7 +45,7 @@ The module works against both DaaS backends (the Supabase-backed DaaS and the Go
 The Cron Jobs module is **opt-in** — it is not part of `bootstrap`. It adds **no npm package**.
 
 ```bash
-# Two page shells, components/ui/cron-management/ (20 files), the vtable and
+# Two page shells, components/ui/cron-management/ (21 files), the vtable and
 # input-code components when the app lacks them, the cron hooks, types and form
 # logic, and a "Cron Jobs" sidebar entry under "Automation"
 npx @buildpad/cli@latest add cron-routes --cwd /path/to/project
