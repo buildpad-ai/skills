@@ -40,14 +40,18 @@ If the target collection already has a custom lifecycle field (e.g. `status: sel
 
 Any collection using workflows MUST have these fields:
 
-| Field               | Type   | Purpose                         | Required Meta                                               |
-| ------------------- | ------ | ------------------------------- | ----------------------------------------------------------- |
-| `workflow_instance` | uuid   | Links item to workflow instance | `special: ["m2o"]`, `foreign_key_table: "daas_wf_instance"` |
-| `workflow_state`    | string | Stores current workflow state   | `interface: "xtr-interface-workflow"`                       |
+| Field               | Type   | Purpose                         | Required Meta                                                                    |
+| ------------------- | ------ | ------------------------------- | -------------------------------------------------------------------------------- |
+| `workflow_state`    | string | Stores current workflow state   | `interface: "xtr-interface-workflow"`                                            |
+| `workflow_instance` | uuid   | Links item to workflow instance | `special: ["m2o"]`, `options.related_collection: "daas_wf_instance"` (a real relation) |
+
+`workflow_state` is the one the engine needs: instances are created from the **assignment**, and the engine finds the state field by its interface. `workflow_instance` is a convenience pointer; it is only filled when it is a real many-to-one (foreign key + `daas_relations` row), which is what `options.related_collection` produces.
 
 ## Setup Steps
 
 ### 1. Add Workflow Fields to Collection
+
+Add them with the `fields` tool, **after** the collection exists — not inline in the `collections` create call:
 
 ```json
 {
@@ -59,24 +63,36 @@ Any collection using workflows MUST have these fields:
         "collection": "your_collection",
         "field": "workflow_instance",
         "type": "uuid",
+        "schema": { "is_nullable": true },
         "meta": {
           "interface": "select-dropdown-m2o",
           "special": ["m2o"],
           "readonly": true,
-          "hidden": true
-        },
-        "schema": { "foreign_key_table": "daas_wf_instance" }
+          "hidden": true,
+          "options": {
+            "related_collection": "daas_wf_instance",
+            "related_field": "id",
+            "on_delete": "SET NULL"
+          }
+        }
       },
       {
         "collection": "your_collection",
         "field": "workflow_state",
         "type": "string",
+        "schema": { "is_nullable": true },
         "meta": { "interface": "xtr-interface-workflow", "readonly": true }
       }
     ]
   }
 }
 ```
+
+Three things that go wrong here, all of them silently:
+
+- **Declare the relation with `meta.options.related_collection`, not `schema.foreign_key_table`.** `schema.foreign_key_table` is not read on create (and the Go engine refuses it with 400). The field is created as a bare column with no foreign key and no relation, so `workflow_instance` is never filled.
+- **Do not list `workflow_instance` inline in `collections` create (observed on DaaS 0.1.98).** That path gives every `uuid` column `DEFAULT gen_random_uuid()`. Without a relation the column fills with random UUIDs that reference nothing; with a relation every insert fails on the foreign key. Create the collection first, then add the field with the `fields` tool as above.
+- **`workflow_state` stays `readonly: true`.** The state must only change through a transition. (On Buildpad UI 3.0.0 a readonly state field renders an inert `WorkflowButton` inside `VForm`/`CollectionForm` — see step 5.)
 
 ### 2. Create Workflow Definition
 
@@ -135,7 +151,9 @@ Create in `daas_wf_assignment`. The assignment row links a definition to a colle
 }
 ```
 
-> **Field name is `workflow`, not `workflow_definition`.** Do not include `auto_assign` or `status` columns — they are not part of the assignment schema and will be silently dropped or rejected by MCP.
+> **Field name is `workflow`, not `workflow_definition`.** The row has exactly `workflow`, `collection` and `filter_rule` — no `name`, `status` or `auto_assign` column; sending one fails the create ("Could not find the 'name' column").
+
+> **Exactly one assignment must match each item.** To run different workflows on one collection, give each assignment a `filter_rule` and make the rules mutually exclusive and exhaustive, e.g. `{"amount": {"_lte": 5000}}` and `{"amount": {"_gt": 5000}}`. An item that matches none, or more than one, gets **no instance** and no error — at most a line in the DaaS logs. The rule is evaluated once, when the item is created; later edits do not re-route it.
 
 ### 4. (Optional) Generated Supabase Migration
 
@@ -164,26 +182,45 @@ import { WorkflowButton } from "@/components/ui/workflow-button";
 />;
 ```
 
-Inside a Buildpad form (`VForm` / `CollectionForm`) the button gets the record key from the form as `primaryKey`; outside a form, pass `itemId` yourself. Without either, the button treats the item as new and shows no state.
+Inside a Buildpad form (`VForm` / `CollectionForm`) the state field renders this button by itself and gets the record key from the form as `primaryKey` — a page needs no workflow code. Outside a form, pass `itemId` yourself. Without either, the button treats the item as new and shows no state.
+
+What the button needs in order to work for a **non-admin** user:
+
+- **Read on `daas_wf_instance` and `daas_wf_definition`.** The button reads the item's instance and its definition as the signed-in user. Without these grants it shows `HTTP error! status: 403` and no state. Scope the instance read to the user's own items where that matters (e.g. `{"user_created": {"_eq": "$CURRENT_USER"}}`). Add read on `daas_wf_history` if the app shows history.
+- **Nothing on the collection beyond what the user already has.** The transition itself runs with elevated permissions on the server; the command's `policies` / `module_access_keys` are the gate.
+
+Behaviour observed on Buildpad UI 3.0.0 — re-check on a later version before relying on the workarounds:
+
+- A `readonly` (or permission-locked) state field makes the in-form button inert. Exclude the field from the form (`excludeFields={["workflow_state", "workflow_instance"]}`) and render `<WorkflowButton itemId={id} collection="…" />` next to it.
+- The button calls relative `/api/…` paths, so the app needs a same-origin proxy for `POST /api/workflow/transition` (the CLI's `api-routes` does not ship one): forward the body to `${DAAS_URL}/api/workflow/transition` with the session's bearer token, as `app/api/items/[collection]/route.ts` does.
+- Commands gated only by `module_access_keys` are offered to every user (the server still refuses them), and commands gated by `policies` are hidden from everyone. Gate with module access keys and expect the 403 for users without the key.
+
+`CollectionForm` disables the whole form — the button included — for a user with no `update` permission on the collection. Approvers who may not edit the record need the standalone button.
 
 To give administrators screens for designing definitions on a diagram, assigning workflows to collections, and inspecting instances and their history, scaffold the Workflows module instead of building pages: see [add-workflows](../add-workflows/SKILL.md).
 
 ## Locking Commands to Roles
 
-The default skill output produces an unsecured workflow. To restrict a transition to a specific role:
+The default skill output produces an unsecured workflow: **a command with neither `policies` nor `module_access_keys` can be run by any authenticated user who knows the instance id — including on items they cannot read or update.** Leave a command open only when that is acceptable (a "Submit" on the user's own draft usually is, because only they can see the instance).
 
-1. Confirm a role exists (`mcp_daas_roles` action: `read`) and find or create a policy via `mcp_daas_policies`. A policy is the unit you reference from `workflow_json` — not the role itself.
-2. Link the policy to the role via `mcp_daas_access`. Capture the resulting `daas_access.id` UUID.
-3. Update the relevant command's `policies` array in `workflow_json` to include that UUID. A user can run the command if they hold any policy listed.
+To restrict a transition to the holders of a policy:
+
+1. Find or create the policy (`mcp_daas_policies`). A policy is the unit you reference from `workflow_json` — not the role.
+2. Attach the policy to the role (or user) with `mcp_daas_access`.
+3. Put the **policy's own UUID** (`daas_policies.id`) in the command's `policies` array. A user can run the command if they hold any policy listed.
 
 ```json
 {
   "name": "Approve",
   "next_state": "Published",
-  "policies": ["<daas-access-uuid-for-approve-tasks-policy>"],
+  "policies": ["<daas_policies.id of the approver policy>"],
   "actions": []
 }
 ```
+
+> Use the policy id, **not** the `daas_access.id` returned when you attach it. The server compares the list against the ids `get_user_policies` returns; an access-row id never matches, which locks the command for everyone.
+
+Policy UUIDs differ per environment, so prefer module access keys (next section) when the workflow has to be portable.
 
 ## Locking Commands to Module Access Keys (alternative / complement)
 
@@ -200,6 +237,10 @@ Instead of (or alongside) policy UUIDs, commands can be gated by named module-le
 ```
 
 `policies` and `module_access_keys` are **OR'd** — the user may execute the command if they satisfy either list. Both can be populated simultaneously.
+
+Use the seeded `workflow:approve` / `workflow:reject` for generic approvals and register your own key (`<domain>:<capability>`, e.g. `purchase:finance_approve`) when a step needs a narrower audience. The Command dialog of the Workflows module edits `policies` only; `module_access_keys` are set through the API and are preserved when a definition is saved from the diagram.
+
+> **Administrators (observed on DaaS 0.1.98):** the transition endpoint checks the grant map only, so an administrator who does not hold the key (or policy) is refused with 403. Grant the key on the admin's policy if admins must run gated commands.
 
 To grant a key to a role:
 1. Confirm the key exists in `daas_module_access_keys` (the platform seeds `workflow:approve` and `workflow:reject` by default).
@@ -221,15 +262,44 @@ Users whose effective policies OR-merge to `workflow:approve: true` can then run
 
 If the user explicitly opts out of role gating, mention it once in your final summary so they know what was left open.
 
+## Protect the State Field from Direct Writes
+
+A transition is the only legitimate way to change `workflow_state`. Check that a plain item update cannot do it — otherwise anyone with `update` on the collection can PATCH the state to "Approved" and skip every gate.
+
+- **Go engine:** restrict the role's `update` permission `fields` to the business fields (leave out `workflow_state` and `workflow_instance`). The engine applies the field list to every write.
+- **Next.js backend (observed on 0.1.98):** the field list is **not enforced** on `/api/items/*` writes, so restricting `fields` is not enough. Add a filter extension on `<collection>.items.update` that rejects a `workflow_state` different from the instance's `current_state` (the engine writes the state *after* it updates the instance, so its own write passes):
+
+```javascript
+// mcp_daas_extensions: type "filter", event "<collection>.items.update"
+if (!payload || payload.workflow_state === undefined) return payload;
+const keys = meta.keys && meta.keys.length ? meta.keys : meta.key ? [meta.key] : [];
+const deny = () => { throw new Error('workflow_state can only be changed through a workflow transition'); };
+if (keys.length === 0) deny();
+const instances = await services.items('daas_wf_instance', { elevated: true });
+for (const key of keys) {
+  const rows = await instances.readByQuery({
+    filter: { collection: { _eq: '<collection>' }, item_id: { _eq: String(key) } },
+    limit: 1,
+  });
+  if (!rows || !rows[0] || payload.workflow_state !== rows[0].current_state) deny();
+}
+return payload;
+```
+
+Do not use a filter extension on this event to *veto* a transition on 0.1.98: an error thrown while the engine writes the state is swallowed, so the instance advances and the item keeps its old state.
+
 ## Verify the Workflow Was Set Up Correctly
 
-After running the steps above, confirm the following before reporting success — silent failures here (especially missing `special: ["m2o"]` and the wrong assignment field name) are common:
+After running the steps above, confirm the following before reporting success — every failure here is silent:
 
-1. **Fields exist with correct meta** — `mcp_daas_fields` action: `read`, collection: `<your_collection>`. Confirm `workflow_instance` has `meta.special = ["m2o"]` and `schema.foreign_key_table = "daas_wf_instance"`; confirm `workflow_state` has `meta.interface = "xtr-interface-workflow"`.
-2. **Definition is valid JSON** — `mcp_daas_items` action: `read`, collection: `daas_wf_definition`. The new row's `workflow_json` should round-trip parse and every `commands[].next_state` should match a `states[].name`.
-3. **Assignment is wired up** — `mcp_daas_items` action: `read`, collection: `daas_wf_assignment`. There should be exactly one row with `workflow = <your-definition-id>` and `collection = "<your_collection>"`.
-4. **Auto-instance creation works** — create one item in the collection (`mcp_daas_items` action: `create`). Read it back and confirm `workflow_instance` is populated with a UUID and `workflow_state` matches `initial_state`. If `workflow_instance` is null, the `special: ["m2o"]` meta is missing or the assignment is wrong.
-5. **(If the user asked for role gating)** Each command has a non-empty `policies` or `module_access_keys` array, and signing in as a non-permitted user hides the corresponding button in `WorkflowButton`.
+1. **The instance pointer is a real relation** — `mcp_daas_relations` action: `read`, collection: `<your_collection>`. There must be a row with `many_field: "workflow_instance"` and `one_collection: "daas_wf_instance"`. An empty list means the field was declared with `schema.foreign_key_table` or without `options.related_collection`; delete it and create it again as in step 1.
+2. **Definition is valid JSON** — `mcp_daas_items` action: `read`, collection: `daas_wf_definition`. Every `commands[].next_state` must match a `states[].name`, and `initial_state` must be one of them. The API checks only that `initial_state` and a `states` array exist.
+3. **Assignments are wired up** — `mcp_daas_items` action: `read`, collection: `daas_wf_assignment`. With several assignments on one collection, check that their `filter_rule`s cannot overlap and leave no gap.
+4. **Auto-instance creation works** — create one item (`mcp_daas_items` action: `create`), then **read it back with a second call**: the instance is created by a hook after the insert, so the create response still shows `workflow_state: null`. Confirm `workflow_state` equals the workflow's `initial_state`, and that `workflow_instance` equals the `id` of the `daas_wf_instance` row whose `item_id` is this item. A `workflow_instance` that names no instance means step 1 went wrong. Repeat for one item per assignment.
+5. **The state cannot be written directly** — as a non-admin user, `PATCH /api/items/<collection>/<id>` with `{"workflow_state": "<any other state>"}`, then read the item: the state must be unchanged.
+6. **Gating** — sign in as a user without the key/policy and call `POST /api/workflow/transition` for a gated command: it must answer 403. Then as a user with it: 200, and the item's `workflow_state` follows.
+
+There is no MCP action for running a transition; use `POST /api/workflow/transition` with a user's session (`{ "workflowInstanceId": "<daas_wf_instance.id>", "commandName": "<command>" }`). MCP item deletes are disabled by default, so remove probe rows through the REST API or the app.
 
 Surface any failures here to the user — do not stop at "the MCP calls returned 200."
 

@@ -69,8 +69,10 @@ See [Standard Collection Fields reference](references/standard-fields.instructio
 
 | Field               | Type   | Required Meta                                               | Purpose                         |
 | ------------------- | ------ | ----------------------------------------------------------- | ------------------------------- |
-| `workflow_instance` | uuid   | `special: ["m2o"]`, `foreign_key_table: "daas_wf_instance"` | Links item to workflow instance |
-| `workflow_state`    | string | `interface: "xtr-interface-workflow"`                       | Stores current workflow state   |
+| `workflow_instance` | uuid   | `special: ["m2o"]`, `options.related_collection: "daas_wf_instance"` | Links item to workflow instance |
+| `workflow_state`    | string | `interface: "xtr-interface-workflow"`, `readonly: true`              | Stores current workflow state   |
+
+Add `workflow_instance` (and the `user_created` / `user_updated` audit fields) with the `fields` tool after the collection exists, declaring the relation in `meta.options.related_collection` — not inline in the `collections` create call and not with `schema.foreign_key_table`. See the [Standard Fields reference](references/standard-fields.instructions.md) for why.
 
 In addition to the MCP field create, add the columns to the local Supabase migration so the database mirrors DaaS:
 

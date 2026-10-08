@@ -17,7 +17,7 @@ Six screens ship together:
 - **`WorkflowInstancesManager`** — the `/workflow-instances` list (read-only).
 - **`WorkflowInstanceDetail`** — the `/workflow-instances/[id]` page: the instance, its current state, a read-only diagram of its definition, and the transition history.
 
-This module is the admin UI. The button that shows an item's state and runs a transition on a content form is a separate component, `WorkflowButton` — see [create-workflow](../create-workflow/SKILL.md).
+This module is the admin UI. The button that shows an item's state and runs a transition on a content form is a separate component, `WorkflowButton` — see [create-workflow](../create-workflow/SKILL.md). `WorkflowButton` is not covered by the "no proxy routes" rule below: on Buildpad UI 3.0.0 it posts transitions to the app's own origin and reads the instance as the signed-in user, so it needs a transition proxy route and read grants that this module does not — both are listed in create-workflow, step 5.
 
 ## CRITICAL: Never Create These Manually
 

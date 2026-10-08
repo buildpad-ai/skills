@@ -103,7 +103,7 @@ Alternatively, toggle the key in the **Module-Level Access** tab of the Policy e
 `hasModuleAccess` is already wired into `PermissionsContext` — no code changes needed:
 
 ```tsx
-import { usePermissions } from '@/lib/hooks';
+import { usePermissions } from '@/lib/buildpad/hooks';
 
 function ReportsPage() {
   const { hasModuleAccess } = usePermissions();
@@ -171,6 +171,11 @@ If the capability controls a workflow state-machine transition, add `module_acce
 
 `policies` and `module_access_keys` are OR'd — the user may execute the command if they satisfy *either* list. Existing workflows with only `policies` are unaffected.
 
+Two things to know when a key gates a workflow command (observed on DaaS 0.1.98 and Buildpad UI 3.0.0):
+
+- **The transition endpoint has no administrator bypass.** Unlike `hasModuleAccess`, it reads the grant map only, so an administrator who does not hold the key is answered 403. Grant the key on the administrators' policy if they must be able to run the command.
+- **`WorkflowButton` does not filter by module access keys.** It offers a key-gated command to every user and the server refuses the ones without the key. Expect that 403 in the UI, or filter the commands yourself with `hasModuleAccess`.
+
 ---
 
 ## Step 6: Gate Pages and Sidebar Nav (optional)
@@ -180,7 +185,7 @@ For pages that should be entirely inaccessible without the key, add a guard at t
 ```tsx
 // app/reports/page.tsx
 'use client';
-import { usePermissions } from '@/lib/hooks';
+import { usePermissions } from '@/lib/buildpad/hooks';
 
 export default function ReportsPage() {
   const { hasModuleAccess } = usePermissions();
@@ -194,11 +199,15 @@ export default function ReportsPage() {
 ```
 
 ```tsx
-// components/LayoutShell.tsx — inside the relevant nav section
-{(isAdmin || hasModuleAccess('reports:export')) && (
+// A client wrapper around AuthenticatedShell that filters the nav items it passes in
+{hasModuleAccess('reports:export') && (
   <SidebarNavItem href="/reports" label="Reports" icon={<IconChartBar size={18} />} ... />
 )}
 ```
+
+`hasModuleAccess` already answers `true` for an administrator — do not add `isAdmin ||` in front of it. The check also fails closed while permissions load, so a gated item appears a moment after the page does rather than flashing in and out.
+
+To gate a whole area that only administrators should see (no policy grants it), register a key, grant it on no policy, and check it the same way: administrators pass, everyone else does not, and the area can later be delegated by granting the key.
 
 ---
 
