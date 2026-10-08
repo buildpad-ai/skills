@@ -164,6 +164,10 @@ import { WorkflowButton } from "@/components/ui/workflow-button";
 />;
 ```
 
+Inside a Buildpad form (`VForm` / `CollectionForm`) the button gets the record key from the form as `primaryKey`; outside a form, pass `itemId` yourself. Without either, the button treats the item as new and shows no state.
+
+To give administrators screens for designing definitions on a diagram, assigning workflows to collections, and inspecting instances and their history, scaffold the Workflows module instead of building pages: see [add-workflows](../add-workflows/SKILL.md).
+
 ## Locking Commands to Roles
 
 The default skill output produces an unsecured workflow. To restrict a transition to a specific role:

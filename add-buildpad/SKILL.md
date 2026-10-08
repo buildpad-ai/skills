@@ -66,7 +66,7 @@ npx @buildpad/cli@latest add input select-dropdown datetime toggle --cwd /path/t
 
 ## Opt-in Modules (whole experiences)
 
-Beyond individual components, two ready-made modules install their own page shells, components, and hooks in one command. Use the dedicated skills — do not compose these by hand:
+Beyond individual components, ready-made modules install their own page shells, components, and hooks in one command. Use the dedicated skills — do not compose these by hand:
 
 ```bash
 # Files library — /files (FileManager) + /files/[id] (FileDetail)
@@ -74,9 +74,12 @@ npx @buildpad/cli@latest add files-routes --cwd /path/to/project        # → /a
 
 # Dynamic Form Builder — /forms author + fill (FormBuilder + DynamicForm)
 npx @buildpad/cli@latest add form-builder forms-routes --cwd /path/to/project  # → /create-form-builder
+
+# Workflows admin — /workflows (diagram editor), /workflow-assignments, /workflow-instances
+npx @buildpad/cli@latest add workflows-routes --cwd /path/to/project    # → /add-workflows
 ```
 
-Both also need the DaaS proxy routes: `npx @buildpad/cli@latest add api-routes --cwd /path/to/project`. See [add-files](../add-files/SKILL.md) and [create-form-builder](../create-form-builder/SKILL.md).
+Files and the Form Builder also need the DaaS proxy routes: `npx @buildpad/cli@latest add api-routes --cwd /path/to/project`. See [add-files](../add-files/SKILL.md) and [create-form-builder](../create-form-builder/SKILL.md). The Workflows module calls DaaS directly from the browser and needs no proxy routes; see [add-workflows](../add-workflows/SKILL.md).
 
 > The `ui.buildpad.ai` docs use the shorthand `buildpad add <targets>` (global install); `npx @buildpad/cli@latest add <targets>` is the equivalent no-install form.
 
