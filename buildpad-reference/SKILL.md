@@ -49,6 +49,7 @@ These are ready-made, multi-screen experiences — installed with their own CLI 
 | **Files**     | `@buildpad/ui-files` | `FileManager` (`/files` library) + `FileDetail` (`/files/[id]`); `useFiles`, `useFolders` hooks; `getAssetUrl` thumbnails | [add-files](../add-files/SKILL.md) |
 | **Form Builder** | `@buildpad/ui-forms` | `FormBuilder` (visual author) + `DynamicForm` (runtime); `FormDefinition` model in `fb_definitions`; `useFormDefinitions` hook | [create-form-builder](../create-form-builder/SKILL.md) |
 | **Workflows** | `@buildpad/ui-workflows` | `WorkflowsManager` (`/workflows`) + `WorkflowDetail` (state-diagram editor); `WorkflowAssignmentsManager`/`WorkflowAssignmentDetail`; `WorkflowInstancesManager`/`WorkflowInstanceDetail`; `useWorkflowDefinitions`, `useWorkflowAssignments`, `useWorkflowInstances` hooks with typed `DaaSRequestError` | [add-workflows](../add-workflows/SKILL.md) |
+| **Cron Jobs** | `@buildpad/ui-cron` | `CronJobsManager` (`/cron`: jobs list + run History tab) + `CronJobDetail` (`/cron/[id]`: code editor slot, settings, per-job history); `CronRunsTable`, `CronRunLogModal`; `useCronJobs`, `useCronRuns` hooks with typed `DaaSRequestError` | [add-cron](../add-cron/SKILL.md) |
 
 Note the naming: the field-level `Files`/`Upload` widgets and the `VForm`/`CollectionForm` runtime above are the *substrate*; `FileManager`/`FileDetail` and `FormBuilder`/`DynamicForm` are the full **modules** built on top of them.
 

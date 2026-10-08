@@ -239,6 +239,8 @@ console.log(`Escalated ${overdue.length} overdue tickets`);
 
 ## Next.js API Proxy Routes
 
+> **Need an admin UI for cron jobs?** Do not hand-build pages over these routes. The Cron Jobs module ([add-cron](../add-cron/SKILL.md), `npx @buildpad/cli@latest add cron-routes`) ships the jobs list, the job editor and the run history, and calls DaaS directly from the browser — it needs explicit DaaS CORS origins, and none of the proxy routes below. The routes below are for an app's own server-side or custom calls.
+
 All cron API calls from the browser must go through Next.js proxy routes (Rule 4: No CORS).
 
 ### Proxy Route Pattern

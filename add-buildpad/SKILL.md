@@ -77,6 +77,9 @@ npx @buildpad/cli@latest add form-builder forms-routes --cwd /path/to/project  #
 
 # Workflows admin — /workflows (diagram editor), /workflow-assignments, /workflow-instances
 npx @buildpad/cli@latest add workflows-routes --cwd /path/to/project    # → /add-workflows
+
+# Cron Jobs admin — /cron (jobs list + run history), /cron/[id] (job editor)
+npx @buildpad/cli@latest add cron-routes --cwd /path/to/project         # → /add-cron
 ```
 
 Files and the Form Builder also need the DaaS proxy routes: `npx @buildpad/cli@latest add api-routes --cwd /path/to/project`. See [add-files](../add-files/SKILL.md) and [create-form-builder](../create-form-builder/SKILL.md). The Workflows module calls DaaS directly from the browser and needs no proxy routes; see [add-workflows](../add-workflows/SKILL.md).
