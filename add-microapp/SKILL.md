@@ -102,7 +102,9 @@ Before creating any code, map out which collections belong to which app's domain
 
 **Check each domain against the module skills before you plan any page.** Files maps to
 [add-files](../add-files/SKILL.md) (`buildpad add files-routes`); users, roles, and
-policies map to [add-users](../add-users/SKILL.md) (`buildpad add users-routes`). Where
+policies map to [add-users](../add-users/SKILL.md) (`buildpad add users-routes`);
+workflow definitions, assignments, and instances map to
+[add-workflows](../add-workflows/SKILL.md) (`buildpad add workflows-routes`). Where
 a module exists, scaffold it and wrap it. Write a page by hand only for a domain no
 module covers.
 

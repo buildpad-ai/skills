@@ -306,6 +306,7 @@ of hand-writing a page:
 | --- | --- | --- |
 | files | [add-files](../add-files/SKILL.md) | `npx @buildpad/cli@latest add files-routes` |
 | users, roles, policies | [add-users](../add-users/SKILL.md) | `npx @buildpad/cli@latest add users-routes` |
+| workflow definitions, assignments, instances | [add-workflows](../add-workflows/SKILL.md) | `npx @buildpad/cli@latest add workflows-routes` |
 
 A hand-written placeholder page is acceptable ONLY when no module covers the domain.
 

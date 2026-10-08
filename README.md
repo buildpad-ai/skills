@@ -90,6 +90,7 @@ The core methodology: every feature is specified as `requirements.md` (EARS) →
 | [add-buildpad](add-buildpad) | Install Buildpad UI Copy & Own components via CLI |
 | [add-files](add-files) | Scaffold the Files module: library, detail view, drag-and-drop upload |
 | [add-users](add-users) | Scaffold the Users module: /users, /roles, /policies admin pages with permissions matrix |
+| [add-workflows](add-workflows) | Scaffold the Workflows module: /workflows (state-diagram editor), /workflow-assignments, /workflow-instances admin pages |
 | [add-microapp](add-microapp) | Domain boundaries and repo bootstrap: Main App + micro-apps on one DaaS backend (load first) |
 | [add-microfrontend](add-microfrontend) | The composition mechanism: iframe host, postMessage bridge, auth/URL/scope syncing, CSP (load second) |
 | [add-multitenancy](add-multitenancy) | Multi-tenancy (delegates to manage-scope) |
