@@ -99,7 +99,7 @@ Key format constraint: `^[a-z][a-z0-9_:./-]*$`, globally UNIQUE.
 `hasModuleAccess` is part of `PermissionsContext` — available everywhere the context is mounted:
 
 ```typescript
-import { usePermissions } from '@/lib/hooks';
+import { usePermissions } from '@/lib/buildpad/hooks';
 
 const { hasModuleAccess, moduleAccess } = usePermissions();
 

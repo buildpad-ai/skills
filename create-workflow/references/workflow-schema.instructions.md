@@ -34,26 +34,20 @@ Workflows provide:
 
 ## Collection Requirements for Workflow
 
-**REQUIRED**: Any collection using workflows MUST have these fields:
+A collection that uses workflows carries these fields:
 
-| Field               | Type      | Purpose                             | How System Finds It                                                          |
-| ------------------- | --------- | ----------------------------------- | ---------------------------------------------------------------------------- |
-| `workflow_instance` | UUID (FK) | Links item to its workflow instance | `meta.special = ["m2o"]` AND `schema.foreign_key_table = 'daas_wf_instance'` |
-| `workflow_state`    | String    | Stores current state name           | `meta.interface = 'xtr-interface-workflow'`                                  |
+| Field               | Type      | Purpose                             | How the system finds it                                                             |
+| ------------------- | --------- | ----------------------------------- | ----------------------------------------------------------------------------------- |
+| `workflow_state`    | String    | Stores current state name           | `meta.interface = 'xtr-interface-workflow'`                                         |
+| `workflow_instance` | UUID (FK) | Links item to its workflow instance | A many-to-one relation whose target is `daas_wf_instance` (foreign key + `daas_relations` row) |
 
-**🔴 CRITICAL: The `special: ["m2o"]` attribute is REQUIRED for workflow_instance!**
+What each one is for:
 
-Without the `special: ["m2o"]` meta attribute, the system will NOT recognize the field as a Many-to-One relation, and:
+- **Instances are created from the assignment**, whether or not either field exists. When an item is created the engine looks up `daas_wf_assignment` for the collection, and creates a `daas_wf_instance` row holding the item's id and the workflow's initial state.
+- **`workflow_state`** is what the engine writes the state to — on creation and after every transition. Without it the instance still advances, but the item never shows its state.
+- **`workflow_instance`** is a convenience pointer from the item to its instance. It is filled only when the field is a real relation. `WorkflowButton` does not need it: it finds the instance by `collection` + `item_id`.
 
-- Workflow instances will NOT be auto-created when items are created
-- The relation to `daas_wf_instance` will not be properly established
-- Workflow sync will fail silently
-
-**Without these fields properly configured**, the workflow system cannot:
-
-- Link items to their workflow instances
-- Display or update workflow state on items
-- Auto-assign workflows to new items
+**🔴 Declare the relation with `meta.options.related_collection`.** That (with `special: ["m2o"]`) is what creates the foreign key and the relation, on both backends. `schema.foreign_key_table` is **not** read on create — the Next.js backend ignores it and the Go engine refuses it with 400 — so a field declared that way is a bare uuid column and is never filled.
 
 ### Field Definitions (MCP)
 
@@ -67,13 +61,14 @@ Without the `special: ["m2o"]` meta attribute, the system will NOT recognize the
         "collection": "your_collection",
         "field": "workflow_instance",
         "type": "uuid",
+        "schema": { "is_nullable": true },
         "meta": {
           "interface": "select-dropdown-m2o",
           "special": ["m2o"],
           "readonly": true,
-          "hidden": true
-        },
-        "schema": { "foreign_key_table": "daas_wf_instance" }
+          "hidden": true,
+          "options": { "related_collection": "daas_wf_instance", "related_field": "id", "on_delete": "SET NULL" }
+        }
       },
       {
         "collection": "your_collection",
@@ -88,34 +83,37 @@ Without the `special: ["m2o"]` meta attribute, the system will NOT recognize the
 
 ### Common Mistakes
 
-❌ **WRONG** - Missing `special` attribute:
+❌ **WRONG** — the relation named in `schema`. No foreign key, no relation, the column is never filled:
 
 ```json
 {
   "field": "workflow_instance",
-  "meta": {
-    "interface": "select-dropdown-m2o",
-    "readonly": true,
-    "hidden": true
-  },
+  "type": "uuid",
+  "meta": { "interface": "select-dropdown-m2o", "special": ["m2o"], "readonly": true, "hidden": true },
   "schema": { "foreign_key_table": "daas_wf_instance" }
 }
 ```
 
-✅ **CORRECT** - With `special: ["m2o"]`:
+✅ **CORRECT** — the relation named in `meta.options`:
 
 ```json
 {
   "field": "workflow_instance",
+  "type": "uuid",
+  "schema": { "is_nullable": true },
   "meta": {
     "interface": "select-dropdown-m2o",
     "special": ["m2o"],
     "readonly": true,
-    "hidden": true
-  },
-  "schema": { "foreign_key_table": "daas_wf_instance" }
+    "hidden": true,
+    "options": { "related_collection": "daas_wf_instance", "related_field": "id", "on_delete": "SET NULL" }
+  }
 }
 ```
+
+❌ **WRONG** — the field listed inline in the `collections` create call (observed on DaaS 0.1.98). That path gives every `uuid` column `DEFAULT gen_random_uuid()`: with the relation, every insert fails on the foreign key; without it, the column fills with random UUIDs that name no instance. Create the collection first, then add `workflow_instance` with the `fields` tool.
+
+Check the result with the `relations` tool (`action: "read"`, `collection`): there must be a row with `many_field: "workflow_instance"` and `one_collection: "daas_wf_instance"`.
 
 ### Filter Rule Fields
 
@@ -581,7 +579,6 @@ Link workflow to a collection with filter rules:
     "action": "create",
     "collection": "daas_wf_assignment",
     "data": {
-      "name": "Articles Workflow",
       "workflow": "workflow-definition-uuid",
       "collection": "articles",
       "filter_rule": {
@@ -629,13 +626,13 @@ For automatic workflow tracking, add these fields to your collection:
         "collection": "articles",
         "field": "workflow_instance",
         "type": "uuid",
+        "schema": { "is_nullable": true },
         "meta": {
           "interface": "select-dropdown-m2o",
+          "special": ["m2o"],
           "readonly": true,
-          "hidden": true
-        },
-        "schema": {
-          "foreign_key_table": "daas_wf_instance"
+          "hidden": true,
+          "options": { "related_collection": "daas_wf_instance", "related_field": "id", "on_delete": "SET NULL" }
         }
       }
     ]
@@ -724,43 +721,40 @@ Authorization: Bearer <token>
 }
 ```
 
-### MCP Tool
+### From an agent (MCP)
+
+There is **no MCP action that runs a transition** — the `items` tool cannot do it, and there is no `_workflow_transition` collection. A transition is always the REST call above, made with the session of the user who is transitioning (that user is who the command's gate is checked against and who the history records).
+
+MCP is for finding the instance to transition:
 
 ```json
 {
   "name": "items",
   "arguments": {
-    "action": "create",
-    "collection": "_workflow_transition",
-    "data": {
-      "workflow_instance_id": "instance-uuid",
-      "command_name": "Approve"
+    "action": "read",
+    "collection": "daas_wf_instance",
+    "query": {
+      "filter": {
+        "collection": { "_eq": "articles" },
+        "item_id": { "_eq": "article-uuid" }
+      },
+      "fields": ["id", "current_state", "workflow", "terminated"]
     }
   }
 }
 ```
 
-Or use REST API directly:
+### What the endpoint answers
 
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "tools/call",
-  "params": {
-    "name": "items",
-    "arguments": {
-      "action": "read",
-      "collection": "daas_wf_instance",
-      "query": {
-        "filter": {
-          "collection": { "_eq": "articles" },
-          "item_id": { "_eq": "article-uuid" }
-        }
-      }
-    }
-  }
-}
-```
+| Status | Body | Meaning |
+| ------ | ---- | ------- |
+| 200 | `{ "message": "Successfully transitioned workflow state" }` | Instance moved, history written, item's state field updated |
+| 400 | `{ "error": "Command \"X\" not found in state \"Draft\"" }` | Not a command of the current state |
+| 400 | `{ "error": "Current state \"Draft\" not found in workflow definition" }` | The definition was edited and no longer has the state this instance is in |
+| 403 | `{ "message": "You are not authorized to perform this transition" }` | The caller holds none of the command's policies or module access keys |
+| 404 | `{ "error": "Workflow instance not found" }` | Unknown instance id |
+
+The endpoint runs its writes with elevated permissions, so the command's gate is the **only** authorization: the caller's permissions on the collection are not consulted. A command with no `policies` and no `module_access_keys` can therefore be run by any authenticated user who has the instance id.
 
 ---
 
@@ -871,7 +865,7 @@ Add your regular fields (title, content, status, etc.)
 
 ### Step 3: Create Workflow Fields (CRITICAL!)
 
-**Both fields are required, and workflow_instance MUST have `special: ["m2o"]`:**
+**Add them with the `fields` tool after the collection exists; `workflow_instance` declares its relation in `meta.options`:**
 
 ```json
 {
@@ -883,13 +877,14 @@ Add your regular fields (title, content, status, etc.)
         "collection": "your_collection",
         "field": "workflow_instance",
         "type": "uuid",
+        "schema": { "is_nullable": true },
         "meta": {
           "interface": "select-dropdown-m2o",
           "special": ["m2o"],
           "readonly": true,
-          "hidden": true
-        },
-        "schema": { "foreign_key_table": "daas_wf_instance" }
+          "hidden": true,
+          "options": { "related_collection": "daas_wf_instance", "related_field": "id", "on_delete": "SET NULL" }
+        }
       },
       {
         "collection": "your_collection",
@@ -955,8 +950,7 @@ Add your regular fields (title, content, status, etc.)
             "isEndState": true
           }
         ]
-      },
-      "status": "active"
+      }
     }
   }
 }
@@ -994,32 +988,27 @@ Create a test item and verify:
 
 ## Troubleshooting
 
-### Items Created Without workflow_instance
+### Items Created Without a Linked workflow_instance
 
-**Symptoms:** New items have `workflow_instance: null`
+**Symptoms:** New items have `workflow_instance: null`, or a UUID that matches no row in `daas_wf_instance`, while `workflow_state` is set correctly.
 
-**Cause:** The `workflow_instance` field is missing `special: ["m2o"]` in its meta.
+**Cause:** The field is not a real relation to `daas_wf_instance`. It was declared with `schema.foreign_key_table` (ignored on create) or without `meta.options.related_collection`, so there is no foreign key and no `daas_relations` row. A random UUID additionally means the field was listed inline in the `collections` create call, which gave the column a `gen_random_uuid()` default.
 
-**Fix:**
+**Check:** `relations` tool, `action: "read"`, `collection: "your_collection"` — a correctly created field has a row with `many_field: "workflow_instance"`, `one_collection: "daas_wf_instance"`.
 
-```json
-{
-  "name": "mcp_daas_fields",
-  "arguments": {
-    "action": "update",
-    "collection": "your_collection",
-    "field": "workflow_instance",
-    "data": {
-      "meta": {
-        "interface": "select-dropdown-m2o",
-        "special": ["m2o"],
-        "readonly": true,
-        "hidden": true
-      }
-    }
-  }
-}
-```
+**Fix:** Updating the field's `meta` does not create the relation. On a new collection, delete the field and create it again with the `fields` tool and `meta.options.related_collection` (see [Field Definitions](#field-definitions-mcp)). On a collection that already has rows, the column's default and its stray values have to be corrected with a migration before a foreign key can be added.
+
+The workflow itself is unaffected: instances exist and transitions work, because the instance is found through `collection` + `item_id`.
+
+### Items Created Without Any Instance
+
+**Symptoms:** No row in `daas_wf_instance` for the item; `workflow_state` stays null.
+
+**Causes:**
+
+1. No assignment for the collection, or the item matches no assignment's `filter_rule`.
+2. More than one assignment matches. The engine refuses to choose and creates nothing; the Logs page shows "Multiple workflow assignments matched".
+3. You read the create response. The instance is created by a hook *after* the insert, so the response still carries `workflow_state: null` — read the item again.
 
 ### Workflow Won't Open / Display
 
@@ -1059,15 +1048,23 @@ Create a test item and verify:
 
 **Causes & Fixes:**
 
-1. **Missing workflow assignment** - Create `daas_wf_assignment` record
-2. **Assignment not active** - Set `status: "active"` on assignment
-3. **Policy restrictions** - User doesn't have required policy
+1. **No instance** - see "Items Created Without Any Instance" above; the button shows no state
+2. **The button is inert** - on Buildpad UI 3.0.0 a `readonly` state field disables the button inside a form; render it outside the form (see the create-workflow skill, step 5)
+3. **404 on the transition** - the app has no route for `POST /api/workflow/transition`; on Buildpad UI 3.0.0 the button posts to the app's own origin, which needs a proxy to DaaS
+4. **403 "not authorized"** - the user holds none of the command's `policies` (policy ids, not access-row ids) or `module_access_keys`; on DaaS 0.1.98 that includes administrators
+5. **403 on load** - the user has no read permission on `daas_wf_instance` / `daas_wf_definition`
 
 ### Workflow State Not Updating After Transition
 
 **Symptoms:** Transition succeeds but `workflow_state` doesn't change
 
-**Cause:** The `workflow_state` field is missing the correct interface.
+**Causes** (observed on DaaS 0.1.98 — the endpoint answers 200 in every one of them, because a failure to write the item's state field is logged, not returned):
+
+1. The `workflow_state` field is missing the `xtr-interface-workflow` interface (fix below).
+2. A filter extension on `<collection>.items.update` threw while the engine wrote the state.
+3. The collection is scope-enabled and the request carried no `X-Resource-Uri`: the engine's write is filtered to the root scope and matches no row.
+
+Compare `daas_wf_instance.current_state` with the item's `workflow_state` to see whether they have drifted.
 
 **Fix:**
 

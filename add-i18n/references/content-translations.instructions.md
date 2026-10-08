@@ -408,8 +408,8 @@ The workflow engine creates one `daas_wf_instance` per row of any collection tha
         "collection": "articles_translations",
         "field": "workflow_instance",
         "type": "uuid",
-        "meta": { "interface": "select-dropdown-m2o", "special": ["m2o"], "readonly": true, "hidden": true },
-        "schema": { "foreign_key_table": "daas_wf_instance" }
+        "schema": { "is_nullable": true },
+        "meta": { "interface": "select-dropdown-m2o", "special": ["m2o"], "readonly": true, "hidden": true, "options": { "related_collection": "daas_wf_instance", "related_field": "id", "on_delete": "SET NULL" } }
       },
       {
         "collection": "articles_translations",

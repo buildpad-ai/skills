@@ -10,6 +10,11 @@ This reference defines the **mandatory and optional field groups** that every Da
 
 > **Rule: Every collection MUST include Group A (Audit Fields).** Group B and C are added based on feature requirements.
 
+> **Rule: add every `uuid` relation field (`user_created`, `user_updated`, `workflow_instance`) with the `fields` tool, after the collection exists.**
+>
+> - A many-to-one is turned into a foreign key and a relation from **`meta.options.related_collection`** (with the `m2o` special). `schema.foreign_key_table` is not read on create — the Next.js backend ignores it and the Go engine refuses it — so the field would be a bare column.
+> - Listed inline in the `collections` create call, every `uuid` column gets `DEFAULT gen_random_uuid()` (observed on DaaS 0.1.98). A relation column then holds a random UUID that references nothing, or — once it has a foreign key — makes every insert fail.
+
 ---
 
 ## Group A: Audit Fields (ALWAYS Include)
@@ -28,15 +33,14 @@ These four fields enable automatic user/timestamp tracking. The DaaS platform re
         "collection": "YOUR_COLLECTION",
         "field": "user_created",
         "type": "uuid",
+        "schema": { "is_nullable": true },
         "meta": {
           "interface": "select-dropdown-m2o",
-          "special": ["user-created"],
+          "special": ["user-created", "m2o"],
           "readonly": true,
           "hidden": true,
-          "width": "half"
-        },
-        "schema": {
-          "foreign_key_table": "daas_users"
+          "width": "half",
+          "options": { "related_collection": "daas_users", "related_field": "id", "on_delete": "SET NULL" }
         }
       },
       {
@@ -58,15 +62,14 @@ These four fields enable automatic user/timestamp tracking. The DaaS platform re
         "collection": "YOUR_COLLECTION",
         "field": "user_updated",
         "type": "uuid",
+        "schema": { "is_nullable": true },
         "meta": {
           "interface": "select-dropdown-m2o",
-          "special": ["user-updated"],
+          "special": ["user-updated", "m2o"],
           "readonly": true,
           "hidden": true,
-          "width": "half"
-        },
-        "schema": {
-          "foreign_key_table": "daas_users"
+          "width": "half",
+          "options": { "related_collection": "daas_users", "related_field": "id", "on_delete": "SET NULL" }
         }
       },
       {
@@ -113,14 +116,13 @@ Add these fields when the collection needs a state machine (draft/review/publish
         "collection": "YOUR_COLLECTION",
         "field": "workflow_instance",
         "type": "uuid",
+        "schema": { "is_nullable": true },
         "meta": {
           "interface": "select-dropdown-m2o",
           "special": ["m2o"],
           "readonly": true,
-          "hidden": true
-        },
-        "schema": {
-          "foreign_key_table": "daas_wf_instance"
+          "hidden": true,
+          "options": { "related_collection": "daas_wf_instance", "related_field": "id", "on_delete": "SET NULL" }
         }
       },
       {
@@ -146,11 +148,13 @@ workflow_state text
 
 ### Critical Notes
 
-- **`special: ["m2o"]` on `workflow_instance` is REQUIRED** — without it, the system will NOT auto-create workflow instances when items are created
+- **`workflow_instance` must be a real relation** — declared with `meta.options.related_collection: "daas_wf_instance"` and created through the `fields` tool. Otherwise the pointer is never filled. (Instances themselves are created from the workflow *assignment*; this field only links the item to its instance.)
+- **`workflow_state` is `readonly`** — the state changes through transitions only. Also keep it (and `workflow_instance`) out of the `fields` list of non-admin `update` permissions.
 - After adding these fields, invoke the `create-workflow` skill to:
   1. Create a workflow definition in `daas_wf_definition`
   2. Create a workflow assignment in `daas_wf_assignment`
-  3. Add the `WorkflowButton` component to the UI
+  3. Grant the users who run transitions read on `daas_wf_instance` and `daas_wf_definition`, and gate the commands
+  4. Add the `WorkflowButton` component to the UI
 
 ---
 
@@ -201,9 +205,9 @@ Invoke the `manage-scope` skill to register the collection with `field_name: "re
 
 ## Full Standard Collection Example
 
-This example creates a complete `articles` collection with **all three field groups** (audit + workflow + scope) plus business fields:
+This example creates an `articles` collection with audit and workflow fields plus business fields. It takes two calls: the table with its plain columns, then the relation fields.
 
-### Step 1: Create Collection
+### Step 1: Create the collection (plain columns only)
 
 ```json
 {
@@ -221,7 +225,7 @@ This example creates a complete `articles` collection with **all three field gro
           "field": "id",
           "type": "uuid",
           "meta": { "hidden": true, "readonly": true },
-          "schema": { "is_primary_key": true, "has_auto_increment": false, "default_value": "gen_random_uuid()" }
+          "schema": { "is_primary_key": true }
         },
         {
           "field": "title",
@@ -234,44 +238,14 @@ This example creates a complete `articles` collection with **all three field gro
           "meta": { "interface": "input-rich-text-html" }
         },
         {
-          "field": "user_created",
-          "type": "uuid",
-          "meta": { "interface": "select-dropdown-m2o", "special": ["user-created"], "readonly": true, "hidden": true, "width": "half" },
-          "schema": { "foreign_key_table": "daas_users" }
-        },
-        {
           "field": "date_created",
           "type": "timestamp",
-          "meta": { "interface": "datetime", "special": ["date-created"], "readonly": true, "width": "half", "display": "datetime" },
-          "schema": { "default_value": "CURRENT_TIMESTAMP" }
-        },
-        {
-          "field": "user_updated",
-          "type": "uuid",
-          "meta": { "interface": "select-dropdown-m2o", "special": ["user-updated"], "readonly": true, "hidden": true, "width": "half" },
-          "schema": { "foreign_key_table": "daas_users" }
+          "meta": { "interface": "datetime", "special": ["date-created"], "readonly": true, "width": "half", "display": "datetime" }
         },
         {
           "field": "date_updated",
           "type": "timestamp",
           "meta": { "interface": "datetime", "special": ["date-updated"], "readonly": true, "width": "half", "display": "datetime" }
-        },
-        {
-          "field": "workflow_instance",
-          "type": "uuid",
-          "meta": { "interface": "select-dropdown-m2o", "special": ["m2o"], "readonly": true, "hidden": true },
-          "schema": { "foreign_key_table": "daas_wf_instance" }
-        },
-        {
-          "field": "workflow_state",
-          "type": "string",
-          "meta": { "interface": "xtr-interface-workflow", "readonly": true }
-        },
-        {
-          "field": "resource_uri",
-          "type": "text",
-          "meta": { "interface": "select-dropdown-m2o", "special": ["m2o"], "readonly": true, "hidden": true },
-          "schema": { "foreign_key_table": "daas_scope_items", "foreign_key_column": "uri_path" }
         }
       ]
     }
@@ -279,13 +253,56 @@ This example creates a complete `articles` collection with **all three field gro
 }
 ```
 
-### Step 2: Configure Workflow (if Group B included)
+### Step 2: Add the relation fields and the workflow state
+
+```json
+{
+  "name": "mcp_daas_fields",
+  "arguments": {
+    "action": "create",
+    "data": [
+      {
+        "collection": "articles",
+        "field": "user_created",
+        "type": "uuid",
+        "schema": { "is_nullable": true },
+        "meta": { "interface": "select-dropdown-m2o", "special": ["user-created", "m2o"], "readonly": true, "hidden": true, "width": "half", "options": { "related_collection": "daas_users", "related_field": "id", "on_delete": "SET NULL" } }
+      },
+      {
+        "collection": "articles",
+        "field": "user_updated",
+        "type": "uuid",
+        "schema": { "is_nullable": true },
+        "meta": { "interface": "select-dropdown-m2o", "special": ["user-updated", "m2o"], "readonly": true, "hidden": true, "width": "half", "options": { "related_collection": "daas_users", "related_field": "id", "on_delete": "SET NULL" } }
+      },
+      {
+        "collection": "articles",
+        "field": "workflow_instance",
+        "type": "uuid",
+        "schema": { "is_nullable": true },
+        "meta": { "interface": "select-dropdown-m2o", "special": ["m2o"], "readonly": true, "hidden": true, "options": { "related_collection": "daas_wf_instance", "related_field": "id", "on_delete": "SET NULL" } }
+      },
+      {
+        "collection": "articles",
+        "field": "workflow_state",
+        "type": "string",
+        "schema": { "is_nullable": true },
+        "meta": { "interface": "xtr-interface-workflow", "readonly": true }
+      }
+    ]
+  }
+}
+```
+
+Confirm with the `relations` tool (`action: "read"`, `collection: "articles"`): one row per relation field. An empty list means the relations were not created.
+
+### Step 3: Configure Workflow (if Group B included)
 
 Proceed to `create-workflow` skill to define workflow definition and assignment.
 
-### Step 3: Configure Scope (if Group C included)
+### Step 4: Configure Scope (if Group C included)
 
-Proceed to `manage-scope` skill to register the collection in scope config.
+Proceed to `manage-scope` skill to add the scope field and register the collection in scope config.
 
 ---
 
