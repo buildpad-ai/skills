@@ -149,7 +149,7 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
 }
 ```
 
-**Navigate after a create.** A detail component does not change its own `id`: after a successful create it still holds `id="new"`, and a second Save would create a second record. `onSaved` receives the saved record; navigate to the list (as the generated pages do) or to the new record. Keep this when you customise the pages.
+**Navigate after a create.** From Buildpad UI 3.2.0, after a successful create the component goes on as the editor of the stored record: a further Save updates it and does not create a second one. The URL still says `/workflows/new`, though, and a reload would open an empty form. `onSaved` receives the saved record; navigate to the list (as the generated pages do) or to the new record. Keep this when you customise the pages. On 3.0.x–3.1.x the component kept `id="new"` after a create and a second Save created a duplicate — upgrade (`npx @buildpad/cli@latest upgrade workflow-management`) rather than working around it.
 
 `WorkflowAssignmentDetail` (`id`, `onBack`, `onSaved`) and `WorkflowInstanceDetail` (`id`, `onBack`) follow the same pattern. `onBack` is what Cancel, the breadcrumb and the Back button of the not-found / access-denied / load-error states call.
 
@@ -180,6 +180,7 @@ These hooks are for administering workflows. To read an item's workflow state or
 ## Access-Control Semantics (IMPORTANT)
 
 - The UI gates controls on the collections the API enforces: `daas_wf_definition` and `daas_wf_assignment` (`create` / `update` / `delete`). A reader without `update` gets the detail page read-only. Instances and history have no client gate: the API's answer decides, and a refusal draws the access-denied state.
+- Until the permissions are known, no write control is drawn and the editors take no edit (3.2.0 and later; earlier versions showed them for the length of the permissions request). The lists and records still load at once. Do not "fix" the short wait by rendering buttons optimistically.
 - The gates only hide controls. Grant the collection permissions through policies (see [create-rbac](../create-rbac/SKILL.md)); a hidden button is not the protection.
 - Gate your navigation links too, so a user without read access to `daas_wf_definition` does not see the Automation group.
 - **Who may run a command.** A command stores `policies` (policy ids) and `module_access_keys`. A caller who holds any listed policy **or** any listed key may run it. **A command with neither list is open to every authenticated user.** The Command dialog edits `policies`; it keeps stored `module_access_keys` on save and shows a notice that the command is gated by them, but has no field to edit them — set keys through the API (see [grant-module-access](../grant-module-access/SKILL.md)).
