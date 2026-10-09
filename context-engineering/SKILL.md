@@ -36,7 +36,8 @@ System Prompt (copilot-instructions.md)
 
 ### 1. Rules (Always Active)
 
-Defined in `.github/copilot-instructions.md`:
+Defined in this project's always-on AI instructions file (the one your IDE
+loads on every turn):
 - Buildpad-First component rule
 - Two-tier architecture (Frontend → DaaS → Supabase)
 - Server-side proxy pattern

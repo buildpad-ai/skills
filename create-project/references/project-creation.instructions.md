@@ -22,7 +22,7 @@ applyTo: "**/*.{ts,tsx,md}"
 
 The AI agent often:
 1. Tries to run `create-next-app .` inside the workspace root (which has many projects)
-2. Creates a directory, copies `.github/` (or `.kiro/`) files, THEN tries to run `create-next-app` (now non-empty)
+2. Creates a directory, copies the AI tool config files, THEN tries to run `create-next-app` (now non-empty)
 3. Runs `create-next-app` inside an existing project directory
 
 ### Prevention Rules
@@ -94,7 +94,7 @@ See [prerequisites.instructions.md](prerequisites.instructions.md) for full deta
    (creates Next.js skeleton, installs ALL components, installs ALL npm deps)
 4. Create .env.local               → Only NOW create project-specific files
 5. Create app pages                → app/login/page.tsx, etc.
-6. Create .github/ & .kiro/ folders → Copy AI tools LAST (not first!)
+6. Create AI tool config folders  → Copy AI tools LAST (not first!)
 7. Run Buildpad-First validation   → grep for forbidden Mantine imports (see below)
 ```
 
@@ -109,7 +109,7 @@ See [prerequisites.instructions.md](prerequisites.instructions.md) for full deta
 5. Install dependencies            → cd /path/to/project-name && pnpm install
 6. Create .env.local               → Only NOW create project-specific files
 7. Create app pages                → app/login/page.tsx, etc.
-8. Create .github/ & .kiro/ folders → Copy AI tools LAST (not first!)
+8. Create AI tool config folders  → Copy AI tools LAST (not first!)
 9. Run Buildpad-First validation   → grep for forbidden Mantine imports (see below)
 ```
 
