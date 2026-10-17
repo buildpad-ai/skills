@@ -80,6 +80,8 @@ changes below, each with its reason:
 - `spec-driven-development/SKILL.md` (text): The scope item says that on an Engine project the hierarchy begins beneath the project's tenant node; the Supabase guidance is unchanged.
 - `subagent-delegation/SKILL.md` (text): Qualified for both kinds of project: RLS is named as a Supabase project's access rule, OAuth review as a Supabase-project check (OAuth sign-in is not available on an Engine project), and strict ordering covers collection definitions as well as migrations.
 
+Read through by Rudy on 17 October 2026, on the candidate commit `a8ce84d`.
+
 ## v1.0.0
 
 The Baseline_Revision: the last revision of `main` before the skills learned to serve Engine

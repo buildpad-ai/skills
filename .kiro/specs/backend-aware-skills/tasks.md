@@ -932,7 +932,7 @@
     except the stored export).
 
 - [ ] 9. Release `v2.0.0` (design "Last"; after tasks 4 to 8)
-- [ ] 9.1 Run the release read-through and the install check on the candidate
+- [x] 9.1 Run the release read-through and the install check on the candidate
   - Run `node tools/repo-check/check.mjs --render <out>` and go through Testing Strategy steps 2 to 5
     for all 44 changed folders. Gather the per-folder read-through records from the pull requests.
     Confirm that R7 reports no UC folder (rows 45-64).
@@ -940,7 +940,11 @@
     files must equal the candidate tree.
   - Done when: there is no open finding, and reader, date and candidate commit are noted for 9.2.
   - _Requirements: 1.8, 2.2, 2.3, 3.15, 6.7_
-- [ ] 9.2 Write `CHANGELOG.md` and release every change-file entry
+  - Note 17 October 2026: read through by Rudy on candidate `a8ce84d`; R7 reports no UC folder.
+    The install check (`skills@1.7.1 add <checkout> --all`) first installed 60 of 62 skills:
+    the front matter of `add-microfrontend` and `add-microfrontend-zones` did not parse as YAML.
+    Quoted in pull request #30; then 62 of 62 installed, each file equal to the tree.
+- [x] 9.2 Write `CHANGELOG.md` and release every change-file entry
   - Add a `v2.0.0` section to `CHANGELOG.md`, above the `v1.0.0` section from 3.2. It has a "Supabase projects" subsection that lists every entry of
     `supabase-view-changes/*.json` with its reason, including every reworded description, and a
     "Read through by" line from 9.1. Set each entry's `release` to `v2.0.0`. After 3.2 created the
@@ -948,6 +952,7 @@
   - Done when: `node tools/repo-check/check.mjs --tag v2.0.0` exits 0, which means R10 and R13 pass
     with no `unreleased` entry and every non-UC row converted. The pull request is merged.
   - _Requirements: 2.4, 6.2, 7.1, 7.2_
+  - Note 17 October 2026: pull request #30; 33 entries released, `check.mjs --tag v2.0.0` exits 0.
 - [ ] 9.3 Tag `v2.0.0` and publish the GitHub Release (maintainer)
   - Create the annotated tag `v2.0.0` on the merge commit of 9.2, push it, and publish a GitHub
     Release carrying the `v2.0.0` CHANGELOG section.
