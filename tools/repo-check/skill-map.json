@@ -44,6 +44,7 @@
   {"folder":"buildpad-steering","dependence":"none","treatment":"reworded to be true for both","size":"small","plan":"RW+G"},
   {"folder":"worker-messaging","dependence":"none","treatment":"both paths, chosen by backend, with an Engine passage only (amended 16 October 2026)","size":"small","plan":"BP"},
   {"folder":"add-mobile-app","dependence":"none","treatment":"new skill, true for both kinds of project (wraps the deployed web app; no backend-specific step)","size":"small","plan":"RW"},
+  {"folder":"add-mcp-server","dependence":"none","treatment":"new skill, true for both kinds of project (the MCP route forwards the caller's own token to the data API; no backend-specific step)","size":"small","plan":"RW"},
   {"folder":"migrate-to-engine","dependence":"partial","treatment":"new skill, both paths, chosen by backend: on an Engine project it ports the automation and app code of a project moved from Supabase; on a Supabase project it says the skill applies after the move and stops","size":"medium","plan":"BP"},
   {"folder":"amplify-env-vars","dependence":"none","treatment":"unchanged","size":"none","plan":"UC"},
   {"folder":"buildpad-debug","dependence":"none","treatment":"unchanged","size":"none","plan":"UC"},

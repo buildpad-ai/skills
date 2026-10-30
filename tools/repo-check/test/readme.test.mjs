@@ -52,6 +52,6 @@ import path from 'node:path';
 test('R11 passes on this repository README', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
   const skills = readdirSync(root).filter((d) => existsSync(path.join(root, d, 'SKILL.md')));
-  assert.equal(skills.length, 64);
+  assert.equal(skills.length, 65);
   assert.deepEqual(readmeIssues(readFileSync(path.join(root, 'README.md'), 'utf8'), skills), []);
 });

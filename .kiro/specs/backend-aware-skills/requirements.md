@@ -705,6 +705,7 @@ microfrontend Skills while PP-35 is unmet.
 | `buildpad-steering` | none | reworded to be true for both | small |
 | `worker-messaging` | none | both paths, chosen by backend, with an Engine passage only (amended 16 October 2026) | small |
 | `add-mobile-app` | none | new skill, true for both kinds of project (wraps the deployed web app; no backend-specific step) | small |
+| `add-mcp-server` | none | new skill, true for both kinds of project (the MCP route forwards the caller's own token to the data API; no backend-specific step) | small |
 | `migrate-to-engine` | partial | new skill, both paths, chosen by backend: on an Engine project it ports the automation and app code of a project moved from Supabase; on a Supabase project it says the skill applies after the move and stops | medium |
 
 Unchanged, with no dependence found (20): `amplify-env-vars`, `buildpad-debug`, `buildpad-discovery`, `buildpad-impl`, `buildpad-review`, `buildpad-spec-batch`, `buildpad-spec-design`, `buildpad-spec-init`, `buildpad-spec-quick`, `buildpad-spec-requirements`, `buildpad-spec-status`, `buildpad-spec-tasks`, `buildpad-validate-design`, `buildpad-validate-gap`, `buildpad-validate-impl`, `buildpad-verify-completion`, `code-simplification`, `create-component`, `generate-docs`, `git-workflow-and-versioning`.
