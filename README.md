@@ -135,6 +135,7 @@ The core methodology: every feature is specified as `requirements.md` (EARS) →
 | [add-i18n](add-i18n) | Internationalization: `app/[lang]` routing, middleware locale negotiation, dictionaries + I18nProvider, LanguageSwitcher, DaaS content translations |
 | [add-mobile-app](add-mobile-app) | Wrap the web app as iOS/Android with Capacitor (server-URL mode), plus when to use platform-managed mobile builds / Expo mobile microapps; SSO, push, geofencing, emulator gotchas |
 | [add-mcp-server](add-mcp-server) | Expose the app's own data and actions as an MCP server: one stateless `/api/mcp` route whose tools forward the caller's own token to the data API |
+| [add-comments](add-comments) | The standard comment field: social @mentions, images (paste from the clipboard), replies at any depth, an emoji picker, one-click reactions, mention and reply emails; with the hooks, the shared editor, the thread list and how to prove it |
 | [worker-messaging](worker-messaging) | Offload long-running work to a Buildpad runtime worker over RabbitMQ (topic-exchange job convention; Next.js producer + worker consumer/chaining; connection via Platform MCP) |
 | [migrate-to-engine](migrate-to-engine) | Engine projects only: finish moving a project from Supabase to the Buildpad Engine — rewrite the hooks, cron jobs and custom services the Engine could not run, and port the app's code (environment, sign-in, data calls, files, administrator code, access rules); on a Supabase project it explains the move and stops |
 
