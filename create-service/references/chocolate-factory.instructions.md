@@ -73,6 +73,8 @@ Buildpad apps deploy to **AWS Amplify Hosting**, which runs Next.js API routes a
 
 **The tradeoff, accepted deliberately:** `CHOCOLATE_FACTORY_API_KEY` is exposed to any client that loads the page. It's the project-scoped `cf_...` key (grants access to every agent in the project, not narrowed to one agent) — tell the user this explicitly if they haven't already accepted it; it's a real security tradeoff, not a formality. A proxy route that injects the key server-side would avoid this, but only works for calls that reliably finish well under ~30s **and never stream** — see "When a server-side proxy is still fine" below.
 
+> **For a chat UI, install the `ai-chat` module instead of hand-rolling `ChocolateFactoryChat`.** `npx @buildpad/cli@latest add ai-chat-routes` installs a finished chat (docked panel, floating widget, "Ask AI" button) that already uses this browser-direct pattern and recommends an agent key (`agk_…`) over the project key — see the [add-ai-chat](../../add-ai-chat/SKILL.md) skill. The pattern below explains the mechanism, and still applies to an agent call that is not a chat.
+
 ### The pattern: a tiny env route + direct fetch from the browser
 
 Don't inline credentials into the client bundle as `NEXT_PUBLIC_*` vars — that bakes them into the build rather than reading live env state. Instead, expose them through a route the browser calls once on mount:

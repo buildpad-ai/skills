@@ -127,6 +127,7 @@ The core methodology: every feature is specified as `requirements.md` (EARS) →
 | [add-users](add-users) | Scaffold the Users module: /users, /roles, /policies admin pages with permissions matrix |
 | [add-workflows](add-workflows) | Scaffold the Workflows module: /workflows (state-diagram editor), /workflow-assignments, /workflow-instances admin pages |
 | [add-cron](add-cron) | Scaffold the Cron Jobs module: /cron (jobs list + run history) and /cron/[id] (job editor with a code editor slot) admin pages |
+| [add-ai-chat](add-ai-chat) | Scaffold the AI Chat module: a streaming chat with a Chocolate Factory agent (docked panel, floating widget or "Ask AI" button), browser-direct or through a server route |
 | [add-microapp](add-microapp) | Domain boundaries and repo bootstrap: Main App + micro-apps on one DaaS backend (load first) |
 | [add-microfrontend](add-microfrontend) | The composition mechanism: iframe host, postMessage bridge, auth/URL/scope syncing, CSP (load second). Supabase projects only for now: not yet available on an Engine project |
 | [add-microfrontend-zones](add-microfrontend-zones) | Path-based composition with Next.js Multi-Zones: one origin, one shared session, no iframes. Supabase projects only for now: not yet available on an Engine project |

@@ -4,5 +4,11 @@
     "kind": "description",
     "reason": "The description now says the skill is for Supabase projects only for now and not yet available on an Engine project.",
     "release": "v2.0.0"
+  },
+  {
+    "path": "add-microfrontend/SKILL.md",
+    "kind": "text",
+    "reason": "The table of domains that must use a module gains a row for an AI chat or assistant (add-ai-chat).",
+    "release": "unreleased"
   }
 ]

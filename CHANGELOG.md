@@ -14,6 +14,52 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
+## Unreleased
+
+Two skills are added. It is a MAJOR release, because five existing files that a Supabase project's
+agent reads now point to the new AI Chat module (see **Supabase projects** below). No skill is
+removed or renamed, and the "Establish the backend first" procedure stays at version 1.
+
+- New skill `add-ai-chat`: installs the Buildpad UI AI Chat module (`@buildpad/ui-chat`, CLI target
+  `ai-chat-routes`, which pulls in `ai-chat`) instead of a hand-built chat UI and SSE parser. It
+  covers the environment (the Chocolate Factory connector's base URL and key, the Agent ID the user
+  copies from the CF Portal, and a recommended agent key `agk_…`), the choice of backend
+  (browser-direct `chocolateFactoryBackend`, the default and the only one that streams on Amplify;
+  the `routeBackend` server proxy only on a long-lived Node server), mounting `AiChatProvider`,
+  `AiChatButton` and `AiChatPanel` (with the `--bp-ai-chat-offset` margin) or `AiChatWidget`,
+  `storageKey` and `vars`, keeping the agent's Memory off, validation, and pushing the variables to
+  Amplify. It talks only to the Chocolate Factory agent, never to the data API, so it holds for both
+  kinds of project. Do not release it before the Buildpad UI release that ships the `ai-chat` CLI
+  targets.
+- New skill `add-mcp-server`: exposes the app's own data and actions as an MCP server, one stateless
+  `/api/mcp` route whose tools forward the caller's own token to the data API.
+- The AI Chat module is listed where the other opt-in modules are: `buildpad-reference`,
+  `add-buildpad`, `add-microapp` and `add-microfrontend`. The Chocolate Factory reference of
+  `create-service` points to it for a chat UI.
+
+### Supabase projects
+
+The Supabase steps, routes and guidance do not change. These files are new:
+
+- `add-ai-chat/SKILL.md` (new-file): install the Buildpad UI AI Chat module (a chat with a
+  Chocolate Factory agent) instead of hand-building a chat UI.
+- `add-mcp-server/SKILL.md` (new-file): expose the app's own data and actions as an MCP server that
+  forwards the caller's token.
+
+These files change, each with its reason:
+
+- `buildpad-reference/SKILL.md` (text): the Opt-in Modules table gains a row for the AI Chat module
+  (`@buildpad/ui-chat`) and its skill `add-ai-chat`.
+- `add-buildpad/SKILL.md` (text): the Opt-in Modules list gains the AI Chat module's install command
+  (`add ai-chat-routes`), pointing to `add-ai-chat`.
+- `add-microapp/SKILL.md` (text): Step 1's list of module skills gains `add-ai-chat` for an AI chat
+  or assistant.
+- `add-microfrontend/SKILL.md` (text): the table of domains that must use a module gains a row for an
+  AI chat or assistant (`add-ai-chat`).
+- `create-service/references/chocolate-factory.instructions.md` (text): a note before the
+  hand-written chat example says to install the `ai-chat` module (`add-ai-chat`) for a chat UI
+  instead of hand-rolling `ChocolateFactoryChat`; the rest is unchanged.
+
 ## v6.2.0
 
 One Engine statement in the new skill was out of date. Install it with

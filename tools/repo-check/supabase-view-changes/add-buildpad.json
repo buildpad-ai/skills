@@ -1,1 +1,8 @@
-[]
+[
+  {
+    "path": "add-buildpad/SKILL.md",
+    "kind": "text",
+    "reason": "The Opt-in Modules list gains the AI Chat module's install command (add ai-chat-routes), pointing to add-ai-chat.",
+    "release": "unreleased"
+  }
+]
