@@ -23,17 +23,17 @@ Starters downloaded from the Platform carry only their project's text: the other
 
 ```bash
 # Install skills from a release (interactive picker)
-npx skills add buildpad-ai/skills#v6.2.0
+npx skills add buildpad-ai/skills#v7.0.0
 
 # Install everything from a release
-npx skills add buildpad-ai/skills#v6.2.0 --all
+npx skills add buildpad-ai/skills#v7.0.0 --all
 
 # Install a single skill from a release
-npx skills add buildpad-ai/skills#v6.2.0@create-project
-npx skills add https://github.com/buildpad-ai/skills/tree/v6.2.0/create-project
+npx skills add buildpad-ai/skills#v7.0.0@create-project
+npx skills add https://github.com/buildpad-ai/skills/tree/v7.0.0/create-project
 ```
 
-The [skills CLI](https://github.com/vercel-labs/skills) detects your agents and writes each skill to the right location (`.claude/skills/`, `.kiro/skills/`, `.agents/skills/`, …). A tag never moves, so installing `#v6.2.0` always gives the same files. Replace `v6.2.0` with any tag from the [releases](https://github.com/buildpad-ai/skills/releases).
+The [skills CLI](https://github.com/vercel-labs/skills) detects your agents and writes each skill to the right location (`.claude/skills/`, `.kiro/skills/`, `.agents/skills/`, …). A tag never moves, so installing `#v7.0.0` always gives the same files. Replace `v7.0.0` with any tag from the [releases](https://github.com/buildpad-ai/skills/releases).
 
 ## Stay on the skills as they were before Engine support
 
