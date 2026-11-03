@@ -9,6 +9,6 @@
     "path": "add-microfrontend/SKILL.md",
     "kind": "text",
     "reason": "The table of domains that must use a module gains a row for an AI chat or assistant (add-ai-chat).",
-    "release": "unreleased"
+    "release": "v7.0.0"
   }
 ]

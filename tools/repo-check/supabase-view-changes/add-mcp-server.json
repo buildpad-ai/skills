@@ -3,6 +3,6 @@
     "path": "add-mcp-server/SKILL.md",
     "kind": "new-file",
     "reason": "New skill add-mcp-server: expose the app's own data and actions as an MCP server that forwards the caller's token.",
-    "release": "unreleased"
+    "release": "v7.0.0"
   }
 ]

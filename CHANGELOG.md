@@ -14,11 +14,12 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
-## Unreleased
+## v7.0.0
 
-Two skills are added. It is a MAJOR release, because five existing files that a Supabase project's
-agent reads now point to the new AI Chat module (see **Supabase projects** below). No skill is
-removed or renamed, and the "Establish the backend first" procedure stays at version 1.
+Two skills are added. Install it with `npx skills add buildpad-ai/skills#v7.0.0`. It is a MAJOR
+release, because five existing files that a Supabase project's agent reads now point to the new AI
+Chat module (see **Supabase projects** below). No skill is removed or renamed, and the "Establish
+the backend first" procedure stays at version 1.
 
 - New skill `add-ai-chat`: installs the Buildpad UI AI Chat module (`@buildpad/ui-chat`) instead of
   a hand-built chat UI and SSE parser. It has the agent choose the backend first, each with its own
@@ -32,9 +33,9 @@ removed or renamed, and the "Establish the backend first" procedure stays at ver
   `AiChatProvider`, `AiChatButton` and `AiChatPanel` (with the `--bp-ai-chat-offset` margin) or
   `AiChatWidget`, `storageKey`, `vars` with `AiChatContextChip`, `onNavigate`, `imageHosts`, keeping
   the agent's Memory off, validation, and pushing the variables to Amplify. It talks only to the
-  Chocolate Factory agent, never to the data API, so it holds for both kinds of project. Do not
-  release it before the Buildpad UI release that ships the `ai-chat`, `ai-chat-routes` and
-  `ai-chat-proxy-routes` CLI targets.
+  Chocolate Factory agent, never to the data API, so it holds for both kinds of project. It needs
+  a `@buildpad/cli` release that ships the `ai-chat`, `ai-chat-routes` and `ai-chat-proxy-routes`
+  targets (the first after 3.5.2).
 - New skill `add-mcp-server`: exposes the app's own data and actions as an MCP server, one stateless
   `/api/mcp` route whose tools forward the caller's own token to the data API.
 - The AI Chat module is listed where the other opt-in modules are: `buildpad-reference`,

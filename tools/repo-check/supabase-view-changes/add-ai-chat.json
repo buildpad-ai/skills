@@ -3,6 +3,6 @@
     "path": "add-ai-chat/SKILL.md",
     "kind": "new-file",
     "reason": "New skill add-ai-chat: install the Buildpad UI AI Chat module (a chat with a Chocolate Factory agent) instead of hand-building a chat UI.",
-    "release": "unreleased"
+    "release": "v7.0.0"
   }
 ]
