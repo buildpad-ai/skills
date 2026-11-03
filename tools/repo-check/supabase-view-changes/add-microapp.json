@@ -1,1 +1,8 @@
-[]
+[
+  {
+    "path": "add-microapp/SKILL.md",
+    "kind": "text",
+    "reason": "Step 1's list of module skills gains add-ai-chat for an AI chat or assistant.",
+    "release": "unreleased"
+  }
+]

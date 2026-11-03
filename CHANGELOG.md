@@ -14,6 +14,60 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
+## Unreleased
+
+Two skills are added. It is a MAJOR release, because five existing files that a Supabase project's
+agent reads now point to the new AI Chat module (see **Supabase projects** below). No skill is
+removed or renamed, and the "Establish the backend first" procedure stays at version 1.
+
+- New skill `add-ai-chat`: installs the Buildpad UI AI Chat module (`@buildpad/ui-chat`) instead of
+  a hand-built chat UI and SSE parser. It has the agent choose the backend first, each with its own
+  CLI target: browser-direct (`ai-chat-routes`, `chocolateFactoryBackend`), the default and the only
+  one that streams on Amplify; or the server proxy (`ai-chat-proxy-routes`, `routeBackend`), only on
+  a long-lived Node server. It says plainly that browser-direct shows the key to the browser and,
+  because Chocolate Factory's CORS headers do not allow `x-agent-key` yet, needs the project key
+  (`cf_…`), which reaches every agent in the project; and that browser-direct keeps transcripts in
+  the browser. It covers the environment (the connector's base URL and key, the Agent ID the user
+  copies from the CF Portal, `AI_CHAT_SECRET` and `chatOwner` for the proxy), mounting
+  `AiChatProvider`, `AiChatButton` and `AiChatPanel` (with the `--bp-ai-chat-offset` margin) or
+  `AiChatWidget`, `storageKey`, `vars` with `AiChatContextChip`, `onNavigate`, `imageHosts`, keeping
+  the agent's Memory off, validation, and pushing the variables to Amplify. It talks only to the
+  Chocolate Factory agent, never to the data API, so it holds for both kinds of project. Do not
+  release it before the Buildpad UI release that ships the `ai-chat`, `ai-chat-routes` and
+  `ai-chat-proxy-routes` CLI targets.
+- New skill `add-mcp-server`: exposes the app's own data and actions as an MCP server, one stateless
+  `/api/mcp` route whose tools forward the caller's own token to the data API.
+- The AI Chat module is listed where the other opt-in modules are: `buildpad-reference`,
+  `add-buildpad`, `add-microapp` and `add-microfrontend`. The Chocolate Factory reference of
+  `create-service` points to it for a chat UI.
+
+### Supabase projects
+
+The Supabase steps, routes and guidance do not change. These files are new:
+
+- `add-ai-chat/SKILL.md` (new-file): install the Buildpad UI AI Chat module (a chat with a
+  Chocolate Factory agent) instead of hand-building a chat UI.
+- `add-mcp-server/SKILL.md` (new-file): expose the app's own data and actions as an MCP server that
+  forwards the caller's token.
+
+These files change, each with its reason:
+
+- `buildpad-reference/SKILL.md` (text): the Opt-in Modules table gains a row for the AI Chat module
+  (`@buildpad/ui-chat`, CLI targets `ai-chat-routes` and `ai-chat-proxy-routes`) and its skill
+  `add-ai-chat`.
+- `add-buildpad/SKILL.md` (text): the Opt-in Modules list gains the AI Chat module's install
+  commands (`add ai-chat-routes` for browser-direct, `add ai-chat-proxy-routes` for the server
+  proxy), pointing to `add-ai-chat`.
+- `add-microapp/SKILL.md` (text): Step 1's list of module skills gains `add-ai-chat` for an AI chat
+  or assistant.
+- `add-microfrontend/SKILL.md` (text): the table of domains that must use a module gains a row for an
+  AI chat or assistant (`add-ai-chat`).
+- `create-service/references/chocolate-factory.instructions.md` (text): a note before the
+  hand-written chat example says to install the `ai-chat` module (`add-ai-chat`) for a chat UI
+  instead of hand-rolling `ChocolateFactoryChat`, and that a browser call uses stateless mode and the
+  project key, because Chocolate Factory's CORS headers expose no `X-Conversation-Id` and allow no
+  `x-agent-key`; the rest is unchanged.
+
 ## v6.2.0
 
 One Engine statement in the new skill was out of date. Install it with

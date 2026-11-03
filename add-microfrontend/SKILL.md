@@ -343,6 +343,7 @@ of hand-writing a page:
 | users, roles, policies | [add-users](../add-users/SKILL.md) | `npx @buildpad/cli@latest add users-routes` |
 | workflow definitions, assignments, instances | [add-workflows](../add-workflows/SKILL.md) | `npx @buildpad/cli@latest add workflows-routes` |
 | cron jobs, run history | [add-cron](../add-cron/SKILL.md) | `npx @buildpad/cli@latest add cron-routes` |
+| AI chat, assistant (Chocolate Factory agent) | [add-ai-chat](../add-ai-chat/SKILL.md) | `npx @buildpad/cli@latest add ai-chat-routes` |
 
 A hand-written placeholder page is acceptable ONLY when no module covers the domain.
 

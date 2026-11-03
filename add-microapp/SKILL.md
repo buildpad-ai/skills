@@ -219,8 +219,9 @@ Before creating any code, map out which collections belong to which app's domain
 policies map to [add-users](../add-users/SKILL.md) (`buildpad add users-routes`);
 workflow definitions, assignments, and instances map to
 [add-workflows](../add-workflows/SKILL.md) (`buildpad add workflows-routes`); cron jobs
-and their run history map to [add-cron](../add-cron/SKILL.md) (`buildpad add cron-routes`). Where
-a module exists, scaffold it and wrap it. Write a page by hand only for a domain no
+and their run history map to [add-cron](../add-cron/SKILL.md) (`buildpad add cron-routes`); an
+AI chat or assistant maps to [add-ai-chat](../add-ai-chat/SKILL.md) (`buildpad add ai-chat-routes`).
+Where a module exists, scaffold it and wrap it. Write a page by hand only for a domain no
 module covers.
 
 ### Step 2: Create or Clone the Micro-App Project

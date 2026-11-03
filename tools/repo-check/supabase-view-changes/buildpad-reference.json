@@ -16,5 +16,11 @@
     "kind": "text",
     "reason": "The Engine-project file sentence (ES-11) no longer says a browser cannot name the tenant; it says a file shown in a browser is loaded through a signed URL because an img element or a link sends no X-Tenant-Id. The Supabase text is unchanged.",
     "release": "v5.0.0"
+  },
+  {
+    "path": "buildpad-reference/SKILL.md",
+    "kind": "text",
+    "reason": "The Opt-in Modules table gains a row for the AI Chat module (@buildpad/ui-chat, CLI targets ai-chat-routes and ai-chat-proxy-routes) and its skill add-ai-chat.",
+    "release": "unreleased"
   }
 ]

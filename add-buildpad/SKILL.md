@@ -143,6 +143,10 @@ npx @buildpad/cli@latest add workflows-routes --cwd /path/to/project    # → /a
 
 # Cron Jobs admin — /cron (jobs list + run history), /cron/[id] (job editor)
 npx @buildpad/cli@latest add cron-routes --cwd /path/to/project         # → /add-cron
+
+# AI Chat — a chat with a Chocolate Factory agent (docked panel, floating widget, "Ask AI" button)
+npx @buildpad/cli@latest add ai-chat-routes --cwd /path/to/project      # → /add-ai-chat (browser-direct)
+npx @buildpad/cli@latest add ai-chat-proxy-routes --cwd /path/to/project  # → /add-ai-chat (server proxy, Node server only)
 ```
 
 <!-- buildpad-backend: supabase -->
