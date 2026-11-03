@@ -20,17 +20,21 @@ Two skills are added. It is a MAJOR release, because five existing files that a 
 agent reads now point to the new AI Chat module (see **Supabase projects** below). No skill is
 removed or renamed, and the "Establish the backend first" procedure stays at version 1.
 
-- New skill `add-ai-chat`: installs the Buildpad UI AI Chat module (`@buildpad/ui-chat`, CLI target
-  `ai-chat-routes`, which pulls in `ai-chat`) instead of a hand-built chat UI and SSE parser. It
-  covers the environment (the Chocolate Factory connector's base URL and key, the Agent ID the user
-  copies from the CF Portal, and a recommended agent key `agk_…`), the choice of backend
-  (browser-direct `chocolateFactoryBackend`, the default and the only one that streams on Amplify;
-  the `routeBackend` server proxy only on a long-lived Node server), mounting `AiChatProvider`,
-  `AiChatButton` and `AiChatPanel` (with the `--bp-ai-chat-offset` margin) or `AiChatWidget`,
-  `storageKey` and `vars`, keeping the agent's Memory off, validation, and pushing the variables to
-  Amplify. It talks only to the Chocolate Factory agent, never to the data API, so it holds for both
-  kinds of project. Do not release it before the Buildpad UI release that ships the `ai-chat` CLI
-  targets.
+- New skill `add-ai-chat`: installs the Buildpad UI AI Chat module (`@buildpad/ui-chat`) instead of
+  a hand-built chat UI and SSE parser. It has the agent choose the backend first, each with its own
+  CLI target: browser-direct (`ai-chat-routes`, `chocolateFactoryBackend`), the default and the only
+  one that streams on Amplify; or the server proxy (`ai-chat-proxy-routes`, `routeBackend`), only on
+  a long-lived Node server. It says plainly that browser-direct shows the key to the browser and,
+  because Chocolate Factory's CORS headers do not allow `x-agent-key` yet, needs the project key
+  (`cf_…`), which reaches every agent in the project; and that browser-direct keeps transcripts in
+  the browser. It covers the environment (the connector's base URL and key, the Agent ID the user
+  copies from the CF Portal, `AI_CHAT_SECRET` and `chatOwner` for the proxy), mounting
+  `AiChatProvider`, `AiChatButton` and `AiChatPanel` (with the `--bp-ai-chat-offset` margin) or
+  `AiChatWidget`, `storageKey`, `vars` with `AiChatContextChip`, `onNavigate`, `imageHosts`, keeping
+  the agent's Memory off, validation, and pushing the variables to Amplify. It talks only to the
+  Chocolate Factory agent, never to the data API, so it holds for both kinds of project. Do not
+  release it before the Buildpad UI release that ships the `ai-chat`, `ai-chat-routes` and
+  `ai-chat-proxy-routes` CLI targets.
 - New skill `add-mcp-server`: exposes the app's own data and actions as an MCP server, one stateless
   `/api/mcp` route whose tools forward the caller's own token to the data API.
 - The AI Chat module is listed where the other opt-in modules are: `buildpad-reference`,
@@ -49,16 +53,20 @@ The Supabase steps, routes and guidance do not change. These files are new:
 These files change, each with its reason:
 
 - `buildpad-reference/SKILL.md` (text): the Opt-in Modules table gains a row for the AI Chat module
-  (`@buildpad/ui-chat`) and its skill `add-ai-chat`.
-- `add-buildpad/SKILL.md` (text): the Opt-in Modules list gains the AI Chat module's install command
-  (`add ai-chat-routes`), pointing to `add-ai-chat`.
+  (`@buildpad/ui-chat`, CLI targets `ai-chat-routes` and `ai-chat-proxy-routes`) and its skill
+  `add-ai-chat`.
+- `add-buildpad/SKILL.md` (text): the Opt-in Modules list gains the AI Chat module's install
+  commands (`add ai-chat-routes` for browser-direct, `add ai-chat-proxy-routes` for the server
+  proxy), pointing to `add-ai-chat`.
 - `add-microapp/SKILL.md` (text): Step 1's list of module skills gains `add-ai-chat` for an AI chat
   or assistant.
 - `add-microfrontend/SKILL.md` (text): the table of domains that must use a module gains a row for an
   AI chat or assistant (`add-ai-chat`).
 - `create-service/references/chocolate-factory.instructions.md` (text): a note before the
   hand-written chat example says to install the `ai-chat` module (`add-ai-chat`) for a chat UI
-  instead of hand-rolling `ChocolateFactoryChat`; the rest is unchanged.
+  instead of hand-rolling `ChocolateFactoryChat`, and that a browser call uses stateless mode and the
+  project key, because Chocolate Factory's CORS headers expose no `X-Conversation-Id` and allow no
+  `x-agent-key`; the rest is unchanged.
 
 ## v6.2.0
 
