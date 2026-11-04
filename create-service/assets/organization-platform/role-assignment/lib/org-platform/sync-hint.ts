@@ -1,4 +1,5 @@
 // buildpad-backend-file: supabase
+// Backend: before using this file, establish the backend as "Establish the backend first" in this skill's SKILL.md says, keep only the parts for that backend, and copy no marker line into the application.
 /**
  * The hint that someone should be placed on their next page load.
  *

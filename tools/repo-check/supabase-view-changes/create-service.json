@@ -28,5 +28,305 @@
     "kind": "new-file",
     "reason": "New reference, Supabase projects only: build Automation > Role assignment from the real apps' code under assets/organization-platform/role-assignment/; it was shipped only in the Platform's vendored copy until now.",
     "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/people-sync/app/api/admin/users/import/route.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-people-sync.instructions.md tells the agent to copy (people import and offboarding review); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/people-sync/app/api/admin/users/leavers/route.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-people-sync.instructions.md tells the agent to copy (people import and offboarding review); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/people-sync/app/api/admin/users/status/route.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-people-sync.instructions.md tells the agent to copy (people import and offboarding review); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/people-sync/lib/admin-user-create.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-people-sync.instructions.md tells the agent to copy (people import and offboarding review); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/people-sync/lib/admin-user-status.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-people-sync.instructions.md tells the agent to copy (people import and offboarding review); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/people-sync/lib/admin-users.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-people-sync.instructions.md tells the agent to copy (people import and offboarding review); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/people-sync/lib/org-platform/leavers.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-people-sync.instructions.md tells the agent to copy (people import and offboarding review); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/people-sync/lib/org-platform/people-import.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-people-sync.instructions.md tells the agent to copy (people import and offboarding review); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/people-sync/lib/org-platform/provenance.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-people-sync.instructions.md tells the agent to copy (people import and offboarding review); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/people-sync/sign-in-guard.patch",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-people-sync.instructions.md tells the agent to copy (people import and offboarding review); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/people-sync/ui/OrgLeaversReview.tsx",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-people-sync.instructions.md tells the agent to copy (people import and offboarding review); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/people-sync/ui/OrgPeopleImport.tsx",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-people-sync.instructions.md tells the agent to copy (people import and offboarding review); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/people-sync/users-page-wiring.patch",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-people-sync.instructions.md tells the agent to copy (people import and offboarding review); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/app/api/admin/org-platform/status/route.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/app/api/org-platform/sync/route.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/app/api/org-rules/route.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/app/api/org-rules/test/route.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/app/dashboard/automation/role-assignment/[ruleId]/page.tsx",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/app/dashboard/automation/role-assignment/new/page.tsx",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/app/dashboard/automation/role-assignment/page.tsx",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/components/role-assignment/api.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/components/role-assignment/config.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/components/role-assignment/connection-status.tsx",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/components/role-assignment/notices.tsx",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/components/role-assignment/role-assignment-list.tsx",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/components/role-assignment/rule-conditions.tsx",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/components/role-assignment/rule-form-page.tsx",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/components/role-assignment/styles.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/components/role-assignment/test-rules-drawer.tsx",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/components/role-assignment/tokens.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/components/role-assignment/types.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/components/role-assignment/use-rule-book.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/components/role-assignment/use-rule-builder.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/content/role-assignment.mdx",
+    "kind": "new-file",
+    "reason": "New help-article asset for Automation > Role assignment, which organization-platform-role-assignment.instructions.md tells the agent to copy; it carries no backend marker, because an MDX file cannot hold an HTML comment; it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/lib/org-platform/client.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/lib/org-platform/onboard.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/lib/org-platform/sync-hint.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/lib/org-rules/access.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/lib/org-rules/account.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/lib/org-rules/builder-config.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/lib/org-rules/catalog.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/lib/org-rules/cleanup.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/lib/org-rules/constants.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/lib/org-rules/decide.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/lib/org-rules/outcomes.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/lib/org-rules/parse.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/lib/org-rules/store.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/lib/org-rules/system-attributes.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/lib/org-rules/system-defs.ts",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/assets/organization-platform/role-assignment/wiring.patch",
+    "kind": "new-file",
+    "reason": "New code asset, Supabase projects only, that organization-platform-role-assignment.instructions.md tells the agent to copy (Automation > Role assignment); it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
   }
 ]

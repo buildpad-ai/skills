@@ -1,4 +1,5 @@
 // buildpad-backend-file: supabase
+// Backend: before using this file, establish the backend as "Establish the backend first" in this skill's SKILL.md says, keep only the parts for that backend, and copy no marker line into the application.
 /**
  * Deciding which tenant role a person's jobs mean: one tenant's rules, run on the person
  * one job (a designation held at a unit) at a time.

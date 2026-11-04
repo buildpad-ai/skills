@@ -1,4 +1,5 @@
 // buildpad-backend-file: supabase
+// Backend: before using this file, establish the backend as "Establish the backend first" in this skill's SKILL.md says, keep only the parts for that backend, and copy no marker line into the application.
 /**
  * Creating one directory user without a sign-in, shared by the Administrator "Add user" form
  * and the Organisation Platform import so both make exactly the same kind of account.

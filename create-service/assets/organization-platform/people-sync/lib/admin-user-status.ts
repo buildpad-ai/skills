@@ -1,4 +1,5 @@
 // buildpad-backend-file: supabase
+// Backend: before using this file, establish the backend as "Establish the backend first" in this skill's SKILL.md says, keep only the parts for that backend, and copy no marker line into the application.
 /**
  * Changing whether a directory account is active. `suspended` takes the person out of the @mention picker (it lists
  * active users only) and out of sign-in (see `isAccountBlocked`); `active` brings them back. Never a delete: comments,
