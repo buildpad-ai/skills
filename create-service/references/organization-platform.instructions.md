@@ -43,7 +43,7 @@ pnpm add @xtremax/organisation-platform@~0.2.2   # Node 18+, public on npm, no t
 | Type a response | `/contract` → `PersonLookup`, `OrgRole`, `OrgUnit`, `PersonAttribute`, `OnboardingRequest`, ... (types only) |
 | Turn a person into engine input, or lists into builder lists | `/adapter` → `toSubject`, `toCatalogs`, `unresolvedRoles`, `fromDesignationMappings` |
 | Decide "which outcome does this person get?" | `/engine` → `evaluate`, `validateRuleSet`, `migrate` (pure, no network) |
-| Give admins an editor for rules | `/react` (`RulesBuilder`), `/vue`, or `/ui` (`<org-rules-builder>`); headless store in `/builder-core` |
+| Give admins an editor for rules | The **headless** store in `/builder-core` (`createRuleBuilder`, `createDescriber`), behind your own three screens. **Not** the ready-made `<RulesBuilder>` / `<org-rules-builder>` |
 
 ### First shot: build Automation > Role assignment in the admin domain
 
@@ -52,7 +52,7 @@ When the Organisation Platform is connected and the app has people with roles, *
 1. **Install the package** and add the server-only client module (next section).
 2. **Provision the rule storage**: one versioned row per organisation (see "What the app owns" §2), through the normal DaaS collection/migration skills, plus a sign-in grant-tracking collection if sign-in will grant roles.
 3. **Server routes** under the admin API: `GET` (rules, version, live catalogs, the grantable outcomes), `PUT` (validate again, versioned save), `POST …/test` (the tester).
-4. **The screen**: an **Automation > Role assignment** page in the app's admin area, gated by an admin check **plus** a dedicated capability (see `grant-module-access`; `create-rbac` for the roles), rendering `<RulesBuilder>` over those routes. Add the nav entry beside the app's other admin screens.
+4. **The screen**: an **Automation > Role assignment** page in the app's admin area, gated by an admin check **plus** a dedicated capability (see `grant-module-access`; `create-rbac` for the roles), built as **three screens on the headless `builder-core` exactly as `organization-platform-role-assignment.instructions.md` describes** (never the package's ready-made `<RulesBuilder>`). Add the nav entry beside the app's other admin screens.
 5. **The sign-in decision** that applies the rules (§ "At sign-in"), with "no decision" as the safe default.
 6. **Ask the user only one thing**: which of the app's roles rules may grant (the outcome list, strongest first, never an administrator role). If they haven't said, propose the app's non-administrator roles.
 
@@ -130,7 +130,7 @@ Responses are `{ "data": ... }` (with optional `meta`) on success and `{ "errors
 |---|---|
 | `GET /org-units?unitId=&limit=&offset=` | The key's unit plus its full subtree: `{ id, name, parentId }`. Paged: `limit` default 100, max 500; `meta` is `{ limit, offset, total }`. With `?unitId=` the answer is **one object** in `data`, not an array. |
 | `GET /org-roles` | The designation catalog: `{ id, name, description, status, orgUnit: { id, name } }`. `orgUnit` is the unit that owns it, at any depth. Not paginated, and **returns at most 500 designations**. |
-| `GET /org-role-assignments` | Every assignment in the subtree: `{ id, orgRoleId, orgUnitId, assignee, createdAt }`. `assignee` is `{ userId, email, attributes }` plus the person's system fields. **Not paginated.** |
+| `GET /org-role-assignments` | Every assignment in the subtree: `{ id, orgRoleId, orgUnitId, assignee, createdAt }`. `assignee` is `{ userId, email, firstName, lastName, attributes }` plus the person's system fields (`firstName` and `lastName` from a platform updated on 2026-10-26; absent on an older one). **Not paginated.** |
 | `GET /people?email=` | One person: `roles`, `firstName`, `lastName`, `attributes`, plus system fields. |
 | `GET /person-attributes` | The catalog behind `attributes`: `{ key, name, type, options, orgUnit }`. |
 | `GET /changes?cursor=&limit=` | Pull-based change feed for units, designations and assignments. No webhooks exist. |
@@ -274,7 +274,7 @@ The package decides *whether a rule matches*. The app owns everything around it:
 3. **Reading it back safely.** Run the stored JSON through `migrate`, then through the same validation a save runs. Anything unreadable, of an unknown schema version, or invalid is treated as **no rules** (it decides nothing) and reported to admins. A missing collection (403/404) means "not provisioned", i.e. no rules; a 5xx or network error means the sign-in writes nothing that time.
 4. **The authority.** Only a whole-organisation admin who also holds a dedicated capability may read or write the rules (for example a module access key; see `grant-module-access`).
 5. **The catalogs.** The builder's lists (designations, units, custom attributes) are read **live** from `/org-roles`, `/org-units` and `/person-attributes` for the organisation's own key, and passed through `toCatalogs`. Never store names in rules, only ids. If any live read fails, report the catalogs as unavailable and make the editor **read-only** rather than offering a partial list.
-6. **The admin screen.** `<RulesBuilder value onChange outcomes catalogs ... />` from `/react` (or `/vue`, `/ui`). Set `limits` (for example 100 rules, 20 conditions per group) and `readOnly` when catalogs are unavailable. Mount it in the admin area as **Automation > Role assignment** with a list (priority arrows, per-rule enable toggle, delete asks first), a create form and an open-a-rule view, saving the whole set with the version it loaded. Re-validate on the server whatever the browser reported. For a single-tenant app, keep one row for the root the key reaches; for a multi-tenant one, one row per organisation (see `manage-scope`).
+6. **The admin screen.** **Do not mount `<RulesBuilder>`.** Build **Automation > Role assignment** as the apps do: a list (Priority, Rule, When, Assign role, Enabled, move arrows; toggle and arrows save immediately), one form for create and open-a-rule (Include and Exclude cards, outcome radio cards, Save rule disabled until valid), and a Test rules drawer, all on `createRuleBuilder` from `/builder-core`. Set `limits` (for example 100 rules, 20 conditions per group) and `readOnly` when catalogs are unavailable. Each screen saves the whole set with the version it loaded. Re-validate on the server whatever the browser reported. For a single-tenant app, keep one row for the root the key reaches; for a multi-tenant one, one row per organisation (see `manage-scope`).
 7. **A tester.** An admin-only route that looks a person up **live** by email, runs the draft or saved rules, and returns which rule decided each placement. It writes nothing, can wait out a slow platform, and answers `502` — never "no designations" — when the lookup failed.
 
 ### At sign-in
@@ -308,6 +308,17 @@ The platform's answer holds what *it* knows: designations, units, names and cust
 ### Other uses of the same engine
 
 The engine is not limited to roles. MyApps also uses it for **dashboard assignment**: rules place people on dashboard breadcrumbs, with `strategy: 'all-matches'` so every matching rule applies and the placements are merged. Keep each kind of rule set in its own collection so one can never be mistaken for the other. A rule for "everyone" is stored as an include on `email contains "@"`, because the engine refuses a rule with neither group.
+
+## People import and offboarding review (admin tools)
+
+If the app has its own user directory and people should be mentionable, shareable or assignable before they have ever signed in, build two tools on the admin Users screen. They are a matched pair and are built.
+
+- **Import from Organisation Platform.** One read of `GET /org-role-assignments` lists everyone who holds a designation, with their email and (platform from 2026-10-26) their first and last name, in a single call. Preview, then create an account (email and name, no password, no role) for each person who has none, in batches of 10. **Never call `/people` once per holder:** each call re-reads the whole assignment subtree and overloads the platform. The server re-derives who to create on every request, so the browser's list is only a request. Record, in a collection such as `org_platform_people`, the people the run created and the listed people who already had accounts.
+- **Offboarding review.** The platform has no "this person left" signal, and many colleagues never had a designation, so absence proves nothing. Only people an import recorded can ever be reviewed. A recorded, active account on a company email domain that the list no longer covers is a candidate; each candidate is then asked about individually, and only "the platform does not know this person" lists them. A failed lookup flags nobody, and an empty platform list flags nobody. The administrator ticks each person (no select-all); the server re-verifies each one live before **suspending** (never deleting). It never suspends the caller, a system or test account, someone outside the company domains, or the last real administrator. Suspended accounts must also be refused at sign-in by every route, and signing in must never set them back to active.
+- **Least data.** Email and name only. Never read, keep or log mobile, date of birth or attributes. The read-only key is enough.
+- **Where the code is.** For a Supabase-backed project, read `organization-platform-people-sync.instructions.md` next to this file; the exact code is under `assets/organization-platform/people-sync/`. An Engine project has no such code yet; the rules above still hold.
+
+**Automation > Role assignment has its own exact recipe, `organization-platform-role-assignment.instructions.md`, with the real code in `assets/organization-platform/role-assignment/`. For a Supabase-backed project, follow it instead of designing the screens or the rule store; an Engine project has no such code yet, and the rules above still hold.**
 
 ## Keeping a local copy of the unit tree
 

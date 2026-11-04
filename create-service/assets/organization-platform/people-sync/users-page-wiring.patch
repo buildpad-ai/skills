@@ -1,0 +1,151 @@
+# buildpad-backend-file: supabase
+diff --git a/app/api/admin/users/route.ts b/app/api/admin/users/route.ts
+index 527a159..bad4ca7 100644
+--- a/app/api/admin/users/route.ts
++++ b/app/api/admin/users/route.ts
+@@ -1,7 +1,8 @@
+ import { NextRequest, NextResponse } from 'next/server';
+ import { requireGlobalAdmin } from '@/lib/api/admin-guard';
+ import { createSupabaseAdmin } from '@/lib/supabase/admin';
+-import { checkNewUser, escapeLike } from '@/lib/admin-users';
++import { checkNewUser } from '@/lib/admin-users';
++import { createDirectoryUser } from '@/lib/admin-user-create';
+ import { isExcludedEmail } from '@/lib/mentionable-users';
+ 
+ const MAX_USERS = 2000;
+@@ -59,46 +60,9 @@ export async function POST(request: NextRequest) {
+ 
+   const check = checkNewUser(body);
+   if (!check.ok) return NextResponse.json({ error: check.error }, { status: 400 });
+-  const { email, firstName, lastName } = check.value;
++  const result = await createDirectoryUser(createSupabaseAdmin(), check.value);
++  if (result.status === 'duplicate') return NextResponse.json({ error: 'duplicate', message: result.message }, { status: 409 });
++  if (result.status === 'failed') return NextResponse.json({ error: result.message }, { status: 502 });
+ 
+-  const supabase = createSupabaseAdmin();
+-
+-  // Case-insensitive duplicate check against the directory.
+-  const { data: existing, error: lookupError } = await supabase
+-    .from('daas_users')
+-    .select('id')
+-    .ilike('email', escapeLike(email))
+-    .limit(1);
+-  if (lookupError) return NextResponse.json({ error: 'Could not check for an existing user.' }, { status: 502 });
+-  if (existing && existing.length > 0) {
+-    return NextResponse.json({ error: 'duplicate', message: `${email} already exists.` }, { status: 409 });
+-  }
+-
+-  const { data: created, error: createError } = await supabase.auth.admin.createUser({
+-    email,
+-    email_confirm: true,
+-    user_metadata: { first_name: firstName, last_name: lastName, full_name: [firstName, lastName].filter(Boolean).join(' ') },
+-  });
+-  if (createError || !created?.user) {
+-    // An auth account with no directory row (e.g. an interrupted earlier sign-in).
+-    if (createError && /already|registered|exists/i.test(createError.message)) {
+-      return NextResponse.json({ error: 'duplicate', message: `${email} already has a sign-in account.` }, { status: 409 });
+-    }
+-    return NextResponse.json({ error: 'Could not create the user.' }, { status: 502 });
+-  }
+-
+-  const { error: insertError } = await supabase.from('daas_users').upsert(
+-    { id: created.user.id, email, first_name: firstName, last_name: lastName, status: 'active', provider: 'oauth' },
+-    { onConflict: 'id' }
+-  );
+-  if (insertError) {
+-    // Don't leave an auth user with no directory row behind.
+-    await supabase.auth.admin.deleteUser(created.user.id).catch(() => undefined);
+-    return NextResponse.json({ error: 'Could not create the user.' }, { status: 502 });
+-  }
+-
+-  return NextResponse.json(
+-    { data: { id: created.user.id, email, name: [firstName, lastName].filter(Boolean).join(' '), status: 'active' } },
+-    { status: 201 }
+-  );
++  return NextResponse.json({ data: { id: result.id, email: result.email, name: result.name, status: 'active' } }, { status: 201 });
+ }
+diff --git a/app/dashboard/admin/users/page.tsx b/app/dashboard/admin/users/page.tsx
+index 1adf79a..1ab36b2 100644
+--- a/app/dashboard/admin/users/page.tsx
++++ b/app/dashboard/admin/users/page.tsx
+@@ -18,6 +18,8 @@ import {
+ } from '@mantine/core';
+ import { IconPlus, IconSearch } from '@tabler/icons-react';
+ import { usePermissions } from '@/lib/buildpad/hooks';
++import { OrgLeaversReview } from './OrgLeaversReview';
++import { OrgPeopleImport } from './OrgPeopleImport';
+ 
+ interface DirectoryUser {
+   id: string;
+@@ -65,6 +67,26 @@ export default function AdminUsersPage() {
+     return users.filter((u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+   }, [users, search]);
+ 
++  const [reactivating, setReactivating] = useState<string | null>(null);
++  const reactivate = async (u: DirectoryUser) => {
++    setReactivating(u.id);
++    setError(null);
++    try {
++      const res = await fetch('/api/admin/users/status', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ id: u.id, status: 'active' }),
++      });
++      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? 'Could not reactivate the account.');
++      setAdded(null);
++      await load();
++    } catch (err) {
++      setError(err instanceof Error ? err.message : 'Could not reactivate the account.');
++    } finally {
++      setReactivating(null);
++    }
++  };
++
+   const submit = async () => {
+     if (!form) return;
+     setSaving(true);
+@@ -114,9 +136,13 @@ export default function AdminUsersPage() {
+             Add a person so they can be @mentioned in comments. They can sign in later through MyApps or xapphub.
+           </Text>
+         </div>
+-        <Button leftSection={<IconPlus size={16} />} onClick={() => { setFormError(null); setForm({ ...EMPTY_FORM }); }}>
+-          Add user
+-        </Button>
++        <Group gap="sm">
++          <OrgPeopleImport onImported={load} />
++          <OrgLeaversReview onChanged={load} />
++          <Button leftSection={<IconPlus size={16} />} onClick={() => { setFormError(null); setForm({ ...EMPTY_FORM }); }}>
++            Add user
++          </Button>
++        </Group>
+       </Group>
+ 
+       {added && (
+@@ -151,6 +177,7 @@ export default function AdminUsersPage() {
+                 <Table.Th>Email</Table.Th>
+                 <Table.Th>Status</Table.Th>
+                 <Table.Th>Can be mentioned</Table.Th>
++                <Table.Th />
+               </Table.Tr>
+             </Table.Thead>
+             <Table.Tbody>
+@@ -164,11 +191,18 @@ export default function AdminUsersPage() {
+                     </Badge>
+                   </Table.Td>
+                   <Table.Td>{u.mentionable ? 'Yes' : 'No'}</Table.Td>
++                  <Table.Td>
++                    {(u.status === 'suspended' || u.status === 'terminated') && (
++                      <Button size="compact-sm" variant="default" loading={reactivating === u.id} onClick={() => reactivate(u)} aria-label={`Reactivate ${u.name}`}>
++                        Reactivate
++                      </Button>
++                    )}
++                  </Table.Td>
+                 </Table.Tr>
+               ))}
+               {visible.length === 0 && (
+                 <Table.Tr>
+-                  <Table.Td colSpan={4}>
++                  <Table.Td colSpan={5}>
+                     <Text c="dimmed" ta="center" py="md">
+                       {search ? 'No users match your search.' : 'No users yet.'}
+                     </Text>
