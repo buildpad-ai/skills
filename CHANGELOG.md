@@ -35,6 +35,10 @@ renamed, and the "Establish the backend first" procedure stays at version 1.
   `create-service/assets/organization-platform/people-sync/`.
 - Both recipes and their code hold for Supabase projects only. On an Engine project the guide says
   that no such code exists yet, and its rules still hold.
+- The two new references carry the "Establish the backend first" procedure and each code asset its
+  one-line pointer to it, as every Supabase-only file does. The help article
+  `assets/organization-platform/role-assignment/content/role-assignment.mdx` carries no backend
+  marker, because an MDX file cannot hold an HTML comment.
 - **The Engine's MCP tools.** From Engine 0.1.0-dev.19 the MCP server serves `logs` (the
   application log, as `GET /api/logs` answers it) and `assets` (a file's content); the `scope` tool
   serves every scope route's action, not only `assign_user_role` and `create_config`; the `users`

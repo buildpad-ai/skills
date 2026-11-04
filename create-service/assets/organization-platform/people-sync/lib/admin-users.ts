@@ -1,4 +1,5 @@
 // buildpad-backend-file: supabase
+// Backend: before using this file, establish the backend as "Establish the backend first" in this skill's SKILL.md says, keep only the parts for that backend, and copy no marker line into the application.
 /**
  * Rules for the Administrator "Users" page, where an admin adds a person so they can be
  * @mentioned before they have ever signed in.
