@@ -28,5 +28,11 @@
     "kind": "text",
     "reason": "The Engine-project sentence about cron jobs (ES-13n, retired) now says that an active cron job fires at its scheduled time (ES-13m); the Supabase guidance is unchanged.",
     "release": "v6.0.0"
+  },
+  {
+    "path": "create-feature/SKILL.md",
+    "kind": "text",
+    "reason": "Engine statement ES-9 reworded: on an Engine project scope types, items and collection settings are also managed through the MCP scope tool, whose reads follow the caller's grants and whose writes are for administrators, with the routes for an Engine older than 0.1.0-dev.19; the Supabase guidance is unchanged.",
+    "release": "unreleased"
   }
 ]

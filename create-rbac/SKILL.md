@@ -219,7 +219,7 @@ To grant a role that is only effective within a specific scope node (and its des
 }
 ```
 
-Through the API, with an administrator's session: `POST /api/users/:id/roles` with `{ "role_id": "<role-uuid>", "resource_uri": "<uri_path>" }` (it answers 201). The role is only evaluated when the user's active scope URI is equal to or a descendant of `resource_uri`. The MCP `users` tool only reads and updates users, so every role assignment goes through one of these two.
+Through the API, with an administrator's session: `POST /api/users/:id/roles` with `{ "role_id": "<role-uuid>", "resource_uri": "<uri_path>" }` (it answers 201). The role is only evaluated when the user's active scope URI is equal to or a descendant of `resource_uri`. To assign at a scope node, use one of these two: the MCP `users` tool's `update` takes `add_roles` and `remove_roles` (lists of role IDs, administrators only, from Engine 0.1.0-dev.19), but they bind a role at no scope, as the Studio's Users module does.
 <!-- /buildpad-backend -->
 
 See `/manage-scope` skill for full scope setup.

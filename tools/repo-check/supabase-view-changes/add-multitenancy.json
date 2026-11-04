@@ -10,5 +10,17 @@
     "kind": "text",
     "reason": "The same Engine-project sentences added, and the listed manage-scope references named as a Supabase project's, since manage-scope's SKILL.md names the references for each kind of project.",
     "release": "v2.0.0"
+  },
+  {
+    "path": "add-multitenancy/SKILL.md",
+    "kind": "text",
+    "reason": "Engine statement ES-9 reworded: on an Engine project scope types, items and collection settings are also managed through the MCP scope tool, whose reads follow the caller's grants and whose writes are for administrators, with the routes for an Engine older than 0.1.0-dev.19; the Supabase guidance is unchanged.",
+    "release": "unreleased"
+  },
+  {
+    "path": "add-multitenancy/references/multitenancy.instructions.md",
+    "kind": "text",
+    "reason": "Engine statement ES-9 reworded: on an Engine project scope types, items and collection settings are also managed through the MCP scope tool, whose reads follow the caller's grants and whose writes are for administrators, with the routes for an Engine older than 0.1.0-dev.19; the Supabase guidance is unchanged.",
+    "release": "unreleased"
   }
 ]

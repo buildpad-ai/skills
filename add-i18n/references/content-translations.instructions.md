@@ -598,7 +598,7 @@ Editors now see a related list on the article form and add one row per language;
 
 ### Step 2e — one row per (article, language)
 
-A field's `is_unique` covers one column only, so the pair `(articles_id, languages_code)` is made unique through the Engine's schema migration routes, each with an administrator's session:
+A field's `is_unique` covers one column only. From Engine 0.1.0-dev.18 the MCP `fields` tool makes the pair unique in one call: `create_index` with `data` `{"collection": "articles_translations", "columns": ["articles_id", "languages_code"], "unique": true}`; rows that already repeat a pair are refused. If the tool's `action` list has no `create_index`, the pair `(articles_id, languages_code)` is made unique through the Engine's schema migration routes, each with an administrator's session:
 
 1. `GET /api/schema/snapshot` answers the current schema as `data`.
 2. In that snapshot, find `articles_translations` under `collections` and add `"unique_constraints": [["articles_id", "languages_code"]]` to its `schema` object.
@@ -831,7 +831,7 @@ Rules:
 
 ## 6. Scope (multi-tenancy)
 
-On an Engine project the project is one tenant. Every scope hierarchy begins below the project's tenant node: create no scope type without a parent and no scope item without a parent. Scope types, items and collection settings are managed through `/api/scope/types`, `/api/scope/items` and `/api/scope/collection-config` with an administrator's session; the MCP `scope` tool, served to an administrator only, assigns a role to a user at a scope (`assign_user_role`) and registers a collection as tenanted (`create_config`, the body of `POST /api/scope/collection-config`).
+On an Engine project the project is one tenant. Every scope hierarchy begins below the project's tenant node: create no scope type without a parent and no scope item without a parent. Scope types, items and collection settings are managed through the MCP `scope` tool, or through `/api/scope/types`, `/api/scope/items` and `/api/scope/collection-config` with an administrator's session. The tool reads types, items and collection settings with the caller's grants; only an administrator may create, change or delete them through it, read a user's roles (`read_user_roles`), or assign and remove a role at a scope (`assign_user_role`, `remove_user_role`), and a delete is refused while the project's MCP deletes are off. If `tools/list` offers only `assign_user_role` and `create_config` for it, the project's Engine is older than 0.1.0-dev.19: use the routes for the rest.
 
 If the parent is scoped (`resource_uri`, Group C), the junction must be scoped too or users of one scope will read another scope's translations through the alias:
 

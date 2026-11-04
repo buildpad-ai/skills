@@ -38,7 +38,7 @@ something is not available, tell the developer so and stop: do not build a subst
 
 # Scope Management Instructions (Engine project)
 
-On an Engine project the project is one tenant. Every scope hierarchy begins below the project's tenant node: create no scope type without a parent and no scope item without a parent. Scope types, items and collection settings are managed through `/api/scope/types`, `/api/scope/items` and `/api/scope/collection-config` with an administrator's session; the MCP `scope` tool, served to an administrator only, assigns a role to a user at a scope (`assign_user_role`) and registers a collection as tenanted (`create_config`, the body of `POST /api/scope/collection-config`).
+On an Engine project the project is one tenant. Every scope hierarchy begins below the project's tenant node: create no scope type without a parent and no scope item without a parent. Scope types, items and collection settings are managed through the MCP `scope` tool, or through `/api/scope/types`, `/api/scope/items` and `/api/scope/collection-config` with an administrator's session. The tool reads types, items and collection settings with the caller's grants; only an administrator may create, change or delete them through it, read a user's roles (`read_user_roles`), or assign and remove a role at a scope (`assign_user_role`, `remove_user_role`), and a delete is refused while the project's MCP deletes are off. If `tools/list` offers only `assign_user_role` and `create_config` for it, the project's Engine is older than 0.1.0-dev.19: use the routes for the rest.
 
 The Engine's scope system provides hierarchical data separation inside the project using `daas_scope_types` (hierarchy levels) and `daas_scope_items` (concrete nodes). The active scope of any request is the `X-Resource-Uri` header; a cookie on the app's origin never reaches the Engine. Every write below needs an administrator's session (`Authorization: Bearer <access token>`); never send the project's MCP token to these routes.
 
@@ -177,9 +177,9 @@ The names of the two `missing_uri_mode` values are the reverse of what they sugg
 
 ## User-Role Assignments
 
-### MCP: `assign_user_role`
+### MCP: `assign_user_role`, `read_user_roles`, `remove_user_role`
 
-The `scope` MCP tool has this one action, for administrators. It takes its arguments under `assignment`:
+The `scope` MCP tool assigns, reads and removes a user's roles, for administrators only. `assign_user_role` takes its arguments under `assignment`:
 
 ```json
 {
@@ -191,6 +191,8 @@ The `scope` MCP tool has this one action, for administrators. It takes its argum
   }
 }
 ```
+
+`read_user_roles` takes `user_id` (and optionally `role_id` and `resource_uri`) and answers the user's assignments, with `resource_uri` per row. `remove_user_role` takes `user_id`, `role_id` and `resource_uri` at the top level of `arguments`, and removes the assignment at that scope (`resource_uri: null` for the one at no scope). The same tool also creates, reads, changes and deletes scope types, items and collection settings: see the [daas-platform skill](../../daas-platform/SKILL.md). On an Engine older than 0.1.0-dev.19 it has only `assign_user_role` and `create_config`: use the routes.
 
 ### REST, with an administrator's session
 

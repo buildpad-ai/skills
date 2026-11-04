@@ -287,21 +287,26 @@ The caller's permissions decide what each call may read or write.
 | Tool          | Description                                                                          |
 | ------------- | ------------------------------------------------------------------------------------ |
 | `collections` | `create`, `read`, `update` (metadata) and `delete` collections                         |
-| `fields`      | `create`, `read`, `update` and `delete` a collection's fields                          |
+| `fields`      | `create`, `read`, `update` and `delete` a collection's fields; `create_index`, `drop_index` and `rename` |
 | `relations`   | `create`, `read`, `update` and `delete` foreign-key relations                          |
 | `roles`       | Manage role definitions (CRUD)                                                       |
 | `policies`    | Manage permission policies (CRUD)                                                    |
 | `access`      | Grant a policy to a role or a user, read the grants, revoke one (`create`, `read`, `delete`) |
 | `permissions` | Manage the permission rules inside a policy (CRUD)                                   |
-| `scope`       | Assign a role to a user, optionally at one scope (`assign_user_role` only)           |
-| `cron`        | `list`, `read`, `create`, `update`, `delete`, `activate`, `deactivate`, `clone`, `run_now` and `history` for cron jobs |
-| `services`    | `list`, `read`, `create`, `update`, `delete`, `run_tests`, `activate` and `deactivate` for custom services |
+| `scope`       | Create, change and delete scope types, items and collection settings; read a user's roles (`read_user_roles`); assign and remove a role at a scope (`assign_user_role`, `remove_user_role`). Its reads of types, items and settings follow the caller's grants |
+| `workflows`   | `create`, `read`, `update` and `delete` workflow definitions                         |
+| `workflow_assignments` | `create`, `read`, `update` and `delete` the bindings of a definition to a collection |
+| `utilities`   | `realign_sequences`: move each integer key's sequence past the largest key, after an import |
+| `cron`        | `list`, `read`, `create`, `update`, `delete`, `activate`, `deactivate`, `clone`, `run_now`, `history`, `recent_history` and `stats` for cron jobs |
+| `services`    | `list`, `read`, `create`, `update`, `delete`, `run_tests`, `run_test`, `activate` and `deactivate` for custom services |
 | `extensions`  | `list`, `read`, `create`, `update`, `delete`, `activate`, `deactivate` and `clone` for hooks |
 | `smtp-settings` | `get` and `update` the mail settings, and `test` them                              |
 | `module_access_keys` | `create`, `read`, `update` and `delete` module access keys                    |
 | `cors-settings` | `get` and `update` the cross-origin settings: change nothing through it, as the project's cross-origin settings stay as provisioned |
 
-The last six take their fields at the top level of `arguments`, next to `action` and `id`. A change takes effect as the REST write of the same body does, and a `delete` is refused while the project's MCP deletes are off. They are served from Engine 0.1.0-dev.4: if `tools/list` does not list them, use the REST routes.
+The last six take their fields at the top level of `arguments`, next to `action` and `id`. A change takes effect as the REST write of the same body does, and a `delete` is refused while the project's MCP deletes are off. They are served from Engine 0.1.0-dev.4: if `tools/list` does not list them, use the REST routes. `cron` `recent_history` and `stats`, `services` `run_test`, and the `scope` tool's actions other than `assign_user_role` and `create_config` are served from Engine 0.1.0-dev.19; `workflows`, `workflow_assignments` and the `fields` actions `create_index`, `drop_index` and `rename` from 0.1.0-dev.18. If an action is not in the tool's `action` list, use the REST route.
+
+The `fields` tool's `update` takes `schema.is_unique` (`true` or `false`) to add or drop the field's unique constraint, and `schema.add_index` to create or drop its single-column index; a uniqueness the rows already break is refused with the database's reason. `create_index` takes `data` `{collection, columns, name, unique}` for an index over several columns, or a unique one; `drop_index` takes `collection` and `keys` (the index names). `rename` takes `data` `{collection, field, new_field}` and carries the field's metadata, relations and permission field lists with it, but not free text that names the field (filters, validation, templates, hooks, cron jobs): its answer lists what to check by hand.
 
 On an Engine project collections, fields, relations, roles, policies and permissions are created through the Engine's API (`/api/collections`, `/api/fields/:collection`, `/api/relations`, `/api/roles`, `/api/policies`, `/api/access`, `/api/permissions`) or its MCP tools `collections`, `fields`, `relations`, `roles`, `policies`, `access` and `permissions`. Access is roles, policies and permissions: a permission belongs to a policy, and a policy is attached to a role or a user. The MCP `collections` and `fields` tools keep a field's name, type and `meta` but not its `schema` block (default, not-null, length): set those through `POST /api/fields/:collection` with an administrator's session.
 
@@ -317,7 +322,16 @@ On an Engine project collections, fields, relations, roles, policies and permiss
 
 The Engine also serves an older set of tools that name the operation in the tool, not in an `action` argument: `daas_read_items`, `daas_create_item`, `daas_update_item`, `daas_delete_item` (listed only while deletes are allowed), `daas_list_collections`, `daas_get_schema`, `daas_create_collection` (administrators only), `daas_list_files`, `daas_list_workflows` and `daas_trigger_transition`. The same permissions apply.
 
-The Engine's MCP server has no tool that returns a file's content, and none for the application log. File content is served at `/api/files/assets/:id`, with a session or a signed token; hooks, cron jobs and the log are described in [Hooks, cron jobs and logs on an Engine project](#hooks-cron-jobs-and-logs-on-an-engine-project).
+### Logs and File Content
+
+| Tool     | Description |
+| -------- | ----------- |
+| `logs`   | The Engine's recent log entries, as `GET /api/logs` answers them: `tail` (the newest; `lines`, 1 to 500, default 50), `read`, `search` (`query`, text the message contains), `stats` (counts by level and source) and `clear` |
+| `assets` | A file's content, given its `id`: an image or audio file as an image or audio item, any other file as its metadata and its bytes in base64 |
+
+`logs` is listed to an administrator and to a user whose role holds the system-logs module key; `clear` is for administrators only. `read` and `search` take `level`, `source`, `extensionName`, `correlation_id`, `since` and `until` (RFC 3339 times) and `limit`. `assets` serves a file to any caller who may read it, and answers a file the caller may not read as one that does not exist. A file over 10 MiB is refused; `width`, `height` and `quality` are accepted and change nothing.
+
+Both are served from Engine 0.1.0-dev.19. If `tools/list` does not list them, the project's Engine is older: file content is served at `/api/files/assets/:id`, with a session or a signed token, and the log is described in [Hooks, cron jobs and logs on an Engine project](#hooks-cron-jobs-and-logs-on-an-engine-project).
 <!-- /buildpad-backend -->
 
 ---
@@ -1771,20 +1785,36 @@ Clear all logs from memory:
 <!-- buildpad-backend: engine -->
 ## Hooks, cron jobs and logs on an Engine project
 
-On an Engine project an administrator manages hooks with the MCP tool `extensions` and cron jobs with the MCP tool `cron`, or through the Studio and the REST routes below. The MCP server has no tool for the application log: do not look for one.
+On an Engine project an administrator manages hooks with the MCP tool `extensions` and cron jobs with the MCP tool `cron`, or through the Studio and the REST routes below. The application log is read with the MCP tool `logs` (see [Logs and File Content](#logs-and-file-content)) or the route below.
 
 - **Hooks** run code in the Engine when an item is written: a `filter` hook runs before the write and may change the payload or abort it (validation, data transformation); an `action` hook runs after it (audit logging, notifications, external sync). Create and manage hooks in the Studio, with the MCP tool `extensions`, or through `<Engine_URL>/api/extensions` with an administrator's session (`POST` to create, `PATCH` and `DELETE` on `/api/extensions/:id`, and `POST /api/extensions/:id/activate`, `/deactivate` and `/clone`). Event names are `items.create`, `items.update` and `items.delete`, or the same prefixed with a collection (`articles.items.create`). The [hooks-extensions](../../hooks-extensions/SKILL.md) skill has the code a hook may run.
 - **Cron jobs** run stored code on a schedule. Create and manage them in the Studio's Cron module, with the MCP tool `cron`, or through `<Engine_URL>/api/cron` with an administrator's session (`/api/cron/:id`, `POST /api/cron/:id/run`, `POST /api/cron/:id/clone`, `GET /api/cron/:id/history`). On an Engine project an active cron job fires at its scheduled time. The [create-cron](../../create-cron/SKILL.md) skill has the steps.
 - **Stored code** (hooks and cron jobs) runs in the Engine's runtime, which has no `fetch`, `process` or `require`; the two skills above say what it provides.
-- **Logs** are read with `GET <Engine_URL>/api/logs`, with the session of an administrator or of a user granted the `system:logs` module access. The parameters `level`, `source`, `extensionName` and `limit` narrow the answer (one value each). `GET /api/logs/stream` streams new entries, and `DELETE /api/logs` clears them (administrators only).
+- **Logs** are read with `GET <Engine_URL>/api/logs`, with the session of an administrator or of a user granted the `system:logs` module access. The parameters `level`, `source`, `extensionName` and `limit` narrow the answer (one value each), and from Engine 0.1.0-dev.19 so do `search` (text the message contains), `since` and `until` (RFC 3339 times). `GET /api/logs/stream` streams new entries, and `DELETE /api/logs` clears them (administrators only).
 
 ---
 
 ## Tool: `scope` (Admin Only)
 
-On an Engine project the project is one tenant. Every scope hierarchy begins below the project's tenant node: create no scope type without a parent and no scope item without a parent. Scope types, items and collection settings are managed through `/api/scope/types`, `/api/scope/items` and `/api/scope/collection-config` with an administrator's session; the MCP `scope` tool, served to an administrator only, assigns a role to a user at a scope (`assign_user_role`) and registers a collection as tenanted (`create_config`, the body of `POST /api/scope/collection-config`).
+On an Engine project the project is one tenant. Every scope hierarchy begins below the project's tenant node: create no scope type without a parent and no scope item without a parent. Scope types, items and collection settings are managed through the MCP `scope` tool, or through `/api/scope/types`, `/api/scope/items` and `/api/scope/collection-config` with an administrator's session. The tool reads types, items and collection settings with the caller's grants; only an administrator may create, change or delete them through it, read a user's roles (`read_user_roles`), or assign and remove a role at a scope (`assign_user_role`, `remove_user_role`), and a delete is refused while the project's MCP deletes are off. If `tools/list` offers only `assign_user_role` and `create_config` for it, the project's Engine is older than 0.1.0-dev.19: use the routes for the rest.
 
-On an Engine project the MCP `scope` tool has two actions. `assign_user_role` takes its arguments under `assignment` and applies the same checks as `POST /api/users/:id/roles`: a role whose scope rules do not allow the scope is refused (`ROLE_SCOPE_MISMATCH`, `ROLE_SCOPE_LOCKED`). `create_config` takes the body of `POST /api/scope/collection-config` under `config_data` and applies that route's checks: `collection` is required, and `field_name` (default `resource_uri`) must be a column of it. `add_fk` is accepted and ignored: the Engine makes no foreign key for a tenant column. The tool reads and edits no scope type or item; use the routes above. See the `/manage-scope` skill for the complete setup.
+On an Engine project the MCP `scope` tool serves the scope routes' actions. Each applies its route's checks, and a write refused there is refused here with the same reason.
+
+| Action | Arguments | Route it follows |
+| ------ | --------- | ---------------- |
+| `read_types`, `read_items` | `id` for one, or `limit` and `offset` | `GET /api/scope/types`, `GET /api/scope/items` |
+| `create_type`, `update_type` | `type_data` (`name`, `parent_id`, `sort`, `icon`, `note`); `id` to update | `POST /api/scope/types`, `PATCH /api/scope/types/:id` |
+| `create_item` | `item_data` (`name`, `scope_type_id`, `parent_item_id`, `sort`) | `POST /api/scope/items` |
+| `update_item` | `id` and `item_update` (`name`, `sort`: the parent never changes) | `PATCH /api/scope/items/:id` |
+| `delete_type`, `delete_item` | `id` | `DELETE /api/scope/types/:id`, `DELETE /api/scope/items/:id` |
+| `read_configs` | `collection` for one, or none for every registration | `GET /api/scope/collection-config` |
+| `create_config` | `config_data` (`collection`, `field_name`, `missing_uri_mode`, `inheritance_mode`) | `POST /api/scope/collection-config` |
+| `update_config` | `collection` and `config_update` (`field_name`, `missing_uri_mode`, `inheritance_mode`) | `PATCH /api/scope/collection-config/:collection` |
+| `read_user_roles` | `user_id`; optionally `role_id` and `resource_uri` (`null` for bindings at no scope) | `GET /api/users/:id/roles` |
+| `assign_user_role` | `assignment` (`user_id`, `role_id`, `resource_uri`) | `POST /api/users/:id/roles` |
+| `remove_user_role` | `user_id`, `role_id`, and `resource_uri` (`null` for the binding at no scope) | `DELETE /api/users/:id/roles/:roleId` |
+
+The reads of types, items and collection settings follow the caller's grants; every other action is for administrators only, and `delete_type` and `delete_item` are refused while the project's MCP deletes are off. A role whose scope rules do not allow the scope is refused (`ROLE_SCOPE_MISMATCH`, `ROLE_SCOPE_LOCKED`). In `create_config`, `field_name` (default `resource_uri`) must be a column of the collection, and `add_fk` is accepted and ignored: the Engine makes no foreign key for a tenant column. On an Engine older than 0.1.0-dev.19 the tool has only `assign_user_role` and `create_config`: use the routes above for the rest. See the `/manage-scope` skill for the complete setup.
 
 ```json
 // Assign a user to a scoped role
