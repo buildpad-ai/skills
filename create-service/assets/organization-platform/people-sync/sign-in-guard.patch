@@ -1,0 +1,82 @@
+# buildpad-backend-file: supabase
+diff --git a/app/api/auth/callback/route.ts b/app/api/auth/callback/route.ts
+index 21752fd..998421f 100644
+--- a/app/api/auth/callback/route.ts
++++ b/app/api/auth/callback/route.ts
+@@ -29,7 +29,8 @@ import {
+   decodeTokenUnsafe,
+   type IdTokenClaims,
+ } from '@/lib/oauth/validate';
+-import { findOrCreateUser } from '@/lib/supabase/admin';
++import { createSupabaseAdmin, findOrCreateUser } from '@/lib/supabase/admin';
++import { ACCOUNT_SUSPENDED_MESSAGE, isAccountBlocked } from '@/lib/admin-user-status';
+ import { setSyncHint } from '@/lib/org-platform/sync-hint';
+ 
+ const STATE_COOKIE_NAME = 'oauth_state';
+@@ -270,6 +271,15 @@ async function handleSupabaseCallback(request: NextRequest, code: string | null)
+       return NextResponse.redirect(loginUrl);
+     }
+ 
++    // A suspended account does not get in this way either.
++    const { data: { user: signedIn } } = await supabase.auth.getUser();
++    if (signedIn && (await isAccountBlocked(createSupabaseAdmin(), signedIn.id))) {
++      await supabase.auth.signOut();
++      const loginUrl = new URL('/login', origin);
++      loginUrl.searchParams.set('error', ACCOUNT_SUSPENDED_MESSAGE);
++      return NextResponse.redirect(loginUrl);
++    }
++
+     return setSyncHint(NextResponse.redirect(new URL('/dashboard/my-feedback', origin)));
+   } catch (err) {
+     console.error('Auth callback error:', err);
+diff --git a/app/api/auth/login/route.ts b/app/api/auth/login/route.ts
+index 7f4525c..2e785f9 100644
+--- a/app/api/auth/login/route.ts
++++ b/app/api/auth/login/route.ts
+@@ -1,5 +1,7 @@
+ import { createClient } from '@/lib/supabase/server';
+ import { setSyncHint } from '@/lib/org-platform/sync-hint';
++import { ACCOUNT_SUSPENDED_MESSAGE, isAccountBlocked } from '@/lib/admin-user-status';
++import { createSupabaseAdmin } from '@/lib/supabase/admin';
+ import { NextRequest, NextResponse } from 'next/server';
+ 
+ export async function POST(request: NextRequest) {
+@@ -28,6 +30,12 @@ export async function POST(request: NextRequest) {
+       );
+     }
+ 
++    // A suspended account does not get in with a password either.
++    if (data.user && (await isAccountBlocked(createSupabaseAdmin(), data.user.id))) {
++      await supabase.auth.signOut();
++      return NextResponse.json({ error: ACCOUNT_SUSPENDED_MESSAGE }, { status: 403 });
++    }
++
+     // Role assignment by rules runs on the first page load, never here.
+     return setSyncHint(
+       NextResponse.json({
+diff --git a/lib/supabase/admin.ts b/lib/supabase/admin.ts
+index 299da84..030857f 100644
+--- a/lib/supabase/admin.ts
++++ b/lib/supabase/admin.ts
+@@ -21,6 +21,7 @@
+  * @buildpad/version: 1.0.0
+  */
+ 
++import { ACCOUNT_SUSPENDED_MESSAGE, isAccountBlocked } from '@/lib/admin-user-status';
+ import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
+ 
+ /**
+@@ -214,6 +215,13 @@ export async function findOrCreateUser(
+     user = newUser.user;
+   }
+ 
++  // ─── Step 2C: A suspended account does not sign in ──────────────────────
++  // An administrator suspends an account (for example a leaver found by the Offboarding review). Step 3 would
++  // otherwise set it straight back to active, so refuse here, before anything is written.
++  if (!isNewUser && (await isAccountBlocked(supabase, user.id))) {
++    throw new Error(ACCOUNT_SUSPENDED_MESSAGE);
++  }
++
+   // ─── Step 3: Ensure a matching daas_users record exists ───────────────
+   // No role is assigned here — an admin must grant a role/tenant scope
+   // separately before the user has access to any data.

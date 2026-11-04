@@ -1,0 +1,422 @@
+# buildpad-backend-file: supabase
+diff --git a/amplify.yml b/amplify.yml
+index 423ddd0..f5468e6 100644
+--- a/amplify.yml
++++ b/amplify.yml
+@@ -103,6 +103,19 @@ frontend:
+           if [ -n "$REVIEW_PAGES_S3_BUCKET" ]; then
+             echo "REVIEW_PAGES_S3_BUCKET=$REVIEW_PAGES_S3_BUCKET" >> .env.production
+           fi
++        # Role assignment (Organisation Platform). Server-only; the key never gets a NEXT_PUBLIC_ name.
++        - |
++          if [ -n "$ORG_PLATFORM_URL" ]; then
++            echo "ORG_PLATFORM_URL=$ORG_PLATFORM_URL" >> .env.production
++          fi
++        - |
++          if [ -n "$ORG_PLATFORM_API_KEY" ]; then
++            echo "ORG_PLATFORM_API_KEY=$ORG_PLATFORM_API_KEY" >> .env.production
++          fi
++        - |
++          if [ -n "$ORG_ROLE_ASSIGNMENT_ENABLED" ]; then
++            echo "ORG_ROLE_ASSIGNMENT_ENABLED=$ORG_ROLE_ASSIGNMENT_ENABLED" >> .env.production
++          fi
+         # NEXT_PUBLIC_MAX_TENANTS_PER_USER is NOT written here — like other
+         # NEXT_PUBLIC_* vars it must be set directly in the Amplify console
+         # so Next.js can inline it into the client bundle at build time.
+diff --git a/app/api/auth/callback/route.ts b/app/api/auth/callback/route.ts
+index e2772aa..21752fd 100644
+--- a/app/api/auth/callback/route.ts
++++ b/app/api/auth/callback/route.ts
+@@ -30,6 +30,7 @@ import {
+   type IdTokenClaims,
+ } from '@/lib/oauth/validate';
+ import { findOrCreateUser } from '@/lib/supabase/admin';
++import { setSyncHint } from '@/lib/org-platform/sync-hint';
+ 
+ const STATE_COOKIE_NAME = 'oauth_state';
+ 
+@@ -236,7 +237,8 @@ export async function GET(request: NextRequest) {
+ 
+     console.log('OAuth: Session set — redirecting to', redirectUrl.pathname);
+ 
+-    return response;
++    // Role assignment by rules runs on the first page load, never here (a slow platform must not hold up a login).
++    return setSyncHint(response);
+   } catch (err) {
+     console.error('OAuth callback error:', err);
+     return NextResponse.redirect(
+@@ -268,7 +270,7 @@ async function handleSupabaseCallback(request: NextRequest, code: string | null)
+       return NextResponse.redirect(loginUrl);
+     }
+ 
+-    return NextResponse.redirect(new URL('/dashboard/my-feedback', origin));
++    return setSyncHint(NextResponse.redirect(new URL('/dashboard/my-feedback', origin)));
+   } catch (err) {
+     console.error('Auth callback error:', err);
+     const loginUrl = new URL('/login', origin);
+diff --git a/app/api/auth/login/route.ts b/app/api/auth/login/route.ts
+index d315316..7f4525c 100644
+--- a/app/api/auth/login/route.ts
++++ b/app/api/auth/login/route.ts
+@@ -1,4 +1,5 @@
+ import { createClient } from '@/lib/supabase/server';
++import { setSyncHint } from '@/lib/org-platform/sync-hint';
+ import { NextRequest, NextResponse } from 'next/server';
+ 
+ export async function POST(request: NextRequest) {
+@@ -27,10 +28,13 @@ export async function POST(request: NextRequest) {
+       );
+     }
+ 
+-    return NextResponse.json({
+-      user: data.user,
+-      session: data.session,
+-    });
++    // Role assignment by rules runs on the first page load, never here.
++    return setSyncHint(
++      NextResponse.json({
++        user: data.user,
++        session: data.session,
++      })
++    );
+   } catch (err) {
+     console.error('Login error:', err);
+     return NextResponse.json(
+diff --git a/app/api/tenant/[id]/route.ts b/app/api/tenant/[id]/route.ts
+index aaa24c6..60ad719 100644
+--- a/app/api/tenant/[id]/route.ts
++++ b/app/api/tenant/[id]/route.ts
+@@ -1,6 +1,7 @@
+ import { NextRequest, NextResponse } from 'next/server';
+ import { createClient } from '@/lib/supabase/server';
+ import { getDaasUrl } from '@/lib/api/auth-headers';
++import { clearTenantOrgRules } from '@/lib/org-rules/cleanup';
+ 
+ const SERVICE_HEADERS = {
+   Authorization: `Bearer ${process.env.SERVICE_ACCOUNT_KEY}`,
+@@ -119,6 +120,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
+     return NextResponse.json({ error: 'Failed to remove tenant role assignments' }, { status: 502 });
+   }
+ 
++  // Role assignment's own rows (rules and the roles they granted) are not scope-registered, so they would be orphaned.
++  await clearTenantOrgRules(scopeItem.uri_path);
++
+   for (const owner of ownerRows) {
+     const delOwnerRes = await fetch(`${daasUrl}/items/scope_owners/${encodeURIComponent(owner.id)}`, {
+       method: 'DELETE',
+diff --git a/app/api/v2/mcp/oauth/complete/route.ts b/app/api/v2/mcp/oauth/complete/route.ts
+index a3a7d59..d7caed2 100644
+--- a/app/api/v2/mcp/oauth/complete/route.ts
++++ b/app/api/v2/mcp/oauth/complete/route.ts
+@@ -19,6 +19,9 @@ import { getRequestOrigin } from '@/lib/oauth/config';
+ import { getDaasUrl } from '@/lib/api/auth-headers';
+ import { signAuthorizationCode, type McpAuthorizeState } from '@/lib/mcp-oauth-v2';
+ import { createTenant } from '@/lib/api/create-tenant';
++import { reconcileFromOrgPlatform } from '@/lib/org-platform/onboard';
++import { shouldHintSync } from '@/lib/org-platform/sync-hint';
++import { signInMethodOf } from '@/lib/org-rules/system-attributes';
+ import { ALL_WORKSPACES, isAllWorkspaces } from '@/lib/mcp-all-workspaces';
+ import { CLAUDE_GLOBAL_URI } from '@/lib/mcp-provisioning';
+ import { isRootAdministrator } from '@/lib/mcp-provisioning-v2';
+@@ -302,6 +305,25 @@ export async function GET(request: NextRequest) {
+     (s: ScopeItem) => s.uri_path !== CLAUDE_GLOBAL_URI
+   );
+ 
++  // This path has no dashboard load to place the person on, so do it here before giving them a personal
++  // workspace they may not need. Inert unless role assignment is switched on; best-effort, never throws.
++  if (scopes.length === 0 && shouldHintSync()) {
++    const placed = await reconcileFromOrgPlatform({
++      userId: user.id,
++      email: user.email,
++      account: { signInMethod: signInMethodOf(user.app_metadata) },
++    });
++    if (placed.granted + placed.changed > 0) {
++      const again = await fetch(`${daasUrl}/scope/available`, {
++        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
++        cache: 'no-store',
++      });
++      if (again.ok) {
++        scopes = ((await again.json())?.data ?? []).filter((s: ScopeItem) => s.uri_path !== CLAUDE_GLOBAL_URI);
++      }
++    }
++  }
++
+   if (scopes.length === 0) {
+     const localPart = user.email.split('@')[0];
+     try {
+diff --git a/app/dashboard/dashboard-shell.test.ts b/app/dashboard/dashboard-shell.test.ts
+index 935faec..b7ea221 100644
+--- a/app/dashboard/dashboard-shell.test.ts
++++ b/app/dashboard/dashboard-shell.test.ts
+@@ -22,7 +22,7 @@ const settled = {
+ };
+ 
+ describe('navItems', () => {
+-  it('renders My Feedback, Mentioned you, Favorites, Tenants, Feedback, Projects, Members, Project PICs, then MCP', () => {
++  it('renders My Feedback, Mentioned you, Favorites, Tenants, Feedback, Projects, Members, Role assignment, Project PICs, then MCP', () => {
+     expect(navItems.map((i) => i.label)).toEqual([
+       'My Feedback',
+       'Mentioned you',
+@@ -31,6 +31,7 @@ describe('navItems', () => {
+       'Feedback',
+       'Projects',
+       'Members',
++      'Role assignment',
+       'Project PICs',
+       'Prioritisation',
+       'Agent',
+@@ -40,8 +41,8 @@ describe('navItems', () => {
+     ]);
+   });
+ 
+-  it('groups items into Personal, Tenant, Admin, and Resources sections, each contiguous', () => {
+-    expect(navItems.map((i) => i.section)).toEqual(['Personal', 'Personal', 'Personal', 'Personal', 'Tenant', 'Tenant', 'Tenant', 'Admin', 'Admin', 'Admin', 'Admin', 'Resources', 'Resources']);
++  it('groups items into Personal, Tenant, Automation, Admin, and Resources sections, each contiguous', () => {
++    expect(navItems.map((i) => i.section)).toEqual(['Personal', 'Personal', 'Personal', 'Personal', 'Tenant', 'Tenant', 'Tenant', 'Automation', 'Admin', 'Admin', 'Admin', 'Admin', 'Resources', 'Resources']);
+   });
+ 
+   it('keeps My Feedback reachable without a tenant scope', () => {
+@@ -49,15 +50,16 @@ describe('navItems', () => {
+     expect(myFeedback?.requiresScope).toBe(false);
+   });
+ 
+-  it('gates only Projects on the projects:manage capability', () => {
++  it('gates only Projects and Role assignment on a capability', () => {
+     const gated = navItems.filter((i) => 'requiredCapability' in i && i.requiredCapability);
+-    expect(gated.map((i) => i.label)).toEqual(['Projects']);
++    expect(gated.map((i) => i.label)).toEqual(['Projects', 'Role assignment']);
+     expect(gated[0].requiredCapability).toBe('projects:manage');
++    expect(gated[1].requiredCapability).toBe('role-assignment:manage');
+   });
+ 
+-  it('hides only Members under the Claude pseudo-scope', () => {
++  it('hides only Members and Role assignment under the Claude pseudo-scope', () => {
+     const hidden = navItems.filter((i) => i.hideInClaudeScope);
+-    expect(hidden.map((i) => i.label)).toEqual(['Members']);
++    expect(hidden.map((i) => i.label)).toEqual(['Members', 'Role assignment']);
+   });
+ 
+   it('preserves each entry href', () => {
+@@ -69,6 +71,7 @@ describe('navItems', () => {
+       '/dashboard/feedback',
+       '/dashboard/feedback/projects',
+       '/dashboard/tenant/members',
++      '/dashboard/automation/role-assignment',
+       '/dashboard/admin/projects',
+       '/dashboard/admin/prioritisation',
+       '/dashboard/admin/agent',
+@@ -95,11 +98,23 @@ describe('filterNavItems — real tenant scope', () => {
+       'Feedback',
+       'Projects',
+       'Members',
++      'Role assignment',
+       'MCP',
+       'Help',
+     ]);
+   });
+ 
++  it('hides Role assignment unless its capability is held', () => {
++    const visible = filterNavItems(navItems, { ...settled, hasCapability: (key) => key !== 'role-assignment:manage' });
++    expect(visible.some((i) => i.label === 'Role assignment')).toBe(false);
++    expect(visible.some((i) => i.label === 'Projects')).toBe(true);
++  });
++
++  it('fails closed on Role assignment while permissions are loading', () => {
++    const visible = filterNavItems(navItems, { ...settled, permissionsLoading: true });
++    expect(visible.some((i) => i.label === 'Role assignment')).toBe(false);
++  });
++
+   it('hides Projects when the capability is not held', () => {
+     const visible = filterNavItems(navItems, { ...settled, hasCapability: grantNone });
+     expect(visible.map((i) => i.label)).toEqual(['My Feedback', 'Mentioned you', 'Favorites', 'Tenants', 'Feedback', 'Members', 'MCP', 'Help']);
+diff --git a/app/dashboard/dashboard-shell.tsx b/app/dashboard/dashboard-shell.tsx
+index 10b9ff9..22f7243 100644
+--- a/app/dashboard/dashboard-shell.tsx
++++ b/app/dashboard/dashboard-shell.tsx
+@@ -33,12 +33,15 @@ import {
+   IconUserPlus,
+   IconHelp,
+   IconRobot,
++  IconAutomation,
+ } from '@tabler/icons-react';
+ import { ClaudeIcon } from '@/components/icons/ClaudeIcon';
+ import { ScopeSwitcher } from '@/components/ScopeSwitcher';
+ import { usePermissions } from '@/lib/buildpad/hooks';
+ import { useScope } from '@/lib/contexts/ScopeContext';
+ import { helpHrefForRoute } from '@/lib/help/route-help-map';
++import { pickDefaultTenant } from '@/lib/default-tenant';
++import { ROLE_ASSIGNMENT_CAPABILITY } from '@/lib/org-rules/constants';
+ import type { ReactNode } from 'react';
+ 
+ // Pages that work without a tenant scope — a user who skipped onboarding
+@@ -150,6 +153,11 @@ function ClaudeV2Banner() {
+ 
+ interface DashboardShellProps {
+   user: { email: string };
++  /**
++   * Whether sign-in left the hint that this person should be placed from the Organisation Platform
++   * (see lib/org-platform/sync-hint). Always false unless role assignment is switched on.
++   */
++  orgSyncPending?: boolean;
+   children: ReactNode;
+ }
+ 
+@@ -249,6 +257,18 @@ export const navItems: readonly NavItem[] = [
+     requiresScope: true,
+     hideInClaudeScope: true,
+   },
++  {
++    // Rules that place Xtremax people in this tenant from the Organisation Platform. The key only decides
++    // visibility; the API behind it admits a Tenant Admin of the active tenant (or a global Administrator).
++    label: 'Role assignment',
++    href: '/dashboard/automation/role-assignment',
++    icon: IconAutomation,
++    section: 'Automation',
++    exact: false,
++    requiresScope: true,
++    requiredCapability: ROLE_ASSIGNMENT_CAPABILITY,
++    hideInClaudeScope: true,
++  },
+   {
+     label: 'Project PICs',
+     href: '/dashboard/admin/projects',
+@@ -357,16 +377,57 @@ export function filterNavItems<T extends {
+   });
+ }
+ 
+-export function DashboardShell({ user, children }: DashboardShellProps) {
++export function DashboardShell({ user, orgSyncPending = false, children }: DashboardShellProps) {
+   const router = useRouter();
+   const pathname = usePathname();
+   const searchParams = useSearchParams();
+   const currentSource = searchParams.get('source') ?? '';
+-  const { resourceUri, availableScopes, isClaudeScope } = useScope();
++  const { resourceUri, availableScopes, isClaudeScope, refreshScopes, setResourceUri } = useScope();
+   const [loggingOut, setLoggingOut] = useState(false);
++  // True only on the first page load after a sign-in that left the placement hint.
++  const [settingUp, setSettingUp] = useState(orgSyncPending);
++  // Set when that placement added or changed a role, so a person with no tenant open yet gets one opened.
++  const [justPlaced, setJustPlaced] = useState(false);
+   const [opened, { toggle, close }] = useDisclosure(false);
+   const { hasModuleAccess, isAdmin, loading: permissionsLoading, refresh } = usePermissions();
+ 
++  // Place the person from the Organisation Platform: one request that takes no input and acts for the session's
++  // user. Best-effort, so whatever happens the page opens afterwards; tenants it added appear after the refresh.
++  useEffect(() => {
++    if (!orgSyncPending) return;
++    let cancelled = false;
++    (async () => {
++      try {
++        const res = await fetch('/api/org-platform/sync', { method: 'POST', credentials: 'include' });
++        const body = res.ok ? ((await res.json().catch(() => null)) as { data?: { changed?: boolean } } | null) : null;
++        if (body?.data?.changed && !cancelled) {
++          setJustPlaced(true);
++          await refreshScopes();
++        }
++      } catch {
++        // Nothing changed; the next page load tries again.
++      } finally {
++        if (!cancelled) setSettingUp(false);
++      }
++    })();
++    return () => {
++      cancelled = true;
++    };
++    // Once per page load: the hint is a prop of this load, and the refresh function is not a trigger.
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [orgSyncPending]);
++
++  // The first load after a placement: the tenants are listed now, but none is open, so capabilities (Projects,
++  // Role assignment) would resolve against no tenant and stay hidden until a full reload. Open the same default
++  // tenant a reload would. Someone who already has a tenant open is left where they are.
++  useEffect(() => {
++    if (!justPlaced || availableScopes.length === 0) return;
++    setJustPlaced(false);
++    if (resourceUri || isClaudeScope) return;
++    const pick = pickDefaultTenant(availableScopes);
++    if (pick) setResourceUri(pick);
++  }, [justPlaced, availableScopes, resourceUri, isClaudeScope, setResourceUri]);
++
+   // Capabilities resolve against the active tenant, but usePermissions only
+   // fetches on mount. Switching tenants changes the `daas_resource_uri`
+   // cookie without remounting the shell, so re-fetch when it changes —
+@@ -557,7 +618,16 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
+ 
+       <AppShell.Main style={{ backgroundColor: 'var(--ds-gray-100)' }}>
+         {isClaudeScope && <ClaudeV2Banner />}
+-        <ScopeGate>{children}</ScopeGate>
++        {settingUp ? (
++          <Center py="xl" role="status" aria-live="polite">
++            <Stack align="center" gap="xs">
++              <Loader size="md" />
++              <Text size="sm" c="dimmed">Setting up your workspaces…</Text>
++            </Stack>
++          </Center>
++        ) : (
++          <ScopeGate>{children}</ScopeGate>
++        )}
+       </AppShell.Main>
+     </AppShell>
+   );
+diff --git a/app/dashboard/layout.tsx b/app/dashboard/layout.tsx
+index c8ecac4..031216c 100644
+--- a/app/dashboard/layout.tsx
++++ b/app/dashboard/layout.tsx
+@@ -1,5 +1,7 @@
++import { cookies } from 'next/headers';
+ import { redirect } from 'next/navigation';
+ import { createClient } from '@/lib/supabase/server';
++import { SYNC_HINT_COOKIE, shouldHintSync } from '@/lib/org-platform/sync-hint';
+ import { DashboardShell } from './dashboard-shell';
+ import type { ReactNode } from 'react';
+ 
+@@ -11,8 +13,12 @@ export default async function DashboardLayout({ children }: { children: ReactNod
+     redirect('/login');
+   }
+ 
++  // Sign-in only leaves a hint; placing the person from the Organisation Platform happens on this first page load.
++  // Inert unless role assignment is switched on and the platform is configured.
++  const orgSyncPending = shouldHintSync() && !!(await cookies()).get(SYNC_HINT_COOKIE);
++
+   return (
+-    <DashboardShell user={{ email: user.email ?? '' }}>
++    <DashboardShell user={{ email: user.email ?? '' }} orgSyncPending={orgSyncPending}>
+       {children}
+     </DashboardShell>
+   );
+diff --git a/content/_meta.ts b/content/_meta.ts
+index c49ca53..a79f32c 100644
+--- a/content/_meta.ts
++++ b/content/_meta.ts
+@@ -17,6 +17,7 @@ const meta: MetaRecord = {
+   'review-links': 'Review links for designs',
+   'teams-section': { type: 'separator', title: 'Teams and tenants' },
+   'tenants-and-members': 'Tenants, members and roles',
++  'role-assignment': 'Role assignment',
+   'claude-connector': 'Using GetFeedback from Claude',
+   'administering-section': { type: 'separator', title: 'For administrators' },
+   administrators: 'Users, PICs and prioritisation',
+diff --git a/lib/help/route-help-map.ts b/lib/help/route-help-map.ts
+index d72ce6d..3c9e1ad 100644
+--- a/lib/help/route-help-map.ts
++++ b/lib/help/route-help-map.ts
+@@ -14,6 +14,7 @@ const ROUTE_HELP: Record<string, string> = {
+   '/dashboard/favorites': 'getting-started',
+   '/dashboard/tenants': 'tenants-and-members',
+   '/dashboard/tenant/members': 'tenants-and-members',
++  '/dashboard/automation/role-assignment': 'role-assignment',
+   '/dashboard/feedback': 'reviewing-feedback',
+   '/dashboard/feedback/projects': 'projects-and-settings',
+   '/dashboard/feedback/projects/new': 'installing-the-widget',
+diff --git a/package.json b/package.json
+index fcf5565..8392467 100644
+--- a/package.json
++++ b/package.json
+@@ -75,6 +75,7 @@
+     "@tiptap/extension-underline": "^3.23.4",
+     "@tiptap/react": "^3.23.4",
+     "@tiptap/starter-kit": "^3.23.4",
++    "@xtremax/organisation-platform": "^0.2.2",
+     "@zumer/snapdom": "^2.12.0",
+     "amqplib": "^2.0.1",
+     "axios": "^1.16.1",

@@ -1,0 +1,58 @@
+---
+description: Place Xtremax people in your tenant automatically, with a role chosen by rules.
+---
+<!-- buildpad-backend-file: supabase -->
+
+import { Callout } from 'nextra/components'
+
+# Role assignment
+
+Role assignment lets a Tenant Admin say which Xtremax people get which role in
+their tenant, based on who they are in the Organisation Platform: their job
+title, unit, name and any other attribute it holds. After that, people are
+placed automatically when they sign in, and their roles follow their profile
+when it changes. Nobody has to invite them.
+
+<Callout type="info">
+  You need to be a Tenant Admin of the tenant you are in. The **Role
+  assignment** entry appears in the sidebar under **Automation**.
+</Callout>
+
+## How a rule works
+
+A rule says: *people who match these conditions get this role in this tenant.*
+
+- **Include** the people who match (for example, designation is *Product
+  Manager*), and optionally **exclude** others (for example, people who sign in
+  with email and password).
+- Conditions can use the Organisation Platform's own attributes, any custom
+  attributes it defines, and two things getFeedback knows: **Email domain** and
+  **Sign-in method**.
+- Choose **Tenant Member** or **Tenant Admin**. These are the only two roles a
+  rule can give.
+- Rules run **top to bottom for each job a person holds, and the first match
+  wins**. If a person matches different jobs, they get the strongest role.
+  Use the arrows on the list to change the order, and the switch to turn a
+  rule off.
+
+Use **Test rules** to look up a real person by email and see which rule would
+decide for each of their jobs. Testing changes nothing.
+
+## When people are placed
+
+When someone signs in, getFeedback asks the Organisation Platform once who they
+are, runs the rules of every tenant, and sets their role in each tenant whose
+rules match. One person can end up in several tenants. If the Organisation
+Platform is slow or down, nothing changes, and the next page load tries again.
+
+## What rules never do
+
+- **Unclear never means remove.** If a tenant has no rules, a rule is broken, or
+  no rule covers a person, nothing is granted and nothing is taken away.
+- **People you placed by hand keep their role.** Whoever created the tenant, and
+  anyone invited or edited on the **Members** page, is never changed by rules.
+  Rules only change roles that rules created.
+- **A tenant always keeps an admin.** Rules never remove or demote the last
+  Tenant Admin.
+- **Rules only affect your tenant**, and can never give the platform-wide
+  Administrator role.

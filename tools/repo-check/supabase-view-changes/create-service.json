@@ -10,5 +10,23 @@
     "kind": "text",
     "reason": "A note before the hand-written chat example says to install the ai-chat module (add-ai-chat) for a chat UI instead of hand-rolling ChocolateFactoryChat, and that a browser call uses stateless mode and the project key because CF's CORS headers expose no X-Conversation-Id and allow no x-agent-key; the rest is unchanged.",
     "release": "v7.0.0"
+  },
+  {
+    "path": "create-service/references/organization-platform.instructions.md",
+    "kind": "text",
+    "reason": "The rules editor is built as three screens on the headless builder-core store, never the ready-made RulesBuilder; GET /org-role-assignments lists firstName and lastName; a new section on people import and offboarding review points to the two new references.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/references/organization-platform-people-sync.instructions.md",
+    "kind": "new-file",
+    "reason": "New reference, Supabase projects only: import people from the Organisation Platform as sign-in-less accounts and review leavers for suspension, with the exact code under assets/organization-platform/people-sync/; it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
+  },
+  {
+    "path": "create-service/references/organization-platform-role-assignment.instructions.md",
+    "kind": "new-file",
+    "reason": "New reference, Supabase projects only: build Automation > Role assignment from the real apps' code under assets/organization-platform/role-assignment/; it was shipped only in the Platform's vendored copy until now.",
+    "release": "unreleased"
   }
 ]

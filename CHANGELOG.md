@@ -14,6 +14,45 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
+## Unreleased
+
+The Organisation Platform guide of `create-service` gains its two recipes and their code. It is a
+MAJOR release, because an existing file that a Supabase project's agent reads changes
+(`create-service/references/organization-platform.instructions.md`). No skill is added, removed or
+renamed, and the "Establish the backend first" procedure stays at version 1.
+
+- These files were written on the Buildpad Platform (by Aditya Leksono) and shipped only in its
+  vendored copy of the skills, so a sync of a release deleted them. Their text is unchanged.
+- `create-service/references/organization-platform-role-assignment.instructions.md` is new: the
+  exact recipe for **Automation > Role assignment** (the list, the rule form and the Test rules
+  drawer on the headless `builder-core` store, the rule store, the routes and the sync), with the
+  real apps' code under `create-service/assets/organization-platform/role-assignment/`.
+- `create-service/references/organization-platform-people-sync.instructions.md` is new: importing
+  people from the Organisation Platform as sign-in-less accounts, and an offboarding review that
+  suspends (never deletes) the people the platform no longer knows, with the code under
+  `create-service/assets/organization-platform/people-sync/`.
+- Both recipes and their code hold for Supabase projects only. On an Engine project the guide says
+  that no such code exists yet, and its rules still hold.
+
+### Supabase projects
+
+The new files are for Supabase projects only (each has the file marker `supabase`):
+
+- `create-service/references/organization-platform-role-assignment.instructions.md` (new-file):
+  build Automation > Role assignment from the real apps' code.
+- `create-service/references/organization-platform-people-sync.instructions.md` (new-file): import
+  people as sign-in-less accounts and review leavers for suspension.
+- The code assets under `create-service/assets/organization-platform/` (new files), which the two
+  references tell the agent to copy.
+
+This file changes:
+
+- `create-service/references/organization-platform.instructions.md` (text): the rules editor is
+  built as three screens on the headless `builder-core` store, never the ready-made
+  `<RulesBuilder>`; `GET /org-role-assignments` lists `firstName` and `lastName` (from a platform
+  updated on 2026-10-26); a new section on people import and offboarding review points to the two
+  new references.
+
 ## v7.0.0
 
 Two skills are added. Install it with `npx skills add buildpad-ai/skills#v7.0.0`. It is a MAJOR
