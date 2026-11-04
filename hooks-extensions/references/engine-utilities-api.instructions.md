@@ -450,7 +450,7 @@ All utility endpoints return errors in the standard format:
 
 ## MCP and Stored Code
 
-There is no MCP tool for utilities on an Engine project. Stored code cannot call these routes either: it has no session to send. Call them from the application's own server routes with the signed-in user's token, as the examples above do.
+On an Engine project the MCP tool `utilities` has one action, for administrators only: `realign_sequences`, which moves each integer key's sequence past the largest key after an import (`collections` narrows it). The utilities above have no MCP tool. Stored code cannot call these routes either: it has no session to send. Call them from the application's own server routes with the signed-in user's token, as the examples above do.
 
 ---
 

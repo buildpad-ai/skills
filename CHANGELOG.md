@@ -16,9 +16,11 @@ what a Supabase project's agent reads, with its reason.
 
 ## Unreleased
 
-The Organisation Platform guide of `create-service` gains its two recipes and their code. It is a
-MAJOR release, because an existing file that a Supabase project's agent reads changes
-(`create-service/references/organization-platform.instructions.md`). No skill is added, removed or
+The Organisation Platform guide of `create-service` gains its two recipes and their code, and the
+Engine text follows the Engine MCP server's new tools (Engine 0.1.0-dev.18 and 0.1.0-dev.19). It is a
+MAJOR release, because existing files that a Supabase project's agent reads change
+(`create-service/references/organization-platform.instructions.md`, and the three files that carry
+the reworded ES-9 in shared text). No skill is added, removed or
 renamed, and the "Establish the backend first" procedure stays at version 1.
 
 - These files were written on the Buildpad Platform (by Aditya Leksono) and shipped only in its
@@ -33,6 +35,20 @@ renamed, and the "Establish the backend first" procedure stays at version 1.
   `create-service/assets/organization-platform/people-sync/`.
 - Both recipes and their code hold for Supabase projects only. On an Engine project the guide says
   that no such code exists yet, and its rules still hold.
+- **The Engine's MCP tools.** From Engine 0.1.0-dev.19 the MCP server serves `logs` (the
+  application log, as `GET /api/logs` answers it) and `assets` (a file's content); the `scope` tool
+  serves every scope route's action, not only `assign_user_role` and `create_config`; the `users`
+  tool's `update` takes `add_roles` and `remove_roles`; `cron` gains `recent_history` and `stats`,
+  and `services` gains `run_test`. From 0.1.0-dev.18 it serves `workflows` and
+  `workflow_assignments`, and the `fields` tool adds and drops indexes and unique constraints
+  (`create_index`, `drop_index`, `schema.is_unique`, `schema.add_index`) and renames a field. The
+  MCP tools reference and `daas-platform` list them, with the version each needs and the REST route
+  for an older Engine; `manage-scope` lets the agent set scopes up through the MCP;
+  `add-i18n` makes the translation pair unique with `create_index`; `hooks-extensions` names the
+  `utilities` tool; `create-rbac` and `manage-scope` say that `add_roles` binds a role at no scope.
+- **ES-9 reworded** (CONTRIBUTING, and every file that carries it): scope types, items and
+  collection settings are managed through the MCP `scope` tool or the routes; its reads follow the
+  caller's grants and its writes are for administrators.
 
 ### Supabase projects
 
@@ -52,6 +68,12 @@ This file changes:
   `<RulesBuilder>`; `GET /org-role-assignments` lists `firstName` and `lastName` (from a platform
   updated on 2026-10-26); a new section on people import and offboarding review points to the two
   new references.
+
+These files change only by the reworded Engine statement ES-9, which they carry in shared text:
+
+- `add-multitenancy/SKILL.md` (text)
+- `add-multitenancy/references/multitenancy.instructions.md` (text)
+- `create-feature/SKILL.md` (text)
 
 ## v7.0.0
 
