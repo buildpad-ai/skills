@@ -51,12 +51,13 @@ function isReservedDomain(email: string): boolean {
 }
 
 /**
- * The company's own email domains (lower-case, no @): `ORG_COMPANY_DOMAINS`, comma separated, default `xtremax.com`.
- * Only accounts on these domains can ever be a leaver candidate, so an external submitter or a test account never is.
+ * The company's own email domains (lower-case, no @): `ORG_COMPANY_DOMAINS`, comma separated, with no default.
+ * Only accounts on these domains can ever be a leaver candidate, so an external submitter or a test account never is;
+ * with none set, no account is.
  */
 export function companyDomains(raw: string | undefined = process.env.ORG_COMPANY_DOMAINS): string[] {
   const list = (raw ?? '').split(',').map((d) => d.trim().toLowerCase().replace(/^@/, '')).filter(Boolean);
-  return list.length > 0 ? list : ['xtremax.com'];
+  return list;
 }
 
 interface DirectoryRow {

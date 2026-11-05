@@ -1,6 +1,6 @@
 ---
 name: Organisation Platform role assignment: the exact implementation
-description: The build recipe for Automation > Role assignment on the Organisation Platform in a Supabase-backed Buildpad app, exactly as shipped in getFeedback and xWorkspace. Three custom screens (list, create and open a rule, Test rules drawer) on the package's headless builder-core, never the ready-made RulesBuilder; the rules store, ceiling, decision, placement and invariants; the real code in assets, the wiring patch, what to adapt and a checklist.
+description: The build recipe for Automation > Role assignment on the Organisation Platform in a Supabase-backed Buildpad app, exactly as shipped in two Buildpad apps. Three custom screens (list, create and open a rule, Test rules drawer) on the package's headless builder-core, never the ready-made RulesBuilder; the rules store, ceiling, decision, placement and invariants; the real code in assets, the wiring patch, what to adapt and a checklist.
 applyTo: "**/org-rules/**,**/role-assignment/**,**/automation/**"
 ---
 <!-- buildpad-backend-file: supabase -->
@@ -38,13 +38,13 @@ something is not available, tell the developer so and stop: do not build a subst
 
 # Automation > Role assignment: the exact implementation
 
-This is the build recipe for **Automation > Role assignment** (the rule engine and its three screens) on top of the Organisation Platform. It describes what XAppHub, getFeedback and xWorkspace actually ship, and `assets/organization-platform/role-assignment/` holds the real code of getFeedback and xWorkspace, copied unchanged. **Copy that code and adapt only what the adaptation table in section 5 lists. Do not design your own.**
+This is the build recipe for **Automation > Role assignment** (the rule engine and its three screens) on top of the Organisation Platform. It describes what XAppHub and two Buildpad apps actually ship, called **App A** (multi-tenant) and **App B** (a single organisation) below, and `assets/organization-platform/role-assignment/` holds App A's real code, copied unchanged apart from the app's name, which is made generic. **Copy that code and adapt only what the adaptation table in section 5 lists. Do not design your own.**
 
 ## Where the code is
 
-The real getFeedback code (Mantine, multi-tenant, hint-cookie placement) is in `assets/organization-platform/role-assignment/`, with paths that mirror the app: copy each file to the same path in your app. `wiring.patch` is the diff of the **existing** files the feature touched (sign-in routes, sidebar and layout, help map, `amplify.yml`, `package.json`); follow it. The single-organisation variant used by xWorkspace (placement inside the SSO callback, global roles) is described in sections 4 and 5 and its code is in the Organisation Platform skill, not here. The people import and the offboarding review are in `assets/organization-platform/people-sync/` with their own guide, `organization-platform-people-sync.instructions.md`.
+The real App A code (Mantine, multi-tenant, hint-cookie placement) is in `assets/organization-platform/role-assignment/`, with paths that mirror the app: copy each file to the same path in your app. `wiring.patch` is the diff of the **existing** files the feature touched (sign-in routes, sidebar and layout, help map, `amplify.yml`, `package.json`); follow it. The single-organisation variant used by App B (placement inside the SSO callback, global roles) is described in sections 4 and 5 and its code is in the Organisation Platform skill, not here. The people import and the offboarding review are in `assets/organization-platform/people-sync/` with their own guide, `organization-platform-people-sync.instructions.md`.
 
-**This is Supabase-project code** (it writes `daas_user_roles` rows and reads the Supabase session), so the file set is marked for Supabase projects and left out of the kit of an Engine project. The rules in sections 0 to 3 and 6 to 9 are not backend-specific. The getFeedback tests are in the Organisation Platform skill.
+**This is Supabase-project code** (it writes `daas_user_roles` rows and reads the Supabase session), so the file set is marked for Supabase projects and left out of the kit of an Engine project. The rules in sections 0 to 3 and 6 to 9 are not backend-specific. The App A tests are in the Organisation Platform skill.
 
 ## 0. The mistake this recipe exists to prevent
 
@@ -52,7 +52,7 @@ If an assistant is asked to "implement Automation > Role assignment" without thi
 
 **What the apps ship instead:** three separate screens built on the package's **headless** builder (`@xtremax/organisation-platform/builder-core`: `createRuleBuilder`, `createDescriber`, `BUILTIN_ATTRIBUTES`, `customAttribute`) and the app's own components. The engine and the validation are still the package's; only the screens are the app's.
 
-- **Never mount `<RulesBuilder>`, `<org-rules-builder>` or `ConditionGroupEditor` for role assignment**, unless the user explicitly asks for the package's built-in screen. (getFeedback's plan kept it only as a fallback if porting the screens failed.)
+- **Never mount `<RulesBuilder>`, `<org-rules-builder>` or `ConditionGroupEditor` for role assignment**, unless the user explicitly asks for the package's built-in screen. (App A's plan kept it only as a fallback if porting the screens failed.)
 - If the result shows rules as expandable cards with `Not valid` / `No outcome` badges, it is the wrong build. Start again from section 2.
 
 ## 1. The three screens (what it must look like)
@@ -116,9 +116,9 @@ A person signs in ─► placement (section 4) ─► people?email= (live) ─�
 | Catalogs | `lib/org-rules/catalog.ts` | Live designations, units and custom attributes; any failed read makes the editor read-only; briefly cached |
 | Builder config | `lib/org-rules/builder-config.ts` | Turns outcomes, catalogs and System attributes into the headless builder's config |
 | Access | `lib/org-rules/access.ts` | Who may read and write rules; the scope is always the session's, never a request body |
-| Routes | `app/api/org-rules/route.ts` + `test/route.ts` (getFeedback), `app/api/automation/role-rules/…` (xWorkspace) | GET/PUT and the tester |
-| Placement | getFeedback: `lib/org-platform/onboard.ts`, `sync-hint.ts`, `app/api/org-platform/sync/route.ts`. xWorkspace: `lib/org-rules/apply.ts`, `sign-in.ts` | Section 4 |
-| Screens | `components/role-assignment/*` (getFeedback), `components/automation/role-assignment/*` (xWorkspace) | Section 1 |
+| Routes | `app/api/org-rules/route.ts` + `test/route.ts` (App A), `app/api/automation/role-rules/…` (App B) | GET/PUT and the tester |
+| Placement | App A: `lib/org-platform/onboard.ts`, `sync-hint.ts`, `app/api/org-platform/sync/route.ts`. App B: `lib/org-rules/apply.ts`, `sign-in.ts` | Section 4 |
+| Screens | `components/role-assignment/*` (App A), `components/automation/role-assignment/*` (App B) | Section 1 |
 | Pages | `app/dashboard/automation/role-assignment/{page,new/page,[ruleId]/page}.tsx` | Three thin pages that render the screens |
 | Cleanup and help | `lib/org-rules/cleanup.ts`, `content/role-assignment.mdx` | Delete a tenant's rows with the tenant; a help article |
 
@@ -126,9 +126,9 @@ A person signs in ─► placement (section 4) ─► people?email= (live) ─�
 
 ## 3. The decision, and why it is safe
 
-- **The ceiling.** A fixed list of the roles a rule may give, strongest first (getFeedback: Tenant Admin, Tenant Member from environment ids; xWorkspace: Administrator, User; XAppHub: its four organisation roles). Never an application-wide administrator role the app does not already allow, and never editable by whoever writes rules. Checked three times: `allowedOutcomeIds` on save, in `decideByRules`, and when a role row is written.
+- **The ceiling.** A fixed list of the roles a rule may give, strongest first (App A: Tenant Admin, Tenant Member from environment ids; App B: Administrator, User; XAppHub: its four organisation roles). Never an application-wide administrator role the app does not already allow, and never editable by whoever writes rules. Checked three times: `allowedOutcomeIds` on save, in `decideByRules`, and when a role row is written.
 - **Each job is checked on its own.** A job is one designation held at one unit. `decideByRules` keeps only results that carry both a designation and a unit and an outcome inside the ceiling, and where several rules match one job it keeps the strongest role.
-- **A person with no designation is never matched,** not even by an attribute-only rule, because a result needs a designation and a unit. That is accepted (most Xtremax staff hold a designation); the plans record it.
+- **A person with no designation is never matched,** not even by an attribute-only rule, because a result needs a designation and a unit. That is accepted (most staff hold a designation); the plans record it.
 - **"No decision" is the safe answer.** No enabled rule, an unreadable or untrusted rule set, an unknown person, a lookup that failed, a designation no rule decided, or a job with no resolved unit: none of them grants anything, and **all block revocation**. A missing or broken rule can never take access away.
 - **Revoking needs a complete picture:** the platform answered with a person it knows (`isKnownPerson`: has a name, an attribute or a role, because `roles: []` alone means both "no designations" and "unknown person"), the rules were readable and enabled, and no job is undecided or unresolved (`orgUnitId: null` is unresolved, never "none"). The last administrator is never removed or demoted.
 - **A human placement always wins.** A role row the placement did not write (the creator, an invite, an admin's edit) is a person's decision; the placement writes nothing there. Anything unreadable counts as "placed".
@@ -138,21 +138,21 @@ A person signs in ─► placement (section 4) ─► people?email= (live) ─�
 
 Two designs exist. They share the decision above and differ in **when** the platform is asked.
 
-- **getFeedback (recommended for a multi-tenant app, or any app where a slow platform must never hold a login up).** Placement runs on the person's **first page load after sign-in**, never inside a sign-in. The sign-in paths (OAuth callback, the Supabase fallback, email login) only set a short-lived **hint cookie** (`org_sync_pending`) and only when placement is switched on and the platform is configured. The dashboard shell sees it, calls `POST /api/org-platform/sync`, and shows a brief "Setting up your workspaces" state. The endpoint takes no input and always acts for the session's user, so a tampered cookie changes nothing. It runs one placement per person at a time (an in-flight map shares one answer between two tabs), clears the cookie on success, and keeps it on a failed lookup, capped at 3 attempts (`MAX_SYNC_ATTEMPTS`). Paths with no dashboard load (the Claude connector's OAuth completion) call the same function directly **before** auto-creating a tenant. A feature flag (`ORG_ROLE_ASSIGNMENT_ENABLED`) keeps the whole path inert until a pilot.
-- **xWorkspace (a single-organisation app with one default role).** Placement runs **inside the SSO callback** right after the default role is ensured (`applyRoleRulesAtSignIn`), with a 3 second platform lookup and a hard 8 second deadline raced against it, and everything caught, so it can never fail a sign-in. It is **additive on top of the default role**: everyone keeps the default role; rules can add Administrator and take back one they added.
+- **App A (recommended for a multi-tenant app, or any app where a slow platform must never hold a login up).** Placement runs on the person's **first page load after sign-in**, never inside a sign-in. The sign-in paths (OAuth callback, the Supabase fallback, email login) only set a short-lived **hint cookie** (`org_sync_pending`) and only when placement is switched on and the platform is configured. The dashboard shell sees it, calls `POST /api/org-platform/sync`, and shows a brief "Setting up your workspaces" state. The endpoint takes no input and always acts for the session's user, so a tampered cookie changes nothing. It runs one placement per person at a time (an in-flight map shares one answer between two tabs), clears the cookie on success, and keeps it on a failed lookup, capped at 3 attempts (`MAX_SYNC_ATTEMPTS`). Paths with no dashboard load (the Claude connector's OAuth completion) call the same function directly **before** auto-creating a tenant. A feature flag (`ORG_ROLE_ASSIGNMENT_ENABLED`) keeps the whole path inert until a pilot.
+- **App B (a single-organisation app with one default role).** Placement runs **inside the SSO callback** right after the default role is ensured (`applyRoleRulesAtSignIn`), with a 3 second platform lookup and a hard 8 second deadline raced against it, and everything caught, so it can never fail a sign-in. It is **additive on top of the default role**: everyone keeps the default role; rules can add Administrator and take back one they added.
 
 Either way: one `people?email=` call, short timeout, **no retry**, email lower-cased and trimmed. If it fails, nothing changes anywhere.
 
 ## 5. What to adapt for a new host (and nothing else)
 
-| Concern | getFeedback | xWorkspace | Adapt by |
+| Concern | App A | App B | Adapt by |
 |---|---|---|---|
-| Unit of rules | One rule set per **tenant** (`tenant_uri`) | **One** rule set (`ORGANIZATION = 'xtremax'`) | Key the store by whatever your app's unit of ownership is |
+| Unit of rules | One rule set per **tenant** (`tenant_uri`) | **One** rule set (`ORGANIZATION = '<your-organisation>'`) | Key the store by whatever your app's unit of ownership is |
 | Roles a rule may give | Tenant Admin, Tenant Member (env ids) | Administrator, User (seeded ids) | Write the ceiling list and the labels and descriptions shown on the outcome cards |
 | Who may write rules | Tenant Admin at the exact scope, or global Administrator | `automation:manage` module key | `access.ts` |
 | Service credential | `SERVICE_ACCOUNT_KEY` | `asSystem` | `store.ts` reads and writes |
 | Where roles live | Scoped `daas_user_roles` rows, `X-Resource-Uri` per tenant | Global `daas_user_roles` rows | The placement function |
-| System attributes | Email domain, Sign-in method (`attributes.getfeedback.*`) | Email, Email domain | Decide from real rows (section 6) |
+| System attributes | Email domain, Sign-in method (`attributes.app.*`) | Email, Email domain | Decide from real rows (section 6) |
 | Sign-in trigger | Hint cookie + sync endpoint | Inline in the SSO callback | Section 4 |
 | UI kit and styles | Mantine + `tokens.ts` / `styles.ts` | The app's own shell + `role-assignment.css` | Restyle; keep the structure of section 1 |
 | Sidebar | `navItems` entry gated by the module key `role-assignment:manage` | Shell entry | `wiring.patch` |
@@ -162,7 +162,7 @@ Either way: one `people?email=` call, short timeout, **no retry**, email lower-c
 
 ## 6. System attributes
 
-The platform says nothing about the person's account in your app, so conditions that need "how do they sign in" or "what is their email domain" use facts the app supplies, namespaced (`attributes.<app>.*`), added to the person before the engine runs, and **overwriting** anything the platform sent under that name. Decide them from real rows, not the schema: getFeedback offers Email domain and Sign-in method; xWorkspace found that `provider` is `email` for every account and `status` is always `active`, so it offers Email and Email domain only. The builder groups them as **System** beside the platform's **Attribute** and **OU Path**. An unreadable account writes nothing at sign-in and fails the tester with `502`; "no account yet" is an answer.
+The platform says nothing about the person's account in your app, so conditions that need "how do they sign in" or "what is their email domain" use facts the app supplies, namespaced (`attributes.<app>.*`), added to the person before the engine runs, and **overwriting** anything the platform sent under that name. Decide them from real rows, not the schema: App A offers Email domain and Sign-in method; App B found that `provider` is `email` for every account and `status` is always `active`, so it offers Email and Email domain only. The builder groups them as **System** beside the platform's **Attribute** and **OU Path**. An unreadable account writes nothing at sign-in and fails the tester with `502`; "no account yet" is an answer.
 
 ## 7. Invariants and tests to carry
 
@@ -178,12 +178,12 @@ The platform says nothing about the person's account in your app, so conditions 
 - The sync endpoint takes no user input; a tampered hint cookie changes nothing.
 - The platform key never reaches a browser, a log or a URL.
 
-The assets include the suites (`decide.test.ts`, `onboard.test.ts`, `sync-hint.test.ts`, the route tests; xWorkspace: `apply.test.ts`, `rules.test.ts`, `store.test.ts`, `routes.test.ts`). A port that passes them keeps the safety properties.
+The assets include the suites (`decide.test.ts`, `onboard.test.ts`, `sync-hint.test.ts`, the route tests; App B: `apply.test.ts`, `rules.test.ts`, `store.test.ts`, `routes.test.ts`). A port that passes them keeps the safety properties.
 
 ## 8. Setup and rollout
 
-1. Create the two collections (not scope-registered, no policy grant to anyone but the service credential): `org_rule_sets` (`tenant_uri` or key, `schema_version`, `rules` json, `version`, `updated_by`) and the grants collection (`org_role_grants`: `user_id`, `tenant_uri`, `role_id`, `role_row_id`; xWorkspace: `role_rule_grants`). Until they exist the screens say "not set up here yet" and nothing decides anything.
-2. Register the module access key (getFeedback `role-assignment:manage`; xWorkspace `automation:manage`) and grant it to the policy that should see the sidebar entry. The key only drives visibility; the API checks the real authority.
+1. Create the two collections (not scope-registered, no policy grant to anyone but the service credential): `org_rule_sets` (`tenant_uri` or key, `schema_version`, `rules` json, `version`, `updated_by`) and the grants collection (`org_role_grants`: `user_id`, `tenant_uri`, `role_id`, `role_row_id`; App B: `role_rule_grants`). Until they exist the screens say "not set up here yet" and nothing decides anything.
+2. Register the module access key (App A `role-assignment:manage`; App B `automation:manage`) and grant it to the policy that should see the sidebar entry. The key only drives visibility; the API checks the real authority.
 3. Set the server variables (server-only): `ORG_PLATFORM_URL`, `ORG_PLATFORM_API_KEY` (the read-only key from the connector is enough), and, for the hint-cookie design, `ORG_ROLE_ASSIGNMENT_ENABLED` (leave `false` until the pilot). **Add them to `amplify.yml`** so they reach the server (`wiring.patch` shows how).
 4. Pilot with one internal scope and test accounts: grant, change, revoke, hands off, platform down, two scopes. Then switch it on.
 5. Switching off: unset the flag or the key (no code deploy) and everything stops; roles already granted stay and are recorded in the grants collection.

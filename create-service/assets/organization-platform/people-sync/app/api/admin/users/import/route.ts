@@ -1,7 +1,7 @@
 // buildpad-backend-file: supabase
 // Backend: before using this file, establish the backend as "Establish the backend first" in this skill's SKILL.md says, keep only the parts for that backend, and copy no marker line into the application.
 /**
- * Import Xtremax people from the Organisation Platform — POST /api/admin/users/import
+ * Import the organisation's people from the Organisation Platform — POST /api/admin/users/import
  *
  * Global Administrators only. One-time (and safe to repeat) import so people can be
  * @mentioned before they have ever signed in. See lib/org-platform/people-import.ts.
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "mode must be 'preview', 'run' or 'record-existing'" }, { status: 400 });
   }
   if (!isPlatformConfigured()) {
-    return NextResponse.json({ error: 'The Xtremax connection is not configured on this deployment.' }, { status: 409 });
+    return NextResponse.json({ error: 'The Organisation Platform connection is not configured on this deployment.' }, { status: 409 });
   }
 
   const supabase = createSupabaseAdmin();

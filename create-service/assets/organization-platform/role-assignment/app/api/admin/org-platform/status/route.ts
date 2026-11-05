@@ -1,10 +1,10 @@
 // buildpad-backend-file: supabase
 // Backend: before using this file, establish the backend as "Establish the backend first" in this skill's SKILL.md says, keep only the parts for that backend, and copy no marker line into the application.
 /**
- * Is the Xtremax connection working? — GET /api/admin/org-platform/status
+ * Is the Organisation Platform connection working? — GET /api/admin/org-platform/status
  *
  * Global Administrators only, and read-only: it says whether the configured key can reach
- * the Xtremax root and what the root is called. The key itself is never returned, shown or
+ * the organisation root and what the root is called. The key itself is never returned, shown or
  * accepted; it is a server setting, changed by whoever manages the deployment.
  */
 

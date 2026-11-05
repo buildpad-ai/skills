@@ -1,7 +1,7 @@
 // buildpad-backend-file: supabase
 // Backend: before using this file, establish the backend as "Establish the backend first" in this skill's SKILL.md says, keep only the parts for that backend, and copy no marker line into the application.
 /**
- * One-time import of Xtremax people from the Organisation Platform, so they can be
+ * One-time import of the organisation's people from the Organisation Platform, so they can be
  * @mentioned before they have ever signed in.
  *
  * Pulls every person who holds a designation (the platform lists role assignments, each

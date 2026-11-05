@@ -112,9 +112,9 @@ export function TestRulesDrawer({ opened, onClose, rules, names }: { opened: boo
           <Text size="xs" c="dimmed">
             {account.exists
               ? account.signInMethod
-                ? `getFeedback account: signs in with ${account.signInMethod === 'sso' ? 'MyApps single sign-on' : 'email and password'}.`
-                : 'getFeedback account found, but it does not record how they sign in, so a rule on Sign-in method cannot match.'
-              : 'No getFeedback account yet, so a rule on Sign-in method cannot match until they sign in.'}
+                ? `Account in this app: signs in with ${account.signInMethod === 'sso' ? 'MyApps single sign-on' : 'email and password'}.`
+                : 'Account in this app found, but it does not record how they sign in, so a rule on Sign-in method cannot match.'
+              : 'No account in this app yet, so a rule on Sign-in method cannot match until they sign in.'}
           </Text>
         )}
 

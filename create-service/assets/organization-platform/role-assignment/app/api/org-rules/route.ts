@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       provisioned: stored.provisioned,
       configured,
       outcomes: roleOutcomes(),
-      // What getFeedback itself can say about a person: owned by this app, not the platform.
+      // What the app itself can say about a person: owned by this app, not the platform.
       system,
       limits: RULE_LIMITS,
       catalogs: catalog?.ok ? catalog.catalogs : null,

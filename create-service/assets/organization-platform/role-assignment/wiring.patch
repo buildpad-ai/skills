@@ -266,7 +266,7 @@ index 10b9ff9..22f7243 100644
      hideInClaudeScope: true,
    },
 +  {
-+    // Rules that place Xtremax people in this tenant from the Organisation Platform. The key only decides
++    // Rules that place the organisation's people in this tenant from the Organisation Platform. The key only decides
 +    // visibility; the API behind it admits a Tenant Admin of the active tenant (or a global Administrator).
 +    label: 'Role assignment',
 +    href: '/dashboard/automation/role-assignment',
@@ -393,7 +393,7 @@ index c49ca53..a79f32c 100644
    'teams-section': { type: 'separator', title: 'Teams and tenants' },
    'tenants-and-members': 'Tenants, members and roles',
 +  'role-assignment': 'Role assignment',
-   'claude-connector': 'Using GetFeedback from Claude',
+   'claude-connector': 'Using the app from Claude',
    'administering-section': { type: 'separator', title: 'For administrators' },
    administrators: 'Users, PICs and prioritisation',
 diff --git a/lib/help/route-help-map.ts b/lib/help/route-help-map.ts

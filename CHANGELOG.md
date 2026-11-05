@@ -39,6 +39,10 @@ renamed, and the "Establish the backend first" procedure stays at version 1.
   one-line pointer to it, as every Supabase-only file does. The help article
   `assets/organization-platform/role-assignment/content/role-assignment.mdx` carries no backend
   marker, because an MDX file cannot hold an HTML comment.
+- The Organisation Platform guides and code name no company or internal app: the two apps the
+  recipes come from are **App A** (multi-tenant) and **App B** (a single organisation). In the code,
+  the app's own rule attributes are named `app.emailDomain` and `app.signInMethod`, and
+  `ORG_COMPANY_DOMAINS` has no default domain: with none set, no account is a leaver candidate.
 - **The Engine's MCP tools.** From Engine 0.1.0-dev.19 the MCP server serves `logs` (the
   application log, as `GET /api/logs` answers it) and `assets` (a file's content); the `scope` tool
   serves every scope route's action, not only `assign_user_role` and `create_config`; the `users`

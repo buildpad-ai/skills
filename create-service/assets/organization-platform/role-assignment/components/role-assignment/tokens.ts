@@ -1,7 +1,7 @@
 // buildpad-backend-file: supabase
 // Backend: before using this file, establish the backend as "Establish the backend first" in this skill's SKILL.md says, keep only the parts for that backend, and copy no marker line into the application.
 /**
- * Surface tokens for the Role assignment screens, mapped onto getFeedback's design tokens
+ * Surface tokens for the Role assignment screens, mapped onto the app's design tokens
  * (`--ds-*` in app/globals.css) so the screens follow the app's theme.
  */
 

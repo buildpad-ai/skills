@@ -20,7 +20,7 @@ export function RuleBookNotices({ data, conflict, onReload }: { data: RuleBookDa
         </Alert>
       )}
       {!data.configured && (
-        <Alert color="yellow" mt="md" variant="light" title="Xtremax connection not configured">
+        <Alert color="yellow" mt="md" variant="light" title="Organisation Platform connection not configured">
           This deployment is not connected to the Organisation Platform yet, so there are no designations or units to write rules about. Ask whoever manages the server settings to add the connection.
         </Alert>
       )}

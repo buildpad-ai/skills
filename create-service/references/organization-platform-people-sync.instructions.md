@@ -1,6 +1,6 @@
 ---
 name: Organisation Platform people import and offboarding review
-description: How a Supabase-backed Buildpad app imports people from the Organisation Platform as sign-in-less accounts (so they can be mentioned, shared with or assigned before their first sign-in) and runs an offboarding review that suspends people the platform no longer knows. The exact, tested getFeedback code, the invariants, the org_platform_people collection, routes, sign-in guard and host adaptation table.
+description: How a Supabase-backed Buildpad app imports people from the Organisation Platform as sign-in-less accounts (so they can be mentioned, shared with or assigned before their first sign-in) and runs an offboarding review that suspends people the platform no longer knows. The exact, tested code, the invariants, the org_platform_people collection, routes, sign-in guard and host adaptation table.
 applyTo: "**/org-platform/**,**/admin/users/**"
 ---
 <!-- buildpad-backend-file: supabase -->
@@ -38,7 +38,7 @@ something is not available, tell the developer so and stop: do not build a subst
 
 # People import and offboarding review
 
-Two admin tools that keep an application's own user directory in step with the Organisation Platform. Both live on the app's **Admin > Users** screen and were built, tested and run in two Xtremax apps: **xWorkspace** (`llm-workspace-starter`) and **getFeedback** (`get-feedback-starter`). The code described here is those apps' real code, copied unchanged into `assets/organization-platform/people-sync/` (each file only gains a one-line backend marker at the top). **Copy the code and adapt only what section 9 lists. Do not design the dialogs, the batching or the safety checks yourself:** most of the care in this code is in the failure cases.
+Two admin tools that keep an application's own user directory in step with the Organisation Platform. Both live on the app's **Admin > Users** screen and were built, tested and run in two Buildpad apps, called **App B** (a single organisation, the original) and **App A** (multi-tenant) below. The code described here is those apps' real code, copied into `assets/organization-platform/people-sync/` unchanged apart from the backend marker and pointer at the top of each file and the apps' names, which are made generic. **Copy the code and adapt only what section 9 lists. Do not design the dialogs, the batching or the safety checks yourself:** most of the care in this code is in the failure cases.
 
 | Tool | What it does | Where it shows |
 |---|---|---|
@@ -49,7 +49,7 @@ They are two halves of one design: **the import is also what makes the review sa
 
 ## Where the code is
 
-The real getFeedback code (Mantine), copied to the same relative paths it has in the app. Copy each file to the same path in your app.
+The real App A code (Mantine), copied to the same relative paths it has in the app. Copy each file to the same path in your app.
 
 | Under `assets/organization-platform/people-sync/` | What it holds |
 |---|---|
@@ -61,7 +61,7 @@ The real getFeedback code (Mantine), copied to the same relative paths it has in
 
 **Host helpers the code imports but this skill does not ship** (replace them with your app's equivalents, keeping the signatures): `requireGlobalAdmin` (`lib/api/admin-guard`), `isExcludedEmail` (`lib/mentionable-users`: system, service and sample addresses), `getDaasUrl` (`lib/api/auth-headers`), and `serviceToken` (`lib/org-rules/store`, shipped in the role-assignment assets).
 
-**This is Supabase-project code** (it creates accounts through the Supabase admin API), so the file set is marked for Supabase projects and left out of the kit of an Engine project. The rules in sections 2 to 8 are not backend-specific. xWorkspace's variant, which differs only in the host wiring, and both apps' tests are in the Organisation Platform skill.
+**This is Supabase-project code** (it creates accounts through the Supabase admin API), so the file set is marked for Supabase projects and left out of the kit of an Engine project. The rules in sections 2 to 8 are not backend-specific. App B's variant, which differs only in the host wiring, and both apps' tests are in the Organisation Platform skill.
 
 ## 1. Why they exist, and the one idea behind both
 
@@ -123,12 +123,12 @@ Both tools use the platform client from `@xtremax/organisation-platform/client`,
 **Running (`importPeople`).**
 - Takes at most 10 emails. Anything not in the platform's *current* list is `not-listed` and refused; anyone already in the directory is `existing`.
 - Names come from the list; only when it carries none is each looked up (concurrency 3). A person whose lookup fails is `failed` and **not** created, so a repeat run picks them up. A person the platform simply has no name for is created with their email as the name.
-- Accounts are created a few at a time (xWorkspace: 5 concurrently; getFeedback: one after another). One failure never stops the rest, and each person gets their own outcome: `created`, `existing`, `not-listed` or `failed` with a message.
+- Accounts are created a few at a time (App B: 5 concurrently; App A: one after another). One failure never stops the rest, and each person gets their own outcome: `created`, `existing`, `not-listed` or `failed` with a message.
 - After a run, the people it **created** are recorded (`recordSeen`). A failure to record is logged and is never the import's failure.
 
 **Creating the account.** Two variants, both give a person with a confirmed address, no password and no role:
-- *getFeedback* (`createDirectoryUser`): Supabase auth user with `email_confirm: true`, and `app_metadata: { provider: 'oauth', providers: ['oauth'] }`, then an upsert into the directory table with `provider: 'oauth'`. The `app_metadata` matters: without it Supabase records them as email accounts, and a role-assignment rule on "Sign-in method" would misjudge them after their first single sign-on. If the directory row fails, the auth user is deleted again so nothing half-made is left.
-- *xWorkspace* (`createPerson`): auth user with `email_confirm: true` and `imported_from: 'organisation-platform'` metadata. The directory row follows from the platform, so it **waits up to 4 seconds** (poll every 400 ms) for it, then writes the row itself with the same id so a late arrival merges, and fills in a blank name. An auth account that already exists with no directory row counts as `existing`.
+- *App A* (`createDirectoryUser`): Supabase auth user with `email_confirm: true`, and `app_metadata: { provider: 'oauth', providers: ['oauth'] }`, then an upsert into the directory table with `provider: 'oauth'`. The `app_metadata` matters: without it Supabase records them as email accounts, and a role-assignment rule on "Sign-in method" would misjudge them after their first single sign-on. If the directory row fails, the auth user is deleted again so nothing half-made is left.
+- *App B* (`createPerson`): auth user with `email_confirm: true` and `imported_from: 'organisation-platform'` metadata. The directory row follows from the platform, so it **waits up to 4 seconds** (poll every 400 ms) for it, then writes the row itself with the same id so a late arrival merges, and fills in a blank name. An auth account that already exists with no directory row counts as `existing`.
 
 ## 6. Offboarding review
 
@@ -137,7 +137,7 @@ Both tools use the platform client from `@xtremax/organisation-platform/client`,
 - it is not the caller;
 - its status is active;
 - its address is real (valid, not a system or test account, not a reserved domain such as `example.com`);
-- it is on one of the company's own email domains (getFeedback: `ORG_COMPANY_DOMAINS`, default `xtremax.com`; xWorkspace: `INVITE_DOMAINS`);
+- it is on one of the company's own email domains (App A: `ORG_COMPANY_DOMAINS`, with no default, so with none set no account is a candidate; App B: `INVITE_DOMAINS`);
 - the platform's designation list no longer covers it.
 
 It throws (and so flags nobody) if the platform's list is empty. Each candidate also carries `holdsAdmin` and a `similar` hint: if a person listed under a *different* address has the same name (letters only, case-insensitive), the platform may simply hold a new address for them, and the screen says so.
@@ -146,19 +146,19 @@ It throws (and so flags nobody) if the platform's list is empty. Each candidate 
 
 **Step 3, suspend** (`suspendLeavers`). The administrator ticks people, confirms in a second dialog (which names how many are Administrators), and the browser sends them in batches. For each person the server re-verifies live: not a candidate, or the platform still knows them, or the lookup failed → refused or failed with a reason, nothing changed. The last real administrator is never suspended. The result per person is `suspended`, `refused` (with a reason) or `failed`.
 
-**Suspend means status `suspended`.** In getFeedback that is `setUserStatus(supabase, id, 'suspended')`; in xWorkspace it is the same call the Users page makes (`PATCH /users/{id}` with `status: 'suspended'`). The person leaves the @mention list (it lists active users only) and can no longer sign in. **Roles held inside tenants or spaces are not changed**: say so in the confirm dialog, and ask the administrator to review the Members page of any tenant the person belonged to.
+**Suspend means status `suspended`.** In App A that is `setUserStatus(supabase, id, 'suspended')`; in App B it is the same call the Users page makes (`PATCH /users/{id}` with `status: 'suspended'`). The person leaves the @mention list (it lists active users only) and can no longer sign in. **Roles held inside tenants or spaces are not changed**: say so in the confirm dialog, and ask the administrator to review the Members page of any tenant the person belonged to.
 
 ## 7. The sign-in guard (required for the review to mean anything)
 
-A suspended account must actually be unable to get in, and signing in must never quietly set it back to active. In getFeedback this needed three changes (`assets/organization-platform/people-sync/sign-in-guard.patch`):
+A suspended account must actually be unable to get in, and signing in must never quietly set it back to active. In App A this needed three changes (`assets/organization-platform/people-sync/sign-in-guard.patch`):
 
 - `findOrCreateUser` (the provider sign-in path): before the step that sets the directory row `active`, `if (!isNewUser && (await isAccountBlocked(supabase, user.id))) throw new Error(ACCOUNT_SUSPENDED_MESSAGE)`. This also fixed a latent bug where signing in reactivated suspended accounts.
 - The Supabase-native callback and the password login route: after authentication, check `isAccountBlocked`, sign the session out and refuse with `Your account has been suspended. Contact an administrator.`
 - `isAccountBlocked` blocks `suspended` and `terminated`, and **treats an unreadable status as "may sign in"**: a lookup problem must never lock anyone out.
 
-xWorkspace has **no app-level guard** in the code it was copied from: it sets the status through the DaaS users API and relies on the DaaS treating a suspended user as unable to sign in. That was not verified there. In any new host, suspend a test account and try to sign in by every route (single sign-on, password, magic link). If any route lets it in, add the guard.
+App B has **no app-level guard** in the code it was copied from: it sets the status through the DaaS users API and relies on the DaaS treating a suspended user as unable to sign in. That was not verified there. In any new host, suspend a test account and try to sign in by every route (single sign-on, password, magic link). If any route lets it in, add the guard.
 
-A **Reactivate** control (getFeedback: `POST /api/admin/users/status { id, status }`, which refuses to suspend the caller and ignores system and test accounts) is how an administrator undoes a review.
+A **Reactivate** control (App A: `POST /api/admin/users/status { id, status }`, which refuses to suspend the caller and ignores system and test accounts) is how an administrator undoes a review.
 
 ## 8. Routes
 
@@ -169,7 +169,7 @@ Both are admin-only `POST` routes taking `{ mode, emails? }` and answering `{ da
 | `/api/admin/users/import` | `preview`, `run`, `record-existing` | `run` needs 1 to 10 email strings. The preview strips the server-only `existingEmails` and `names` before answering |
 | `/api/admin/users/leavers` | `candidates`, `check`, `suspend` | `check` and `suspend` need 1 to 10 email strings |
 
-Shared behaviour: `401`/`403` if not an administrator (getFeedback: `requireGlobalAdmin`; xWorkspace: `getCapabilities().canAdmin`), `400` for a bad body or mode, **`409` if the platform connection isn't configured**, and **`502` with a "nothing was changed" or "people already created are skipped" message** when the platform or the directory can't be read. Never log the key or an email address.
+Shared behaviour: `401`/`403` if not an administrator (App A: `requireGlobalAdmin`; App B: `getCapabilities().canAdmin`), `400` for a bad body or mode, **`409` if the platform connection isn't configured**, and **`502` with a "nothing was changed" or "people already created are skipped" message** when the platform or the directory can't be read. Never log the key or an email address.
 
 ### 8b. Wiring on the Users page
 
@@ -182,7 +182,7 @@ Shared behaviour: `401`/`403` if not an administrator (getFeedback: `requireGlob
 
 The core (`people-import`, `leavers`, `provenance`) takes everything that touches the network as a parameter, so it is testable without one. A new host supplies:
 
-| Need | In getFeedback | In xWorkspace |
+| Need | In App A | In App B |
 |---|---|---|
 | Admin check | `requireGlobalAdmin()` | `getCapabilities().canAdmin` |
 | Directory read (id, email, names, status) | `daas_users` through the admin Supabase client, paged 1000, capped 20,000 | same |
@@ -205,7 +205,7 @@ The assets include the suites. They pin the behaviour, so a port that passes the
 - **Review:** never offers, checks or suspends someone who was never recorded however the platform answers; reviews nobody when nobody is recorded; lists only active company-domain accounts the list doesn't cover; never offers the caller, other domains, system or test accounts or people already suspended; flags nobody when the platform lists nobody; flags only a person the platform doesn't know; flags nobody when the lookup fails; doesn't even ask about a non-candidate; refuses someone the platform knows even if the request named them; may suspend an administrator while another real one remains; never suspends the last real administrator, counting earlier suspends in the same request; doesn't count a service or test account as an administrator.
 - **Provenance:** records new people lower-cased with a timestamp and skips existing, idempotent and de-duplicates, a unique refusal is fine but a real failure is an error, more people than one chunk, pages, stops rather than loops when `page` is ignored, empty when not provisioned and throws (reviews nobody) when unreadable.
 - **Routes:** admin only, bad body or mode, `409` unconfigured, preview never sends server-side lists to the browser, bad run requests, `502` messages.
-- **Sign-in guard (getFeedback):** a suspended account is refused on every route and sign-in never sets it back to active; an unreadable status never locks anyone out.
+- **Sign-in guard (App A):** a suspended account is refused on every route and sign-in never sets it back to active; an unreadable status never locks anyone out.
 
 ## 11. Rollout
 
@@ -223,23 +223,23 @@ The assets include the suites. They pin the behaviour, so a port that passes the
 - **Don't call `people` once per holder** from anywhere new. Use the list's names.
 - **Keep the 2-minute list cache** per server instance. Another instance simply misses it and reads for itself.
 - **Don't widen the read.** If a feature needs mobile or date of birth, that is a separate decision with a key that carries the personal-data scope.
-- **Line endings.** Some starter files have Windows line endings (`lib/supabase/admin.ts` in getFeedback does). Edit them in a way that preserves them, or the diff becomes the whole file.
+- **Line endings.** Some starter files have Windows line endings (`lib/supabase/admin.ts` in App A does). Edit them in a way that preserves them, or the diff becomes the whole file.
 - **Roles inside tenants or spaces are untouched by a suspend.** Say so in the UI.
 
 ## 13. How the two implementations differ
 
-| | xWorkspace | getFeedback |
+| | App B | App A |
 |---|---|---|
 | Wiring | Dependency injection (`ImportDeps`, `LeaversDeps`) with the cache holding the list | Same logic, `SupabaseClient` and the platform client passed to the functions, a hooks object for recording |
 | Account creation | `createPerson`, waits for the platform-created directory row | `createDirectoryUser`, upserts the row, sets `provider: 'oauth'` |
 | Account creation concurrency | 5 at a time | one at a time |
-| Domains | `INVITE_DOMAINS` | `ORG_COMPANY_DOMAINS` (default `xtremax.com`) |
+| Domains | `INVITE_DOMAINS` | `ORG_COMPANY_DOMAINS` (no default) |
 | Admin role lookup | all rows with the role | root-scope rows only (an Administrator role at a tenant confers no admin) |
 | UI | Own dialog components | Mantine |
 | Sign-in guard | None in the app code; relies on the DaaS user status (not verified) | Added in the same change (three places) |
 | Extra | | `POST /api/admin/users/status` and a Reactivate button |
 
-getFeedback's offboarding review was **ported from xWorkspace** the same day, so xWorkspace is the original.
+App A's offboarding review was **ported from App B** the same day, so App B is the original.
 
 ## 14. Adoption checklist
 

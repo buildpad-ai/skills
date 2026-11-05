@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "mode must be 'candidates', 'check' or 'suspend'" }, { status: 400 });
   }
   if (!isPlatformConfigured()) {
-    return NextResponse.json({ error: 'The Xtremax connection is not configured on this deployment.' }, { status: 409 });
+    return NextResponse.json({ error: 'The Organisation Platform connection is not configured on this deployment.' }, { status: 409 });
   }
 
   const supabase = createSupabaseAdmin();

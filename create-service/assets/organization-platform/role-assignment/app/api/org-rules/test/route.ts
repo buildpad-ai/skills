@@ -11,8 +11,8 @@
  * Off the sign-in path, so it can wait out a slow platform: a failure to ask is a 502,
  * never "this person has no designations".
  *
- * Any Tenant Admin may look up any Xtremax person here and see their name, jobs and custom
- * attributes. That is accepted because getFeedback is Xtremax-internal (plan, D7).
+ * Any Tenant Admin may look up any person in the organisation here and see their name, jobs and custom
+ * attributes. That is accepted because the app is internal to one organisation.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Enter an email address' }, { status: 400 });
   }
   if (!isPlatformConfigured()) {
-    return NextResponse.json({ error: 'The Xtremax connection is not configured on this deployment' }, { status: 409 });
+    return NextResponse.json({ error: 'The Organisation Platform connection is not configured on this deployment' }, { status: 409 });
   }
 
   let ruleSet: RuleSet;
@@ -67,11 +67,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: PLATFORM_UNAVAILABLE }, { status: 502 });
   }
 
-  // What getFeedback itself knows about this person, which rules may ask about. No account is an answer
+  // What the app itself knows about this person, which rules may ask about. No account is an answer
   // (nothing to check); one that cannot be read is an error, never "no sign-in method".
   const account = await readAccountByEmail(email);
   if (!account.ok) {
-    return NextResponse.json({ error: 'Could not read this person’s getFeedback account' }, { status: 502 });
+    return NextResponse.json({ error: 'Could not read this person’s account in this app' }, { status: 502 });
   }
 
   const person = withSystemAttributes(asked, account.account);
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     data: {
       people: [
         {
-          root: 'xtremax',
+          root: 'organisation',
           person: { email: person.email, firstName: person.firstName, lastName: person.lastName, attributes: person.attributes },
           // What the rule editor's own test panel takes, so it can show the engine's reasons.
           subject: toSubject(person),

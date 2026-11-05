@@ -2,7 +2,7 @@
 // Backend: before using this file, establish the backend as "Establish the backend first" in this skill's SKILL.md says, keep only the parts for that backend, and copy no marker line into the application.
 /**
  * The lists the rule editor offers (designations, units, custom attributes), read
- * live from the Organisation Platform's single Xtremax root.
+ * live from the Organisation Platform's single root organisation.
  *
  * Nothing here is stored: names are renameable upstream, so only ids are kept in
  * rules and every screen reads the names fresh. If any live read fails the whole
