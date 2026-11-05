@@ -33,6 +33,6 @@
     "path": "create-feature/SKILL.md",
     "kind": "text",
     "reason": "Engine statement ES-9 reworded: on an Engine project scope types, items and collection settings are also managed through the MCP scope tool, whose reads follow the caller's grants and whose writes are for administrators, with the routes for an Engine older than 0.1.0-dev.19; the Supabase guidance is unchanged.",
-    "release": "unreleased"
+    "release": "v8.0.0"
   }
 ]
