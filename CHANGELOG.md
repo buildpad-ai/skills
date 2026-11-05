@@ -14,14 +14,15 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
-## Unreleased
+## v8.0.0
 
-The Organisation Platform guide of `create-service` gains its two recipes and their code, and the
-Engine text follows the Engine MCP server's new tools (Engine 0.1.0-dev.18 and 0.1.0-dev.19). It is a
-MAJOR release, because existing files that a Supabase project's agent reads change
+Install it with `npx skills add buildpad-ai/skills#v8.0.0`. The Organisation Platform guide of
+`create-service` gains its two recipes and their code, and the Engine text follows the Engine MCP
+server's new tools (Engine 0.1.0-dev.18 and 0.1.0-dev.19). It is a MAJOR release, because existing
+files that a Supabase project's agent reads change
 (`create-service/references/organization-platform.instructions.md`, and the three files that carry
-the reworded ES-9 in shared text). No skill is added, removed or
-renamed, and the "Establish the backend first" procedure stays at version 1.
+the reworded ES-9 in shared text). No skill is added, removed or renamed, and the "Establish the
+backend first" procedure stays at version 1.
 
 - These files were written on the Buildpad Platform (by Aditya Leksono) and shipped only in its
   vendored copy of the skills, so a sync of a release deleted them. Their text is unchanged.
@@ -68,6 +69,56 @@ The new files are for Supabase projects only (each has the file marker `supabase
   people as sign-in-less accounts and review leavers for suspension.
 - The code assets under `create-service/assets/organization-platform/` (new files), which the two
   references tell the agent to copy.
+  - `create-service/assets/organization-platform/people-sync/app/api/admin/users/import/route.ts`
+  - `create-service/assets/organization-platform/people-sync/app/api/admin/users/leavers/route.ts`
+  - `create-service/assets/organization-platform/people-sync/app/api/admin/users/status/route.ts`
+  - `create-service/assets/organization-platform/people-sync/lib/admin-user-create.ts`
+  - `create-service/assets/organization-platform/people-sync/lib/admin-user-status.ts`
+  - `create-service/assets/organization-platform/people-sync/lib/admin-users.ts`
+  - `create-service/assets/organization-platform/people-sync/lib/org-platform/leavers.ts`
+  - `create-service/assets/organization-platform/people-sync/lib/org-platform/people-import.ts`
+  - `create-service/assets/organization-platform/people-sync/lib/org-platform/provenance.ts`
+  - `create-service/assets/organization-platform/people-sync/sign-in-guard.patch`
+  - `create-service/assets/organization-platform/people-sync/ui/OrgLeaversReview.tsx`
+  - `create-service/assets/organization-platform/people-sync/ui/OrgPeopleImport.tsx`
+  - `create-service/assets/organization-platform/people-sync/users-page-wiring.patch`
+  - `create-service/assets/organization-platform/role-assignment/app/api/admin/org-platform/status/route.ts`
+  - `create-service/assets/organization-platform/role-assignment/app/api/org-platform/sync/route.ts`
+  - `create-service/assets/organization-platform/role-assignment/app/api/org-rules/route.ts`
+  - `create-service/assets/organization-platform/role-assignment/app/api/org-rules/test/route.ts`
+  - `create-service/assets/organization-platform/role-assignment/app/dashboard/automation/role-assignment/[ruleId]/page.tsx`
+  - `create-service/assets/organization-platform/role-assignment/app/dashboard/automation/role-assignment/new/page.tsx`
+  - `create-service/assets/organization-platform/role-assignment/app/dashboard/automation/role-assignment/page.tsx`
+  - `create-service/assets/organization-platform/role-assignment/components/role-assignment/api.ts`
+  - `create-service/assets/organization-platform/role-assignment/components/role-assignment/config.ts`
+  - `create-service/assets/organization-platform/role-assignment/components/role-assignment/connection-status.tsx`
+  - `create-service/assets/organization-platform/role-assignment/components/role-assignment/notices.tsx`
+  - `create-service/assets/organization-platform/role-assignment/components/role-assignment/role-assignment-list.tsx`
+  - `create-service/assets/organization-platform/role-assignment/components/role-assignment/rule-conditions.tsx`
+  - `create-service/assets/organization-platform/role-assignment/components/role-assignment/rule-form-page.tsx`
+  - `create-service/assets/organization-platform/role-assignment/components/role-assignment/styles.ts`
+  - `create-service/assets/organization-platform/role-assignment/components/role-assignment/test-rules-drawer.tsx`
+  - `create-service/assets/organization-platform/role-assignment/components/role-assignment/tokens.ts`
+  - `create-service/assets/organization-platform/role-assignment/components/role-assignment/types.ts`
+  - `create-service/assets/organization-platform/role-assignment/components/role-assignment/use-rule-book.ts`
+  - `create-service/assets/organization-platform/role-assignment/components/role-assignment/use-rule-builder.ts`
+  - `create-service/assets/organization-platform/role-assignment/content/role-assignment.mdx`
+  - `create-service/assets/organization-platform/role-assignment/lib/org-platform/client.ts`
+  - `create-service/assets/organization-platform/role-assignment/lib/org-platform/onboard.ts`
+  - `create-service/assets/organization-platform/role-assignment/lib/org-platform/sync-hint.ts`
+  - `create-service/assets/organization-platform/role-assignment/lib/org-rules/access.ts`
+  - `create-service/assets/organization-platform/role-assignment/lib/org-rules/account.ts`
+  - `create-service/assets/organization-platform/role-assignment/lib/org-rules/builder-config.ts`
+  - `create-service/assets/organization-platform/role-assignment/lib/org-rules/catalog.ts`
+  - `create-service/assets/organization-platform/role-assignment/lib/org-rules/cleanup.ts`
+  - `create-service/assets/organization-platform/role-assignment/lib/org-rules/constants.ts`
+  - `create-service/assets/organization-platform/role-assignment/lib/org-rules/decide.ts`
+  - `create-service/assets/organization-platform/role-assignment/lib/org-rules/outcomes.ts`
+  - `create-service/assets/organization-platform/role-assignment/lib/org-rules/parse.ts`
+  - `create-service/assets/organization-platform/role-assignment/lib/org-rules/store.ts`
+  - `create-service/assets/organization-platform/role-assignment/lib/org-rules/system-attributes.ts`
+  - `create-service/assets/organization-platform/role-assignment/lib/org-rules/system-defs.ts`
+  - `create-service/assets/organization-platform/role-assignment/wiring.patch`
 
 This file changes:
 
