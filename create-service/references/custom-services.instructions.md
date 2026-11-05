@@ -342,7 +342,7 @@ const otherService = await services.custom('other_service_name');
 // every audit row still names the calling user:
 const elevatedSvc = await services.custom('other_service_name', { elevated: true });
 
-// HTTP fetch: only hosts the Engine's operator lists in EXTENSION_ALLOWED_DOMAINS
+// HTTP fetch: only hosts listed in the project's EXTENSION_ALLOWED_DOMAINS (Environment Variables)
 const response = await services.fetch('https://api.example.com/data');
 
 // Current user context: user is always the real caller

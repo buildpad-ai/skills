@@ -135,8 +135,8 @@ The `rule` of each finding, what it means, and what replaces it.
 | `rule` | On the Engine | Replacement |
 |---|---|---|
 | `require`, `import`, `module` | There are no modules: no package and no other file can be loaded | Inline a small helper; put shared code in a custom service (`await services.custom('name')`) that `return`s an object; move work that needs a package into an API route |
-| `process` | `process` does not exist | `services.env.KEY` (`context.env.KEY` in a custom service). It is empty unless the Engine's operator names the key: ask the operator to expose each key the code needs. Never write a secret into stored code: every administrator can read it |
-| `fetch` | The global `fetch` does not exist | `services.fetch(url, init)`, to the hosts the Engine's operator allows: ask the operator to allow each host. Send a string `body` (`JSON.stringify(...)`) |
+| `process` | `process` does not exist | `services.env.KEY` (`context.env.KEY` in a custom service). It is empty unless the project's Environment Variables name the key: tell the user to name each key the code needs in the project's **Environment Variables** (Engine list) and apply it. Never write a secret into stored code: every administrator can read it |
+| `fetch` | The global `fetch` does not exist | `services.fetch(url, init)`, to the hosts in the project's `EXTENSION_ALLOWED_DOMAINS`: tell the user to add each host in the project's **Environment Variables** and apply it. Send a string `body` (`JSON.stringify(...)`) |
 | `timers` | `setTimeout`, `setInterval` and the rest do not exist | No delay inside a run. A wait or a later retry becomes a cron job that picks up pending rows; a job can also be run at once with `services.cron.trigger('name')` |
 | `eval` | `eval` and `Function` are removed | Write the code out |
 | `supabase` | The Supabase service is refused permanently (`501 RUNTIME_SUPABASE_UNAVAILABLE`); there is no SQL and no Supabase client | `services.items(collection)`, with `{ elevated: true }` where a hook or custom service must act as an administrator; a database function becomes items calls or a custom service |

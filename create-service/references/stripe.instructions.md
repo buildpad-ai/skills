@@ -99,10 +99,10 @@ applyTo: "**/*.{ts,tsx,js}"
 
 This doc assumes Stripe is already connected for this project (check `get_project_detail`'s `connectors[]` before writing any of this — it tells you the exact env var name, base URL, and auth header style; don't hardcode them). As of this writing that's `STRIPE_SECRET_KEY`, base URL `https://api.stripe.com/v1`, Bearer auth.
 
-On an Engine project the custom service runs inside the Engine, so two settings of the Engine's operator must be in place before it can call Stripe. Ask the operator for both; never assume either:
+On an Engine project the custom service runs inside the Engine, so two settings of the Engine must be in place before it can call Stripe. Both are variables in the project's **Environment Variables** (Engine list), on the Buildpad platform's Details page. Tell the user to add them and apply; never assume either:
 
-- **The key.** `services.env` holds only the variables the operator names. The operator sets `STRIPE_SECRET_KEY` in the Engine's environment and names it, for example `RUNTIME_ENV_WHITELIST_CUSTOM_SERVICE=STRIPE_SECRET_KEY`. The application's `.env.local` and Amplify environment do not reach the Engine.
-- **The host.** `services.fetch` reaches only the hosts in `EXTENSION_ALLOWED_DOMAINS`. The operator adds `api.stripe.com` to it.
+- **The key.** `services.env` holds only the variables the project's Environment Variables name. The user sets `STRIPE_SECRET_KEY` as an Engine variable and names it, for example `RUNTIME_ENV_WHITELIST_CUSTOM_SERVICE=STRIPE_SECRET_KEY`. The application's `.env.local` and Amplify environment do not reach the Engine.
+- **The host.** `services.fetch` reaches only the hosts in `EXTENSION_ALLOWED_DOMAINS`. The user adds `api.stripe.com` to it.
 
 Stripe's request bodies are **form-encoded** (`application/x-www-form-urlencoded`), not JSON — this is the most common mistake when calling it from a custom service. The Engine's runtime has no `URLSearchParams`, so build the body by hand.
 

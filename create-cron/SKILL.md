@@ -323,8 +323,8 @@ What a cron job's code has on the Engine, and what replaces what it lacks.
 | Schema services | Read only: `readAll`, `readOne` | Change structure through the Engine's API (see [create-collection](../create-collection/SKILL.md)) |
 | `services.files` | Metadata only: `readByQuery`, `readOne` | Upload and download through the application and `/api/files` |
 | `services.mail` | Options `to`, `subject`, `html`, `text`, `replyTo`; returns `{ success, ... }` and does not throw when mail cannot be sent; a wrong option throws `400 INVALID_PAYLOAD` | Check `success` |
-| `services.env` | Empty unless the Engine's operator names keys (`RUNTIME_ENV_WHITELIST_CRON`, `RUNTIME_ENV_WHITELIST_GLOBAL`) or sets prefixed variables (`CRON_PUBLIC_<KEY>`, `RUNTIME_PUBLIC_<KEY>`); `NODE_ENV` and `NEXT_PUBLIC_SITE_URL` are not exposed | Ask the operator to name the key; never assume one |
-| `services.fetch` | Only hosts in the operator's `EXTENSION_ALLOWED_DOMAINS` (and their subdomains); an empty list allows `localhost` only; responses over 8 MiB are refused | Ask the operator to allow the host |
+| `services.env` | Empty unless the project's Environment Variables name keys (`RUNTIME_ENV_WHITELIST_CRON`, `RUNTIME_ENV_WHITELIST_GLOBAL`) or sets prefixed variables (`CRON_PUBLIC_<KEY>`, `RUNTIME_PUBLIC_<KEY>`); `NODE_ENV` and `NEXT_PUBLIC_SITE_URL` are not exposed | Tell the user to name the key in the project's **Environment Variables** (Engine list) and apply it; never assume one |
+| `services.fetch` | Only hosts in the project's `EXTENSION_ALLOWED_DOMAINS` (and their subdomains); an empty list allows `localhost` only; responses over 8 MiB are refused | Tell the user to add the host to `EXTENSION_ALLOWED_DOMAINS` in the project's **Environment Variables** and apply it |
 | `fetch`, `process`, `require`, `import`, `setTimeout`, `setInterval`, `eval`, `Function` | Do not exist: using one is a `ReferenceError` | `services.fetch`; no timers |
 | `Intl` (for example `Intl.NumberFormat`) | Not in the runtime's globals | Format numbers and dates by hand |
 | `console.table`, `console.trace` | Do not exist; `log`, `info`, `debug`, `warn`, `error` only | `console.log` |

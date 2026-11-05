@@ -98,8 +98,8 @@ if (!apiKey) throw new Error('Ask the Engine operator to expose MAILCHIMP_API_KE
 
 ## `fetch`
 
-The global `fetch` becomes `services.fetch(url, init)`. Only the hosts the Engine's operator allows
-can be reached (with their subdomains); ask the operator to allow each host the code calls. The
+The global `fetch` becomes `services.fetch(url, init)`. Only the hosts in the project's `EXTENSION_ALLOWED_DOMAINS`
+can be reached (with their subdomains); tell the user to add each host the code calls in the project's **Environment Variables** and apply it. The
 answer has `ok`, `status`, `headers.get()`, `json()` and `text()`. Send a string `body`: an object
 is sent as `[object Object]`. There is no `AbortController`: the item's `timeout_ms` bounds the run.
 

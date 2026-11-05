@@ -293,8 +293,8 @@ What stored code (hooks, cron jobs, custom services) has on the Engine, from the
 | Schema services | Read only: `readAll`, `readOne` | Change structure through the Engine's API or its MCP tools |
 | `services.files` | Metadata only: `readByQuery`, `readOne` | Bytes through the application and `/api/files` |
 | `services.mail` | Options `to`, `subject`, `html`, `text`, `replyTo`; returns `{ success, ... }`, does not throw (§6) | Check `success` |
-| `services.env` | Empty unless the operator names keys (`RUNTIME_ENV_WHITELIST_<SCOPE>`, `RUNTIME_ENV_WHITELIST_GLOBAL`) (§7) | Ask the operator to name the key; never assume one |
-| `services.fetch` | Only hosts in `EXTENSION_ALLOWED_DOMAINS`; empty list allows loopback only | Ask the operator to allow the host |
+| `services.env` | Empty unless the project's Environment Variables name keys (`RUNTIME_ENV_WHITELIST_<SCOPE>`, `RUNTIME_ENV_WHITELIST_GLOBAL`) (§7) | Tell the user to name the key in the project's **Environment Variables** (Engine list) and apply it; never assume one |
+| `services.fetch` | Only hosts in `EXTENSION_ALLOWED_DOMAINS`; empty list allows loopback only | Tell the user to add the host to `EXTENSION_ALLOWED_DOMAINS` in the project's **Environment Variables** and apply it |
 | `fetch`, `process`, `require`, `import`, `setTimeout`, `setInterval`, `eval`, `Function` | Do not exist (§1) | `services.fetch`; no timers |
 | `Intl`, as in `create-service` lines 97-101 | Not found in the runtime's globals (`context`, `services`, `console`, `JSON`, `Date`, `Math`) | Format numbers by hand |
 | `console` in a custom service body | Not in scope (§3); in hooks, cron jobs and service tests it is | Return what should be recorded |

@@ -413,8 +413,8 @@ What stored code has on the Engine, and what replaces what it lacks:
 | Schema services | Read only: `readAll`, `readOne` | Change structure through the Engine's API (see [create-collection](../create-collection/SKILL.md)) |
 | `services.files` | Metadata only: `readByQuery`, `readOne` | Upload and download through the application and `/api/files` |
 | `services.mail` | Options `to`, `subject`, `html`, `text`, `replyTo`; returns `{ success, ... }` and does not throw when mail cannot be sent | Check `success` |
-| `services.env` | Empty unless the Engine's operator names keys (`RUNTIME_ENV_WHITELIST_<SCOPE>`, `RUNTIME_ENV_WHITELIST_GLOBAL`); `NODE_ENV` and `NEXT_PUBLIC_SITE_URL` are not exposed | Ask the operator to name the key; never assume one |
-| `services.fetch` | Only hosts in the operator's `EXTENSION_ALLOWED_DOMAINS`; an empty list allows `localhost` only | Ask the operator to allow the host |
+| `services.env` | Empty unless the project's Environment Variables name keys (`RUNTIME_ENV_WHITELIST_<SCOPE>`, `RUNTIME_ENV_WHITELIST_GLOBAL`); `NODE_ENV` and `NEXT_PUBLIC_SITE_URL` are not exposed | Tell the user to name the key in the project's **Environment Variables** (Engine list) and apply it; never assume one |
+| `services.fetch` | Only hosts in the project's `EXTENSION_ALLOWED_DOMAINS`; an empty list allows `localhost` only | Tell the user to add the host to `EXTENSION_ALLOWED_DOMAINS` in the project's **Environment Variables** and apply it |
 | `fetch`, `process`, `require`, `import`, `setTimeout`, `setInterval`, `eval`, `Function` | Do not exist: using one is a `ReferenceError` | `services.fetch`; no timers |
 | `Intl`, `URLSearchParams` | Not in the runtime's globals (`context`, `services`, `console`, `JSON`, `Date`, `Math`) | Format numbers by hand; build query strings with `encodeURIComponent` |
 | `console` in a custom service body | Not in scope; in hooks, cron jobs and service tests it is | Return what should be recorded |
