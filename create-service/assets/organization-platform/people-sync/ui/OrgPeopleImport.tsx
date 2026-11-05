@@ -39,7 +39,7 @@ async function post<T>(body: unknown): Promise<{ ok: true; data: T } | { ok: fal
 }
 
 /**
- * Import Xtremax people from the Organisation Platform so they can be @mentioned before they have signed in.
+ * Import the organisation's people from the Organisation Platform so they can be @mentioned before they have signed in.
  * Shows a preview first and creates nothing until the Administrator confirms. The browser sends the people to
  * create in small batches; the server checks each one against the platform again, so this list is only a request.
  */
@@ -155,7 +155,7 @@ export function OrgPeopleImport({ onImported }: { onImported: () => void }) {
             <>
               <Text size="sm">
                 The Organisation Platform lists <b>{preview.total}</b> people who hold a designation.{' '}
-                <b>{preview.toCreate.length}</b> of them do not have a getFeedback account yet; <b>{preview.existing}</b> already do
+                <b>{preview.toCreate.length}</b> of them do not have an account in this app yet; <b>{preview.existing}</b> already do
                 {preview.skipped.length > 0 ? `, and ${preview.skipped.length} are skipped.` : '.'} Nothing has been created.
               </Text>
               <Alert color="blue" variant="light">

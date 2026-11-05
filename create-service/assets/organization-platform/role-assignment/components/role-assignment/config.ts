@@ -3,7 +3,7 @@
 /**
  * Where the Role assignment screens read and write, and the words they use.
  *
- * getFeedback has one kind of rule (role assignment), kept per tenant, so this is a plain
+ * The app has one kind of rule (role assignment), kept per tenant, so this is a plain
  * constants file rather than the two-kind switch the reference app needs.
  */
 

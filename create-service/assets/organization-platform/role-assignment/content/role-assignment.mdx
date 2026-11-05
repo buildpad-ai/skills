@@ -1,12 +1,12 @@
 ---
-description: Place Xtremax people in your tenant automatically, with a role chosen by rules.
+description: Place your organisation's people in your tenant automatically, with a role chosen by rules.
 ---
 
 import { Callout } from 'nextra/components'
 
 # Role assignment
 
-Role assignment lets a Tenant Admin say which Xtremax people get which role in
+Role assignment lets a Tenant Admin say which of your organisation's people get which role in
 their tenant, based on who they are in the Organisation Platform: their job
 title, unit, name and any other attribute it holds. After that, people are
 placed automatically when they sign in, and their roles follow their profile
@@ -25,7 +25,7 @@ A rule says: *people who match these conditions get this role in this tenant.*
   Manager*), and optionally **exclude** others (for example, people who sign in
   with email and password).
 - Conditions can use the Organisation Platform's own attributes, any custom
-  attributes it defines, and two things getFeedback knows: **Email domain** and
+  attributes it defines, and two things the app knows: **Email domain** and
   **Sign-in method**.
 - Choose **Tenant Member** or **Tenant Admin**. These are the only two roles a
   rule can give.
@@ -39,7 +39,7 @@ decide for each of their jobs. Testing changes nothing.
 
 ## When people are placed
 
-When someone signs in, getFeedback asks the Organisation Platform once who they
+When someone signs in, the app asks the Organisation Platform once who they
 are, runs the rules of every tenant, and sets their role in each tenant whose
 rules match. One person can end up in several tenants. If the Organisation
 Platform is slow or down, nothing changes, and the next page load tries again.

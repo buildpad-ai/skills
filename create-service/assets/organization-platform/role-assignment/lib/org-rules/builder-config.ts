@@ -6,7 +6,7 @@
  * Client-safe: it only touches the package's headless builder, never the platform
  * client. A condition can check:
  *
- *   - System attributes: what getFeedback itself knows about the account (Email domain,
+ *   - System attributes: what the app itself knows about the account (Email domain,
  *     Sign-in method), taken from the list the server sent, because this app owns it;
  *   - Attribute: what the Organisation Platform says, which every platform person has
  *     (Email, First name, Last name, Designation) plus whichever custom attributes it defined;

@@ -28,7 +28,7 @@ type ConditionType = 'path' | 'system' | 'attribute';
 
 const TYPE_LABEL: Record<ConditionType, string> = { path: 'OU Path', system: 'System', attribute: 'Attribute' };
 
-// System is what getFeedback itself knows (its list is the app's, see lib/org-rules/system-attributes); Attribute is what
+// System is what the app itself knows (its list is the app's, see lib/org-rules/system-attributes); Attribute is what
 // the Organisation Platform says about the person.
 const typeOf = (attr: string): ConditionType => (attr === 'orgUnit' ? 'path' : isSystemAttribute(attr) ? 'system' : 'attribute');
 const sentenceCase = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);

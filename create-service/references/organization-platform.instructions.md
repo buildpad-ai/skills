@@ -10,7 +10,7 @@ applyTo: "**/*.{ts,tsx,js}"
 
 This doc assumes the Organisation Platform is already connected for this project (check `get_project_detail`'s `connectors[]` before writing any of this). `connectors[]` guarantees exactly two env vars — `ORG_PLATFORM_API_KEY` and `ORG_PLATFORM_URL` — always read the exact names from `connectors[]`, don't hardcode them.
 
-**What was connected:** `ORG_PLATFORM_API_KEY` is an `orgapi_…` key for **one org unit**. If the user chose auto-provision, Buildpad issued it: it is **read-only** and reaches the Xtremax organisation root, with no onboarding or personal-data scope. If they pasted their own, a platform admin or Organization Unit Admin issued it for the organisation root or any unit beneath it. Either way it reaches that unit's whole subtree — nothing above it, nothing beside it, and an auto-provisioned key is revoked when the project disconnects. `ORG_PLATFORM_URL` is the Organisation Platform deployment for this environment.
+**What was connected:** `ORG_PLATFORM_API_KEY` is an `orgapi_…` key for **one org unit**. If the user chose auto-provision, Buildpad issued it: it is **read-only** and reaches the organisation root, with no onboarding or personal-data scope. If they pasted their own, a platform admin or Organization Unit Admin issued it for the organisation root or any unit beneath it. Either way it reaches that unit's whole subtree — nothing above it, nothing beside it, and an auto-provisioned key is revoked when the project disconnects. `ORG_PLATFORM_URL` is the Organisation Platform deployment for this environment.
 
 **The API key is a secret.** Unlike a publishable widget key, it is a bearer credential with no expiry, and the platform stores it in plain text, so the key value is the whole credential. Use it only in server-side code (API routes, server components, DaaS extensions). Never put it in a client component, a `NEXT_PUBLIC_*` variable, a URL, or a log line.
 
@@ -27,13 +27,13 @@ Put them before `pnpm build`. Keep the file's existing line endings.
 
 ## Use the package first
 
-**Default to `@xtremax/organisation-platform` for every integration with the Organisation Platform.** It is the Xtremax-standard way to read the organisation, to decide with rules, and to give admins the rule-builder screen. Reach for the raw `external/v1` API (sections below) only where the package genuinely does not apply — for example a non-Node/TypeScript backend, or a sandboxed runtime that cannot import an npm package (such as a DaaS cron or extension, which would use `services.fetch`). Even then, the rules below still apply, and you can still use the package's `/contract` types for the shapes.
+**Default to `@xtremax/organisation-platform` for every integration with the Organisation Platform.** It is the standard way to read the organisation, to decide with rules, and to give admins the rule-builder screen. Reach for the raw `external/v1` API (sections below) only where the package genuinely does not apply — for example a non-Node/TypeScript backend, or a sandboxed runtime that cannot import an npm package (such as a DaaS cron or extension, which would use `services.fetch`). Even then, the rules below still apply, and you can still use the package's `/contract` types for the shapes.
 
 ```bash
 pnpm add @xtremax/organisation-platform@~0.2.2   # Node 18+, public on npm, no token needed
 ```
 
-- **Licence is fine for Buildpad apps:** it is licensed for Xtremax's own applications, which includes every app generated through Buildpad. No token or registry setup is needed.
+- **Licence is fine for Buildpad apps:** the package's licence covers every app generated through Buildpad. No token or registry setup is needed.
 - **Pin a minor** (`~0.2.2`) while the package is below 1.0, since a rule-format or export change is a minor bump. Never `*` or `latest`, and don't confuse it with `0.1.0` of the same name, an unrelated earlier prototype.
 - `react` and `vue` are optional peers; install only the one you import. Every entry point works with `import` and `require` and ships types.
 
@@ -213,7 +213,7 @@ When the feature you are building needs one of them — **onboarding** (creating
 1. **Build to the documented behaviour, don't work around it.** Handle `403 SCOPE_REQUIRED` from `POST /onboarding` with a clear message, and treat an absent `mobile` / `dateOfBirth` as "not permitted", never as "this person has none". Don't fake the data, don't ask for a wider key in code, and don't call the Organisation Platform's own DaaS or database.
 2. **Tell the user plainly, in your reply, before they find out at run time.** Say what the feature needs, that the key Buildpad created for the project is read-only, and who can change that. For example:
 
-   > This feature needs the Organisation Platform key to be allowed to **onboard people** / **read personal data (mobile, date of birth)**. The key Buildpad created for this project is read-only. Ask an administrator of the Organisation Platform (a platform admin, or the Organization Admin of Xtremax) to turn on **Allow onboarding** / **Allow personal data** for the key named `Buildpad · {organization} / {project} (by {the person who connected it})`, from the API keys panel of the Xtremax root (the shield icon for onboarding, the person icon for personal data). The key stays the same, so there is nothing to reconnect or redeploy, and the change applies from its next request.
+   > This feature needs the Organisation Platform key to be allowed to **onboard people** / **read personal data (mobile, date of birth)**. The key Buildpad created for this project is read-only. Ask an administrator of the Organisation Platform (a platform admin, or the Organization Admin of your organisation) to turn on **Allow onboarding** / **Allow personal data** for the key named `Buildpad · {organization} / {project} (by {the person who connected it})`, from the API keys panel of the organisation root (the shield icon for onboarding, the person icon for personal data). The key stays the same, so there is nothing to reconnect or redeploy, and the change applies from its next request.
 
 3. **Offer the alternative**: the user can instead reconnect with **Bring your own key** using a key an administrator already issued with the scope, and then push the new `ORG_PLATFORM_API_KEY` to Amplify and redeploy (see the `amplify-env-vars` skill).
 4. Note the dependency where the next person will see it (the PR or commit description, or a code comment next to the call), so the feature isn't mistaken for a bug when it returns `SCOPE_REQUIRED`.

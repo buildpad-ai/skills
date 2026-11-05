@@ -3,12 +3,12 @@
 /**
  * Organisation Platform: the one door.
  *
- * getFeedback is used only by Xtremax people and every tenant is Xtremax's own, so a
- * single Xtremax root organisation covers the whole deployment. The connection is a
+ * the app is used only by one organisation's people and every tenant is that organisation's own,
+ * so a single root organisation covers the whole deployment. The connection is a
  * deployment setting, not a per-tenant link:
  *
  *   ORG_PLATFORM_URL                 the platform's address
- *   ORG_PLATFORM_API_KEY             the Xtremax root key (server-only, never in a browser or a log)
+ *   ORG_PLATFORM_API_KEY             the root organisation's key (server-only, never in a browser or a log)
  *   ORG_ROLE_ASSIGNMENT_ENABLED      "true" lets sign-in place people by rules. Off by default.
  *
  * Nothing else in the app calls the platform. The key is read from the environment on

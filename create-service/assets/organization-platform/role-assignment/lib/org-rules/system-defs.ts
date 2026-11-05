@@ -4,8 +4,8 @@
  * The System attributes for the editor, filled with what the platform's people look like.
  * Server-only.
  *
- * Email domains are suggested from the people who hold a job at Xtremax. That is the whole
- * deployment's population by design (getFeedback is Xtremax-internal; see the plan, D7), so
+ * Email domains are suggested from the people who hold a job in the organisation. That is the whole
+ * deployment's population by design (the app is internal to one organisation), so
  * it is all of them. They are shortcuts, not a list to choose from: if the people cannot be
  * read the editor simply has none to offer and carries on.
  */

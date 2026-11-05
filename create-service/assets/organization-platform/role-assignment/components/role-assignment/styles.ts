@@ -2,7 +2,7 @@
 // Backend: before using this file, establish the backend as "Establish the backend first" in this skill's SKILL.md says, keep only the parts for that backend, and copy no marker line into the application.
 /**
  * Role assignment form tokens: the small pieces of the rule form (labels, cards, pills),
- * on getFeedback's design tokens.
+ * on the app's design tokens.
  */
 
 import type { CSSProperties } from 'react';

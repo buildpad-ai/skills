@@ -1,12 +1,12 @@
 // buildpad-backend-file: supabase
 // Backend: before using this file, establish the backend as "Establish the backend first" in this skill's SKILL.md says, keep only the parts for that backend, and copy no marker line into the application.
 /**
- * The "System" attributes of a rule: facts getFeedback itself holds about a person.
+ * The "System" attributes of a rule: facts the app itself holds about a person.
  *
  * The Organisation Platform supplies a person's email, first and last name, designations,
  * units and its own custom attributes ("Attribute" in the rule editor, under their engine
  * keys `email`, `firstName`, `lastName`, `designation`, `attributes.<key>`). It can say
- * nothing about their getFeedback account, so this short list is owned by the app:
+ * nothing about their account in this app, so this short list is owned by the app:
  *
  *   Email domain    what follows the @ (derived from the email; always available)
  *   Sign-in method  MyApps single sign-on, or Email and password
@@ -20,7 +20,7 @@
  * that: two values, and nothing finer than the record can tell.
  *
  * Namespace: the values travel to the engine as person attributes named
- * `getfeedback.<name>`, so they can never collide with a custom attribute of the
+ * `app.<name>`, so they can never collide with a custom attribute of the
  * platform's, and a value supplied here always wins over one of that name.
  *
  * Pure and client-safe: no network, no server imports.
@@ -29,13 +29,13 @@
 import type { PersonLookup } from '@xtremax/organisation-platform/contract';
 import type { RuleSet } from '@xtremax/organisation-platform/engine';
 
-export const EMAIL_DOMAIN_KEY = 'attributes.getfeedback.emailDomain';
-export const SIGN_IN_METHOD_KEY = 'attributes.getfeedback.signInMethod';
+export const EMAIL_DOMAIN_KEY = 'attributes.app.emailDomain';
+export const SIGN_IN_METHOD_KEY = 'attributes.app.signInMethod';
 
 /** The person-attribute names the values are given to the engine under. */
 const ATTRIBUTE_OF: Record<string, string> = {
-  [EMAIL_DOMAIN_KEY]: 'getfeedback.emailDomain',
-  [SIGN_IN_METHOD_KEY]: 'getfeedback.signInMethod',
+  [EMAIL_DOMAIN_KEY]: 'app.emailDomain',
+  [SIGN_IN_METHOD_KEY]: 'app.signInMethod',
 };
 
 export const SYSTEM_ATTRIBUTE_KEYS: readonly string[] = [EMAIL_DOMAIN_KEY, SIGN_IN_METHOD_KEY];
@@ -101,7 +101,7 @@ export function signInMethodOf(meta: { provider?: unknown; providers?: unknown }
 }
 
 /**
- * The person as the engine should see them: what the platform said, plus getFeedback's
+ * The person as the engine should see them: what the platform said, plus the app's
  * own facts. `account` is what the account record says; `undefined` (not read) or `null`
  * (no such account) leaves the account facts without a value rather than guessing one.
  */

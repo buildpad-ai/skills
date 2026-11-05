@@ -1,7 +1,7 @@
 // buildpad-backend-file: supabase
 // Backend: before using this file, establish the backend as "Establish the backend first" in this skill's SKILL.md says, keep only the parts for that backend, and copy no marker line into the application.
 /**
- * Reading the getFeedback account facts a rule may ask about (see ./system-attributes).
+ * Reading the account facts a rule may ask about (see ./system-attributes).
  *
  * Server-only. "No account" is an answer (the person has not been created here yet), and
  * is not the same as "could not be read": the first leaves the account facts without a

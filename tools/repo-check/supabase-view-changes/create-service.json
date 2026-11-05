@@ -14,7 +14,7 @@
   {
     "path": "create-service/references/organization-platform.instructions.md",
     "kind": "text",
-    "reason": "The rules editor is built as three screens on the headless builder-core store, never the ready-made RulesBuilder; GET /org-role-assignments lists firstName and lastName; a new section on people import and offboarding review points to the two new references.",
+    "reason": "The rules editor is built as three screens on the headless builder-core store, never the ready-made RulesBuilder; GET /org-role-assignments lists firstName and lastName; a new section on people import and offboarding review points to the two new references; the company-specific wording is made generic (the key reaches the organisation root, the package's licence covers every app generated through Buildpad).",
     "release": "unreleased"
   },
   {

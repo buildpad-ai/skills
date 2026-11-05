@@ -3,10 +3,10 @@
 'use client';
 
 /**
- * Is the Xtremax connection working? A read-only status line for global Administrators.
+ * Is the Organisation Platform connection working? A read-only status line for global Administrators.
  *
  * The connection is a server setting (platform address and API key in the environment),
- * so this only reports whether the configured key reaches the Xtremax root. It never shows
+ * so this only reports whether the configured key reaches the organisation root. It never shows
  * or accepts the key. Everyone else sees nothing: the status route answers 403 and this
  * renders nothing.
  */
@@ -41,20 +41,20 @@ export function ConnectionStatus() {
 
   if (!status.configured) {
     return (
-      <Alert color="yellow" mt="md" variant="light" title="Xtremax connection">
+      <Alert color="yellow" mt="md" variant="light" title="Organisation Platform connection">
         Not configured. Set the Organisation Platform address and API key in the server settings.
       </Alert>
     );
   }
   if (!status.reachable) {
     return (
-      <Alert color="red" mt="md" variant="light" title="Xtremax connection">
+      <Alert color="red" mt="md" variant="light" title="Organisation Platform connection">
         The configured key could not reach the Organisation Platform.
       </Alert>
     );
   }
   return (
-    <Alert color="green" mt="md" variant="light" title="Xtremax connection">
+    <Alert color="green" mt="md" variant="light" title="Organisation Platform connection">
       Connected{status.rootName ? ` to ${status.rootName}` : ''}.{' '}
       {status.placementEnabled ? 'People are placed by these rules when they sign in.' : 'Placement at sign-in is switched off, so rules are saved but nobody is placed yet.'}
     </Alert>

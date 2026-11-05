@@ -24,10 +24,10 @@ export interface RuleBookData {
   problem: string | null;
   /** False when the rule storage has not been created on this deployment yet. */
   provisioned: boolean;
-  /** False when the deployment has no Xtremax connection (no platform address or key). */
+  /** False when the deployment has no Organisation Platform connection (no platform address or key). */
   configured: boolean;
   outcomes: Outcome[];
-  /** What getFeedback itself can say about a person, supplied by this app (not the platform). */
+  /** What the app itself can say about a person, supplied by this app (not the platform). */
   system: SystemAttributeDef[];
   limits: { maxRules: number; maxConditionsPerGroup: number };
   catalogs: Catalogs | null;
@@ -45,7 +45,7 @@ export interface TestedPerson {
   rules: Placement[];
 }
 
-/** What getFeedback knows of the person tested, shown beside the result. */
+/** What the app knows of the person tested, shown beside the result. */
 export interface TestedAccount { exists: boolean; signInMethod: 'sso' | 'email' | null }
 
 export const EMPTY_CATALOGS: Catalogs = { designations: [], orgUnits: [], personAttributes: [] };
