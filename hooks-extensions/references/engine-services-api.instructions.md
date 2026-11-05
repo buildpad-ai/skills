@@ -383,7 +383,7 @@ A name that more than one job carries is refused with `400 INVALID_PAYLOAD`: tri
 
 ## Fetch (HTTP Requests)
 
-HTTP requests from stored code. A request is allowed only to `localhost`, `127.0.0.1`, `::1`, and the hosts in the Engine operator's `EXTENSION_ALLOWED_DOMAINS` (and their subdomains). An empty list allows the loopback hosts only.
+HTTP requests from stored code. A request is allowed only to `localhost`, `127.0.0.1`, `::1`, and the hosts in the project's `EXTENSION_ALLOWED_DOMAINS` (set under **Environment Variables** on the Buildpad platform) (and their subdomains). An empty list allows the loopback hosts only.
 
 ```javascript
 const response = await services.fetch('https://api.example.com/data', {
