@@ -1,0 +1,8 @@
+[
+  {
+    "path": "add-comments/SKILL.md",
+    "kind": "new-file",
+    "reason": "New skill add-comments: the standard comment field with social mentions, pasted images, replies at any depth, an emoji picker, reactions and notifications.",
+    "release": "unreleased"
+  }
+]

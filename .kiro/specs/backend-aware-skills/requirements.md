@@ -706,6 +706,7 @@ microfrontend Skills while PP-35 is unmet.
 | `worker-messaging` | none | both paths, chosen by backend, with an Engine passage only (amended 16 October 2026) | small |
 | `add-mobile-app` | none | new skill, true for both kinds of project (wraps the deployed web app; no backend-specific step) | small |
 | `add-mcp-server` | none | new skill, true for both kinds of project (the MCP route forwards the caller's own token to the data API; no backend-specific step) | small |
+| `add-comments` | none | new skill, true for both kinds of project (stored code uses only `services.items`, `services.custom` and `services.mail`; no backend-specific step) | small |
 | `migrate-to-engine` | partial | new skill, both paths, chosen by backend: on an Engine project it ports the automation and app code of a project moved from Supabase; on a Supabase project it says the skill applies after the move and stops | medium |
 | `add-ai-chat` | none | new skill, true for both kinds of project (the chat talks only to the Chocolate Factory agent, never to the data API; no backend-specific step) | small |
 
