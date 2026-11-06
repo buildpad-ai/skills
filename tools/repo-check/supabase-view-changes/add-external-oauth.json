@@ -22,5 +22,11 @@
     "kind": "text",
     "reason": "The identity provider product formerly called My Apps is now named XAppHub, and the naming note says so and keeps Microsoft's My Apps portal apart; the connector and provider id my-apps and the Supabase steps are unchanged.",
     "release": "v4.0.0"
+  },
+  {
+    "path": "add-external-oauth/SKILL.md",
+    "kind": "text",
+    "reason": "Step 0 and Step 3 say that the XAppHub connector registers only the Amplify default domain's and localhost's /api/auth/callback, so a custom domain or a microapp or zone callback is added in XAppHub by hand.",
+    "release": "unreleased"
   }
 ]

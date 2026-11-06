@@ -14,6 +14,41 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
+## Unreleased
+
+Lessons from moving a SaaS project (a main app and a Multi-Zones microapp) to the Engine and
+connecting its app's own MCP server to Amazon Quick. It is a MAJOR release, because two files that
+a Supabase project's agent reads change (see **Supabase projects** below). No skill is added,
+removed or renamed, and the "Establish the backend first" procedure stays at version 1.
+
+- **`migrate-to-engine`, Part B step 6** and its App code reference: what the app scan does not
+  catch. Scope items get new ids and each `uri_path` is nested under the project's own scope item
+  (`/<project type id>:<tenant id>/<region type id>:<region id>`), so a hard-coded scope URI or
+  region id is answered 403 `FORBIDDEN_SCOPE`; role ids can change, so find roles by name; and
+  custom `daas_users` fields are not moved, so create them again (a boolean with a default
+  nullable, because it cannot be added as not-null to a table with rows).
+- **`add-external-oauth`:** the XAppHub connector registers only
+  `https://<branch>.<Amplify default domain>/api/auth/callback` and the localhost callback. A
+  custom domain, or a callback in a microapp or zone, is added in XAppHub by hand; XAppHub refuses
+  any other redirect URI. Said in the Engine part's Step 1 and Troubleshooting, and in Step 0 and
+  Step 3.
+- **`add-mcp-server`, hosted connectors:** a new subsection for claude.ai, ChatGPT and Amazon Quick,
+  which need OAuth with Dynamic Client Registration: the redirect URIs to allow, Amazon Quick's
+  Enterprise subscription and manual Sync, a session of the connector's own made at consent (on an
+  Engine project the server cannot make one any other way), never sharing the browser's session
+  (refresh-token rotation ends both), and that the default sign-out disconnects connectors.
+
+### Supabase projects
+
+These files change, each with its reason:
+
+- `add-external-oauth/SKILL.md` (text): Step 0 and Step 3 say that the XAppHub connector registers
+  only the Amplify default domain's and localhost's `/api/auth/callback`, so a custom domain or a
+  microapp or zone callback is added in XAppHub by hand.
+- `add-mcp-server/SKILL.md` (text): a new subsection covers hosted connectors (claude.ai, ChatGPT,
+  Amazon Quick): OAuth with Dynamic Client Registration, the redirect URIs to allow, a session of
+  the connector's own made at consent, and why the browser's session cannot be shared.
+
 ## v8.0.0
 
 Install it with `npx skills add buildpad-ai/skills#v8.0.0`. The Organisation Platform guide of

@@ -60,6 +60,10 @@ the Studio and is not a way for an application to sign a user in.
    registered the application's OIDC client with XAppHub, for the deployed app's
    `/api/auth/callback` and for `http://localhost:3000/api/auth/callback`, and has told the Engine
    to trust that client.
+   It registers only `https://<branch>.<Amplify default domain>/api/auth/callback` and the
+   localhost one. A custom domain, or a callback in a microapp or zone (such as
+   `/crm/api/mcp/oauth/xapphub`), must be added to the client in XAppHub by hand: XAppHub refuses
+   any other redirect URI exactly ("redirect_uri does not match any registered redirect URLs").
 3. If there is no such connector, tell the developer to connect XAppHub on the project's Connectors
    page and stop. The application cannot register the client or make the Engine trust it.
 
@@ -220,6 +224,7 @@ only a relative `returnTo` path.
 |---|---|
 | `sign_in_refused` for every user | The connector is not `connected` (the Engine does not trust the client id), or the `nonce` sent to XAppHub is not the digest of the nonce given to the Engine |
 | `sign_in_refused` for one user | One of the refused accounts above; that user signs in with their password |
+| XAppHub shows "redirect_uri does not match any registered redirect URLs" | The callback is on a custom domain or in a microapp or zone: add it to the client in XAppHub (Step 1) |
 | `sign_in_failed` | The code exchange failed (check `OAUTH_CLIENT_SECRET` and that the redirect URI is registered), or the project's Engine has no XAppHub sign-in enabled: ask the Buildpad Platform administrator |
 | `sign_in_expired` | The flow cookie is missing: more than ten minutes passed, or the sign-in started in another browser or on another host name |
 | `configuration_error` | An `OAUTH_*` variable or one of the Engine variables of Step 2 is missing |
@@ -464,6 +469,13 @@ to ask the user for anything or register a redirect URI yourself.
    entirely — the connector already registered the deployed app's
    `/api/auth/callback` URL with the IDP at provision time.
 
+   > **Only two redirect URIs are registered**: the XAppHub connector registers
+   > `https://<branch>.<amplify default domain>/api/auth/callback` and
+   > `http://localhost:3000/api/auth/callback`. A custom domain, or a callback
+   > in a microapp/zone (e.g. `/crm/api/mcp/oauth/xapphub`), must be added in
+   > XAppHub by hand — XAppHub rejects any unregistered `redirect_uri` exactly
+   > ("redirect_uri does not match any registered redirect URLs").
+
    > **Not covered by the connector**: `OAUTH_DEFAULT_ROLE_ID` (Step 6). The
    > connector only knows about the IDP; the default role lives in this app's
    > DaaS backend. Resolve it via the DaaS MCP `roles` tool yourself and push
@@ -570,7 +582,8 @@ OAUTH_SCOPES=openid email profile
 
 Skip this for XAppHub if **Step 0** found a connected connector — the
 redirect URI was already registered automatically when the connector was
-provisioned.
+provisioned — for the Amplify default domain and localhost only. Register any
+other callback (custom domain, microapp/zone path) in XAppHub by hand.
 
 | Setting | Value |
 |---------|-------|

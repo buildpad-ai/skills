@@ -233,6 +233,21 @@ read each policy and check that a moved permission gives the same rows:
 Add what is missing with [create-rbac](../../create-rbac/SKILL.md). Then go through "Permission rules
 that change meaning" in this skill's [SKILL.md](../SKILL.md).
 
+### What the app scan does not catch
+
+- **Scope ids and URIs.** The move gives every scope item a new id, and each `uri_path` is nested
+  under the project's own scope item: `/<project type id>:<tenant id>/<region type id>:<region id>`,
+  where the old project had `/<type>:<id>`. App code that hard-codes a scope URI or a region id is
+  answered 403 `FORBIDDEN_SCOPE` ("outside this tenant"). Read the items (`daas_scope_items`,
+  through the MCP `scope` tool or `GET /api/scope/items`) and update every constant, seed and
+  environment value that holds one.
+- **Role ids.** A role can get a new id (on one moved project the "Management" role did). Find each
+  role by its name (the MCP `roles` tool or `GET /api/roles`) and update the ids the code holds.
+- **Custom user fields.** Fields the app added to `daas_users` (such as `crm_region_uri` or
+  `crm_is_management`) are not moved. Create them again with the MCP `fields` tool, and set a
+  default through `POST /api/fields/daas_users`. A boolean field with a default cannot be added as
+  not-null to a table that has rows: create it nullable, with the default.
+
 ## 7. Database functions, triggers, views and edge functions
 
 None of them moved. Port each one, then delete it from the repository:
