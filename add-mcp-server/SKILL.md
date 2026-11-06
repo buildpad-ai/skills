@@ -154,6 +154,31 @@ rather than guessing. Never commit a real token: the client reads it from an env
 variable. A token is the person's own access token, so it expires; say so, and do not put it in a
 file in the repository.
 
+#### Hosted connectors (claude.ai, ChatGPT, Amazon Quick)
+
+A hosted connector cannot take a pasted token. It needs the app to be an OAuth 2.1 authorization
+server with Dynamic Client Registration (DCR), as the MCP authorization specification says: the
+connector registers itself, the person signs in on the app's consent page, and the `401` names the
+app's protected resource metadata in `WWW-Authenticate`. Then:
+
+- **Allow only known redirect URIs** at registration: Claude `https://claude.ai/api/mcp/auth_callback`
+  and `https://claude.com/api/mcp/auth_callback`, ChatGPT's callbacks on `https://chatgpt.com`,
+  Amazon Quick on `https://<region>.quicksight.aws.amazon.com` (AWS does not publish the exact path,
+  so allow the host), and loopback addresses for desktop clients.
+- **Amazon Quick** registers through DCR and needs an Enterprise subscription. A custom MCP
+  connector picks up new or changed tools only after someone runs its **Sync**.
+- **Give each connection a session of its own, made at consent.** The person confirms with their
+  password (the password sign-in, with `X-Tenant-Id`) or with XAppHub (`signInWithIdToken`, see
+  [add-external-oauth](../add-external-oauth/SKILL.md)); the app keeps that session on its server
+  for the connection and forwards its access token. On an Engine project the server cannot make a
+  session for a user in any other way: there is no service-role key, administration API or magic
+  link.
+- **Never share the browser's session.** The Engine rotates refresh tokens as Supabase does: a
+  refresh token used more than about 10 seconds after it was rotated ends the whole session, so the
+  browser and the connector sign each other out.
+- **Sign-out disconnects connectors.** The Supabase client's default sign-out ends all of the
+  user's sessions, the connector's included; tell the person that they connect again afterwards.
+
 ### 6. Test
 
 1. `curl -i -X POST <url>` with no header: expect `401`.
@@ -173,4 +198,6 @@ one refusal. See [create-tests](../create-tests/SKILL.md).
 - [ ] Every input has a bound; every tool has a verb name; changing tools carry the hints.
 - [ ] No tool returns a token, a header or a raw upstream body.
 - [ ] The token is not logged and not committed.
+- [ ] A hosted connector registers only allowed redirect URIs and gets a session of its own at
+  consent, never the browser's.
 - [ ] The route has a test for the `401`, an allowed call and a refusal.

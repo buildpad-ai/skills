@@ -214,6 +214,11 @@ On an Engine project the data API's address is the Engine_URL, which both `NEXT_
   Studio or over MCP. Each row-level security policy becomes roles, policies and permissions: check
   that the moved permissions give the same rows, and add what is missing with
   [create-rbac](../create-rbac/SKILL.md). Then review [Permission rules that change meaning](#permission-rules-that-change-meaning).
+  The scan does not see three things; check each by hand ([App code](references/app-code.instructions.md),
+  step 6). **Scope ids and URIs:** scope items have new ids, and each `uri_path` is nested under
+  the project's own item (`/<project type id>:<tenant id>/<region type id>:<region id>`, not
+  `/<type>:<id>`); a hard-coded URI or id is answered 403 `FORBIDDEN_SCOPE`. **Role ids** can
+  change: find each role by name. **Custom `daas_users` fields** were not moved: create them again.
   On an Engine project collections, fields, relations, roles, policies and permissions are created through the Engine's API (`/api/collections`, `/api/fields/:collection`, `/api/relations`, `/api/roles`, `/api/policies`, `/api/access`, `/api/permissions`) or its MCP tools `collections`, `fields`, `relations`, `roles`, `policies`, `access` and `permissions`. Access is roles, policies and permissions: a permission belongs to a policy, and a policy is attached to a role or a user. The MCP `collections` and `fields` tools keep a field's name, type and `meta` but not its `schema` block (default, not-null, length): set those through `POST /api/fields/:collection` with an administrator's session.
 - [ ] **7. Database functions** (`rpc`). Calls to the Supabase client's `rpc` method, database
   functions, triggers, views and edge functions did not move. Move each one's logic into an API
