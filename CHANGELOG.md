@@ -14,12 +14,29 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
-## Unreleased
+## v9.0.0
 
-Lessons from moving a SaaS project (a main app and a Multi-Zones microapp) to the Engine and
-connecting its app's own MCP server to Amazon Quick. It is a MAJOR release, because two files that
-a Supabase project's agent reads change (see **Supabase projects** below). No skill is added,
-removed or renamed, and the "Establish the backend first" procedure stays at version 1.
+One skill is added, `add-comments`. Install it with `npx skills add buildpad-ai/skills#v9.0.0`.
+This release also has lessons from moving a SaaS project (a main app and a Multi-Zones microapp)
+to the Engine and connecting its app's own MCP server to Amazon Quick, and OAuth sign-in for the
+hosted connectors of `add-mcp-server`. It is a MAJOR release, because two existing files that a
+Supabase project's agent reads change (see **Supabase projects** below). No skill is removed or
+renamed, and the "Establish the backend first" procedure stays at version 1.
+
+- **New skill `add-comments`:** the standard comment (discussion) field of a Buildpad app, or an
+  existing one brought up to the standard: social @mentions, pasted and uploaded images with a
+  viewer, replies at any depth, an emoji picker, one-click reactions and email notifications for
+  mentions and replies. It covers the data model (a self-referencing parent and thread root, a
+  photos column, a reactions table), the server hooks that stamp and validate every comment, one
+  shared editor component, the recursive thread list, silent refetching, and a proof with
+  throwaway users.
+- **Stored code's allowed hosts and keys** (`create-cron`, `create-service` and its Custom
+  services and Stripe references, `hooks-extensions` and its Engine services reference,
+  `daas-platform`'s built-in features, `add-microapp`'s cross-service communication and
+  `migrate-to-engine`): on an Engine project, a host for `services.fetch`
+  (`EXTENSION_ALLOWED_DOMAINS`) and a key for `services.env` are set by the user in the
+  project's **Environment Variables** (the Engine list) on the Buildpad platform and applied, not
+  asked of an operator. Engine text only.
 
 - **`migrate-to-engine`, Part B step 6** and its App code reference: what the app scan does not
   catch. Scope items get new ids and each `uri_path` is nested under the project's own scope item
@@ -45,6 +62,11 @@ removed or renamed, and the "Establish the backend first" procedure stays at ver
   session (refresh-token rotation ends both), the default sign-out, and test steps.
 
 ### Supabase projects
+
+This file is new:
+
+- `add-comments/SKILL.md` (new-file): the standard comment field with social mentions, pasted
+  images, replies at any depth, an emoji picker, reactions and notifications.
 
 These files change, each with its reason:
 
