@@ -1,6 +1,6 @@
 ---
 name: add-mcp-server
-description: Expose a Buildpad app's own data and actions as an MCP server, so Claude, Copilot, Kiro or Antigravity can call them as tools. Adds one Next.js route (`/api/mcp`, Streamable HTTP, stateless) built on the official MCP TypeScript SDK, where every tool forwards the caller's own access token to the data API, so the caller's permissions apply and no elevated key is used. Covers tool design, input validation, the response shape, client configuration, OAuth sign-in for hosted connectors (claude.ai and ChatGPT), with their redirect URLs kept in the app's Amplify environment variables, and testing with the MCP Inspector. Use when the user says add an MCP server, expose my app to AI agents, make tools for an agent, or build an MCP endpoint in the app. Not for connecting an agent to the Buildpad Platform's own MCP.
+description: Expose a Buildpad app's own data and actions as an MCP server, so Claude, Copilot, Kiro or Antigravity can call them as tools. Adds one Next.js route (`/api/mcp`, Streamable HTTP, stateless) built on the official MCP TypeScript SDK, where every tool forwards the caller's own access token to the data API, so the caller's permissions apply and no tool uses an elevated key. Covers tool design, input validation, the response shape, client configuration, OAuth sign-in for hosted connectors (claude.ai and ChatGPT), with their redirect URLs kept in the app's Amplify environment variables, and testing with the MCP Inspector. Use when the user says add an MCP server, expose my app to AI agents, make tools for an agent, or build an MCP endpoint in the app. Not for connecting an agent to the Buildpad Platform's own MCP.
 argument-hint: "[tool, e.g. list_orders]"
 ---
 
@@ -50,10 +50,13 @@ the Platform's own instructions.
 1. **Act as the caller; never use an elevated key to read or write data.** A tool reads the token
    from the request's `Authorization: Bearer <access token>` header and sends the same header to
    the data API. (When hosted connectors sign in with OAuth, step 6, the header carries the app's
-   own MCP token instead, and the tool sends the data API token of the same person.) Do not read a service key, an administrator token or a stored credential in a tool. If the
-   data API refuses the call, return its refusal as the tool's error; do not retry with more power.
+   own MCP token instead, and the tool sends the data API token of the same person that the MCP
+   token carries.) Do not read a service key, an administrator token or a stored credential in a
+   tool. If the data API refuses the call, return its refusal as the tool's error; do not retry
+   with more power.
 2. **No token, no tools.** The route answers `401` with a `WWW-Authenticate: Bearer` header (with
-   `resource_metadata` once step 6 is in) before it creates the server. Never list tools to an anonymous caller.
+   `resource_metadata` once step 6 is in) before it creates the server. Never list tools to an
+   anonymous caller.
 3. **Stateless.** Create a server and a transport per request (`sessionIdGenerator: undefined`).
    Amplify and other serverless hosts do not keep memory between requests, so a session map
    breaks.
@@ -256,7 +259,10 @@ For local development put the same three in `.env.local`. Never print or commit
 
 All under the app, stateless (no database): a client id, an authorization code and a token are
 each a JWT signed with `MCP_OAUTH_SECRET`, each with its **own audience**, so one kind can never
-be accepted as another. Use `jose`.
+be accepted as another. Use `jose`. The access and refresh tokens also carry the person's data
+API tokens, so they are **encrypted** JWTs (`EncryptJWT`, `dir` + `A256GCM`, key = SHA-256 of
+`MCP_OAUTH_SECRET`), never plain signed ones: a connector, a log or a proxy must not be able to
+read a data API token out of them.
 
 ```ts
 // lib/mcp/config.ts
@@ -310,51 +316,59 @@ if (bad) {
 **authorize**: before anything else, verify the `client_id`, require
 `redirect_uri` to be one of that client's registered URIs **and** to pass `isAllowedRedirect`
 again, and until then never redirect anywhere (an unchecked `redirect_uri` is an open redirect).
-Then require `response_type=code` and `code_challenge_method=S256`; keep the request (client,
-redirect, `state`, challenge) in a signed, `httpOnly`, `sameSite: 'lax'` cookie of 10 minutes; send
-the browser to the app's normal sign-in, with the consent page as `next`.
+Then require `response_type=code`, `code_challenge_method=S256` and a `code_challenge` of 43
+base64url characters; keep the request (client, redirect, `state`, challenge) in a signed,
+`httpOnly`, `sameSite: 'lax'` cookie of 10 minutes; send the browser to the consent page.
 
 **consent page and complete**: show who is asking (the client name) and what the connector may
 do. Consent is explicit: signing in is not consent. On Allow, check that the account may use the
 app (not banned, not unknown), sign a code (audience `mcp-code`, 2 minutes, bound to the client,
-the redirect and the PKCE challenge), and redirect to the registered redirect URL with `code` and
-`state`. On Cancel, redirect with `error=access_denied`. Refuse a `POST` whose `Origin` is not the
-app's own.
-
-**token**: for `authorization_code`, check that the code's client and redirect equal the request's,
-that the PKCE verifier matches the challenge (SHA-256, `timingSafeEqual`), and that the account is
-still active; issue a 1-hour access token and a 30-day refresh token (each its own audience). For
-`refresh_token`, verify it and check the account is still active before issuing. Log the outcome
-and reason only, never a code or a token. Answer `Cache-Control: no-store`.
-
-**the MCP route**: replace the plain header check of step 3. Verify the access token (audience
-`mcp-access`) and answer `401` with
-`WWW-Authenticate: Bearer resource_metadata="<protectedResourceMetadataUrl()>"`, so the connector
-knows where to start. Then call the data API **as that person**: the connector's token is the
-app's, not the data API's, so exchange the verified `sub` for that person's own data API token
-(the way the app already acts as a user on the server) and use `Bearer <that token>` as
-`authorization` in `callData`.
+the redirect, the PKCE challenge and the person's data API tokens for this connection, encrypted
+as above), and redirect to the registered redirect URL with `code` and `state`. On Cancel,
+redirect with `error=access_denied`. Refuse a `POST` whose `Origin` is not the app's own.
 
 <!-- buildpad-backend: supabase -->
-On a Supabase project the exchange is `auth.admin.generateLink` with `verifyOtp` (no email is
-sent); that is the **only** use of the service key, it needs `SUPABASE_SERVICE_ROLE_KEY` in the
-app's environment, and every data call still runs under the person's own policies.
+On a Supabase project the consent page uses the app's normal sign-in (send the person there with
+the consent page as `next` if they are signed out). On Allow, the server makes the connection's
+data API session with `auth.admin.generateLink` (type `magiclink`, no email is sent) and
+`verifyOtp` on its `hashed_token`, as [add-external-oauth](../add-external-oauth/SKILL.md) does.
+That is the only use of `SUPABASE_SERVICE_ROLE_KEY`, in server code outside the tools; add it to
+the `printenv` pattern of `amplify.yml` above, and never to a `NEXT_PUBLIC_` name. Every data call
+still runs under the person's own policies.
 <!-- /buildpad-backend -->
 <!-- buildpad-backend: engine -->
 On an Engine project the server cannot make a session for a user: there is no service-role key,
-administration API or magic link. Give each connection a session of its own, made at consent: the
-person confirms with their password (the password sign-in, with `X-Tenant-Id`) or with XAppHub
-(`signInWithIdToken`, see [add-external-oauth](../add-external-oauth/SKILL.md)); the app keeps that
-session on its server for the connection and forwards its access token. Never share the browser's
-session: the Engine rotates refresh tokens as Supabase does, and a refresh token used more than
-about 10 seconds after it was rotated ends the whole session, so the browser and the connector
-would sign each other out. The Supabase client's default sign-out ends all of the user's sessions,
-the connector's included; tell the person to connect again afterwards.
+administration API or magic link. So the consent page signs the person in **again**, for this
+connection only: the password sign-in (with `X-Tenant-Id`) or XAppHub (`signInWithIdToken`, see
+[add-external-oauth](../add-external-oauth/SKILL.md)), called from the server, and its session is
+never stored in the browser's cookies. Never give the connector the browser's session: the Engine
+rotates refresh tokens as Supabase does, and a refresh token used more than about 10 seconds
+after it was rotated ends the whole session, so the browser and the connector would sign each
+other out. The Supabase client's default sign-out ends all of the user's sessions, the
+connector's included; tell the person to connect again afterwards.
 <!-- /buildpad-backend -->
+
+**token**: for `authorization_code`, check that the code's client and redirect equal the request's,
+that the PKCE verifier matches the challenge (base64url of its SHA-256, compared with
+`timingSafeEqual` on buffers of equal length), and that the account is still active; issue an
+access token (audience `mcp-access`) that carries the data API access token and expires no later
+than it (at most 1 hour), and a 30-day refresh token (audience `mcp-refresh`) that carries the
+data API refresh token. For `refresh_token`, verify it, check the account is still active, refresh
+the data API session once with the refresh token it carries, and issue both tokens again with the
+new data API tokens. A connector that reuses an old refresh token ends the connection's data API
+session; it then connects again. Log the outcome and reason only, never a code or a token. Answer
+`Cache-Control: no-store`.
+
+**the MCP route**: replace the plain header check of step 3. Decrypt and verify the access token
+(audience `mcp-access`) and answer `401` with
+`WWW-Authenticate: Bearer resource_metadata="<protectedResourceMetadataUrl()>"`, so the connector
+knows where to start. Then call the data API **as that person**: use `Bearer <the data API access
+token it carries>` as `authorization` in `callData`. Do not make a new data API session per
+request.
 
 Re-check the account on every request (cache it for a minute at most), so a banned or removed
 person loses access within that minute instead of when the token expires.
-Never log the minted token.
+Never log a data API token.
 
 Also: the middleware must let `/.well-known/*` and `/api/mcp/*` through without a login redirect,
 and the OAuth endpoints and the two well-known documents answer
@@ -400,8 +414,8 @@ host such as `https://claude.ai.evil.example/api/mcp/auth_callback`, an empty va
 - [ ] Every input has a bound; every tool has a verb name; changing tools carry the hints.
 - [ ] No tool returns a token, a header or a raw upstream body.
 - [ ] The token is not logged and not committed.
-- [ ] A hosted connector registers only allowed redirect URIs and gets a session of its own at
-  consent, never the browser's.
+- [ ] A hosted connector registers only allowed redirect URIs and gets a data API session of its
+  own at consent, never the browser's; its MCP tokens carry that session encrypted.
 - [ ] The route has a test for the `401`, an allowed call and a refusal.
 - [ ] With step 6: `MCP_ALLOWED_REDIRECT_URIS`, `MCP_RESOURCE_URL` and `MCP_OAUTH_SECRET` are set in
       Amplify and written to `.env.production` by `amplify.yml`; no redirect URL is matched by

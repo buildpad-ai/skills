@@ -32,11 +32,17 @@ removed or renamed, and the "Establish the backend first" procedure stays at ver
   custom domain, or a callback in a microapp or zone, is added in XAppHub by hand; XAppHub refuses
   any other redirect URI. Said in the Engine part's Step 1 and Troubleshooting, and in Step 0 and
   Step 3.
-- **`add-mcp-server`, hosted connectors:** a new subsection for claude.ai, ChatGPT and Amazon Quick,
-  which need OAuth with Dynamic Client Registration: the redirect URIs to allow, Amazon Quick's
-  Enterprise subscription and manual Sync, a session of the connector's own made at consent (on an
-  Engine project the server cannot make one any other way), never sharing the browser's session
-  (refresh-token rotation ends both), and that the default sign-out disconnects connectors.
+- **`add-mcp-server`, step 6, hosted connectors:** a new step for claude.ai, ChatGPT and Amazon
+  Quick, which sign in with OAuth 2.1 (PKCE S256) and Dynamic Client Registration. The app is a
+  stateless authorization server: its discovery documents, register, authorize, consent and token
+  endpoints, each with the checks it makes. Redirect URLs are an exact-match allow-list in
+  `MCP_ALLOWED_REDIRECT_URIS`, checked at register and again at authorize; `MCP_RESOURCE_URL` and
+  `MCP_OAUTH_SECRET` are set with `amplify_set_env_vars` and written to `.env.production`. The
+  connection gets a data API session of its own at consent, carried encrypted in the app's MCP
+  tokens and refreshed at the token endpoint; on a Supabase project it is made with the service
+  key (its only use, outside the tools), on an Engine project with a second sign-in on the consent
+  page. Also Amazon Quick's Enterprise subscription and manual Sync, never sharing the browser's
+  session (refresh-token rotation ends both), the default sign-out, and test steps.
 
 ### Supabase projects
 
@@ -45,9 +51,12 @@ These files change, each with its reason:
 - `add-external-oauth/SKILL.md` (text): Step 0 and Step 3 say that the XAppHub connector registers
   only the Amplify default domain's and localhost's `/api/auth/callback`, so a custom domain or a
   microapp or zone callback is added in XAppHub by hand.
-- `add-mcp-server/SKILL.md` (text): a new subsection covers hosted connectors (claude.ai, ChatGPT,
-  Amazon Quick): OAuth with Dynamic Client Registration, the redirect URIs to allow, a session of
-  the connector's own made at consent, and why the browser's session cannot be shared.
+- `add-mcp-server/SKILL.md` (text): a new step 6 lets hosted connectors (claude.ai, ChatGPT,
+  Amazon Quick) sign in with OAuth: the endpoints and their checks, the redirect URLs as an
+  exact-match allow-list in an Amplify variable, and a data API session of the connection's own,
+  made at consent with `SUPABASE_SERVICE_ROLE_KEY` (`generateLink` + `verifyOtp`, outside the
+  tools) and carried encrypted in the MCP tokens. Rules 1 and 2, the CORS note, the description,
+  the tests and the checklist say the same.
 
 ## v8.0.0
 

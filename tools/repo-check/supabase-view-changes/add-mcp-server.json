@@ -8,7 +8,7 @@
   {
     "path": "add-mcp-server/SKILL.md",
     "kind": "text",
-    "reason": "A new subsection covers hosted connectors (claude.ai, ChatGPT, Amazon Quick): OAuth with Dynamic Client Registration, the redirect URIs to allow, a session of the connector's own made at consent, and why the browser's session cannot be shared.",
+    "reason": "A new step 6 lets hosted connectors (claude.ai, ChatGPT, Amazon Quick) sign in with OAuth: the endpoints and their checks, the redirect URLs as an exact-match allow-list in an Amplify variable, and a data API session of the connection's own, made at consent with SUPABASE_SERVICE_ROLE_KEY (generateLink + verifyOtp, outside the tools) and carried encrypted in the MCP tokens; rules 1 and 2, the CORS note, the description, the tests and the checklist say the same.",
     "release": "unreleased"
   }
 ]
