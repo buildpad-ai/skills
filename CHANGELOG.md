@@ -14,6 +14,90 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
+## v9.1.0
+
+Skills now know that an Engine project's customers may each be a tenant of their own
+(Customer_Tenants), which the Buildpad platform does not offer yet. Install it with
+`npx skills add buildpad-ai/skills#v9.1.0`. This is the first stage of `customer-tenant-skills`:
+every skill that names the project's tenant first establishes the tenancy mode, from the field
+`tenancy` of `.buildpad/project.json` or the developer's recorded answer, and says that
+Customer_Tenants are not available yet instead of building a substitute (no tenant column, no
+project made by hand per customer, no host credential in the application). It is a MINOR release:
+every new text stands in text for Engine projects only, no skill is added, removed or renamed, and
+the "Establish the backend first" procedure stays at version 1. The procedure is added to 12
+existing files (see **Supabase projects** below).
+
+Twelve Tenancy statements (TS-A, TS-B, TS-Cn, TS-Cm, TS-N0 to TS-N7) are worded once in
+`CONTRIBUTING.md` and `tools/repo-check/tenancy-statements.json`; this release copies TS-A and
+TS-N0 to TS-N7. TS-A ("On an Engine project with Customer_Tenants each customer of the application
+is a tenant of its own …") stands next to every copy of ES-3, ES-4, ES-5, ES-7 and ES-9.
+
+- **`add-multitenancy`:** the Gate, and a chooser between scopes, Customer_Tenants and a project per customer, with the limits of each and the Tenancy check; a new guide `references/engine-customer-tenants.instructions.md` (Engine projects only) with the mode's status, what it is, what never to do, what is not available and how workers and tests behave. Its reference gains TS-A.
+- **`manage-scope`:** TS-A next to ES-9 and in Steps; TS-N0 (Customer_Tenants are not offered yet: use scopes); TS-A in its Engine scope reference.
+- **`authentication-proxy`:** the Gate, and TS-A next to ES-4 and ES-5 in the skill and its reference.
+- **`create-api-route`:** TS-A after the Gate; TS-A and TS-N2 (no public page per customer) in its Engine routes reference.
+- **`create-project`:** TS-A after the Critical Rules and the environment, in the skill and its environment reference.
+- **`add-buildpad`:** TS-A after the Gate.
+- **`buildpad-reference`:** the Gate and TS-A.
+- **`add-microapp`:** TS-A next to ES-3 and ES-4 in the skill, its app URLs reference and its deployment topology reference.
+- **`add-mcp-server`:** TS-A after the Gate.
+- **`create-collection`:** TS-A in Standard Field Groups and Scope, and in its standard fields reference.
+- **`create-rbac`:** TS-A after the Gate.
+- **`create-workflow`:** TS-A after the Gate.
+- **`add-cron`:** TS-A after the Gate.
+- **`create-cron`:** TS-A after the Gate.
+- **`hooks-extensions`:** TS-A after the Gate.
+- **`create-service`:** TS-A after the Gate.
+- **`add-i18n`:** TS-A in Step 7 and in its content translations reference.
+- **`add-comments`:** the Gate and TS-A.
+- **`add-files`:** TS-A after the Gate.
+- **`create-form-builder`:** the Gate and TS-A in the skill; the Gate and TS-A in Multi-Tenancy / Scopes of its reference.
+- **`grant-module-access`:** TS-A after the Gate.
+- **`daas-platform`:** TS-A in Environment Variables, and in its built-in features, data API and MCP tools references.
+- **`add-users`:** the Gate; TS-A and TS-N1 (customers that sign themselves up are not available) in The Data Layer.
+- **`spec-driven-development`:** the Gate and TS-A in DaaS-Specific Considerations.
+- **`create-feature`:** the Gate and TS-A in Planning Process and Scope-Aware Context Pattern.
+- **`idea-refine`:** the Gate; TS-A and a pointer to `add-multitenancy` in DaaS Platform Check.
+- **`worker-messaging`:** TS-A after the Gate; TS-N4 (a worker acts in the Blueprint only) after ES-14n.
+- **`create-tests`:** TS-A in Authentication Setup, and how tests treat Customer_Tenants: they sign in to the Blueprint, a customer's path needs a customer made for testing, and a test never creates, suspends or deletes a customer.
+- **`agents`:** `test-engineer`: TS-A and the same test text; `security-auditor`: TS-A in DaaS-Specific.
+- **`debugging-and-error-recovery`:** TS-A after the Gate.
+- **`security-and-hardening`:** TS-A in DaaS-Specific Security.
+- **`references`:** `security-checklist.md`: TS-A in Authentication.
+- **`add-external-oauth`:** TS-A and TS-N3 (XAppHub sign-in is not available with Customer_Tenants) in On an Engine project.
+- **`migrate-to-engine`:** TS-A and TS-N7 (moving an app built on scopes into Customer_Tenants is not available), TS-A in Part B and in its app code reference.
+- **Repository check:** a new rule R15 checks that every Tenancy statement is copied word for word,
+  only into text for Engine projects, only while it is live, and next to every ES anchor; and that
+  the Tenancy check (`tools/repo-check/tenancy-check.md`) is copied byte for byte into exactly its
+  two files. Nine rows of `skill-map.json` move from reworded to backend-gated (BP), and the same
+  rows of `backend-aware-skills`' Skill map are amended.
+
+### Supabase projects
+
+Nothing a Supabase project's agent follows changes. The "Establish the backend first" procedure is
+added at the top of 12 files of 9 skills, which now hold text for Engine projects:
+
+- `add-multitenancy/SKILL.md`
+- `add-multitenancy/references/multitenancy.instructions.md`
+- `authentication-proxy/SKILL.md`
+- `authentication-proxy/references/authentication-proxy.instructions.md`
+- `create-form-builder/SKILL.md`
+- `create-form-builder/references/form-builder.instructions.md`
+- `add-comments/SKILL.md`
+- `add-users/SKILL.md`
+- `buildpad-reference/SKILL.md`
+- `create-feature/SKILL.md`
+- `idea-refine/SKILL.md`
+- `spec-driven-development/SKILL.md`
+
+The repository check removes the procedure before it compares a Supabase view with `v1.0.0`, and
+every other new text is stripped from a Supabase project's kit, so no `supabase-view-changes`
+entry is written.
+
+Read through by Claude (agent) on 7 November 2026, on the integration branch
+`feat/customer-tenant-skills-s1`: the Engine view of each of the 34 folders, and the Supabase view
+against `origin/main` (Gate hunks only).
+
 ## v9.0.0
 
 One skill is added, `add-comments`. Install it with `npx skills add buildpad-ai/skills#v9.0.0`.

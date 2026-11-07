@@ -82,8 +82,8 @@
 
 ### Stage S1 (now: Requirements 1, 2, 7, 9; release provisionally `v9.1.0`)
 
-- [ ] 1. Replan the nine folders `RW` to `BP` (design "Skill map confirmed"; first, because R4 refuses a marker in a `wording only` folder)
-- [ ] 1.1 Change the nine rows of `tools/repo-check/skill-map.json`, test first
+- [x] 1. Replan the nine folders `RW` to `BP` (design "Skill map confirmed"; first, because R4 refuses a marker in a `wording only` folder)
+- [x] 1.1 Change the nine rows of `tools/repo-check/skill-map.json`, test first
   - In `tools/repo-check/test/map.test.mjs`, first change the expected plan counts to
     `{ BP: 33, EF: 3, US: 1, NY: 2, RW: 8, 'RW+G': 2, UC: 20 }` (69 rows). The test then fails.
   - Then, in `skill-map.json`, set `"dependence": "partial"`, `"plan": "BP"` and
@@ -95,7 +95,7 @@
     `node tools/repo-check/check.mjs` still exits 0 (no folder holds a new marker yet).
   - _Requirements: 9.2_
   - _Boundary: tools/repo-check/skill-map.json, tools/repo-check/test/map.test.mjs_
-- [ ] 1.2 Amend the same rows of `backend-aware-skills`' Skill map
+- [x] 1.2 Amend the same rows of `backend-aware-skills`' Skill map
   - In `.kiro/specs/backend-aware-skills/requirements.md`, section `## Skill map`, change the
     *Dependence* and *Treatment* cells of the nine rows to match 1.1. That table has no plan column.
   - Add a dated note to the section's preface: "Amended 2026-11-xx by `customer-tenant-skills`
@@ -109,8 +109,8 @@
   - _Requirements: 9.2_
   - _Boundary: .kiro/specs/backend-aware-skills/requirements.md_
 
-- [ ] 2. Word the canonical texts once: the Tenancy check, the machine copy and the register (design T2, T4, T6)
-- [ ] 2.1 Write `tools/repo-check/tenancy-check.md`
+- [x] 2. Word the canonical texts once: the Tenancy check, the machine copy and the register (design T2, T4, T6)
+- [x] 2.1 Write `tools/repo-check/tenancy-check.md`
   - The T2 block byte for byte, from `<!-- tenancy-check:begin v1 -->` to
     `<!-- tenancy-check:end -->`. UTF-8, LF, and a trailing newline.
   - Done when: the file holds exactly the two sentinels, no `buildpad-backend` token and no
@@ -118,7 +118,7 @@
     with the design's fenced block (extracted by script) is equal.
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
   - _Boundary: tools/repo-check/tenancy-check.md_
-- [ ] 2.2 Write `tools/repo-check/tenancy-statements.json`
+- [x] 2.2 Write `tools/repo-check/tenancy-statements.json`
   - Write it whole, as in Data Models, with every placeholder written out:
     - `register`, `opening`, `dependencies` (TD-1, TD-3, TD-7, TD-8, TD-9, TD-10, TD-12, TD-13),
       `"met": []`, the five `anchors`, `tenancyCheck`;
@@ -140,7 +140,7 @@
     succeeds; each statement's text equals its T4 row (script); and no `<…>` placeholder remains.
   - _Requirements: 9.1, 9.2, 9.3, 7.1_
   - _Boundary: tools/repo-check/tenancy-statements.json_
-- [ ] 2.3 Register the statements in `CONTRIBUTING.md`, test first
+- [x] 2.3 Register the statements in `CONTRIBUTING.md`, test first
   - Extend `tools/repo-check/test/docs.test.mjs` first (Testing Strategy). `CONTRIBUTING.md` must
     hold:
     - `## Tenancy statements`;
@@ -165,8 +165,8 @@
   - _Requirements: 9.1, 9.2_
   - _Boundary: CONTRIBUTING.md, tools/repo-check/test/docs.test.mjs_
 
-- [ ] 3. Write the chooser and the Mode_Guide's S1 sections in `add-multitenancy` (design "The Mode_Guide", "The chooser"; after task 2)
-- [ ] 3.1 Add the Gate and the chooser to `add-multitenancy/SKILL.md`
+- [x] 3. Write the chooser and the Mode_Guide's S1 sections in `add-multitenancy` (design "The Mode_Guide", "The chooser"; after task 2)
+- [x] 3.1 Add the Gate and the chooser to `add-multitenancy/SKILL.md`
   - Put the Gate directly after `# Add Multitenancy` (line 7). The blockquote (lines 9–15, which
     holds ES-9) and the "See `/manage-scope` …" line stay byte for byte. The design says line 16;
     at `3cb4a00` it is line 17, after a blank line 16.
@@ -182,14 +182,14 @@
     same render made on `origin/main`, apart from the Gate.
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3, 2.4, 2.5, 7.1, 9.3_
   - _Boundary: add-multitenancy/SKILL.md_
-- [ ] 3.2 Add the Gate and TS-A to `add-multitenancy/references/multitenancy.instructions.md`
+- [x] 3.2 Add the Gate and TS-A to `add-multitenancy/references/multitenancy.instructions.md`
   - Gate by S4. At I-A(11), in a new Engine passage: TS-A, and then "To choose between scopes,
     Customer_Tenants and a project per customer, see the skill's `SKILL.md`." (a link to
     `../SKILL.md`).
   - Done when: FT holds for the file.
   - _Requirements: 1.1, 9.3_
   - _Boundary: add-multitenancy/references/multitenancy.instructions.md_
-- [ ] 3.3 Write the Mode_Guide `add-multitenancy/references/engine-customer-tenants.instructions.md` (S1 sections)
+- [x] 3.3 Write the Mode_Guide `add-multitenancy/references/engine-customer-tenants.instructions.md` (S1 sections)
   - Lines in order:
     - first line `<!-- buildpad-backend-file: engine -->`;
     - the Gate;
@@ -212,8 +212,8 @@
   - _Requirements: 1.1, 2.4, 7.1, 7.2, 7.3, 8.2 (the §3 sentence only; 8.2 closes in 10.7)_
   - _Boundary: add-multitenancy/references/engine-customer-tenants.instructions.md_
 
-- [ ] 4. Add rule R15 to the Repository_Check, tests first (design "Repository_Check: rule R15"; after task 3)
-- [ ] 4.1 Write `tools/repo-check/test/tenancy.test.mjs` before the rule exists
+- [x] 4. Add rule R15 to the Repository_Check, tests first (design "Repository_Check: rule R15"; after task 3)
+- [x] 4.1 Write `tools/repo-check/test/tenancy.test.mjs` before the rule exists
   - Fixture texts only; no `SKILL.md` is committed under `tools/`. Cases, as the Testing Strategy
     lists them:
     - **`ts-altered`:** one character changed; a sentence added to the paragraph; wrapped over
@@ -241,7 +241,7 @@
     `lib/tenancy.mjs` does not exist yet (red).
   - _Requirements: 9.1, 9.2, 9.3, 1.1_
   - _Boundary: tools/repo-check/test/tenancy.test.mjs_
-- [ ] 4.2 Extend `guard.test.mjs` and `cli.test.mjs` before the rule exists
+- [x] 4.2 Extend `guard.test.mjs` and `cli.test.mjs` before the rule exists
   - `guard.test.mjs`:
     - `DESIGN_TEXTS` gains the 12 TS texts and the Tenancy check;
     - the count assertion keeps 18 `ES-` keys and adds 12 `TS-` keys;
@@ -257,7 +257,7 @@
   - Done when: the guard test passes, and the new CLI cases fail only for want of R15.
   - _Requirements: 9.2_
   - _Boundary: tools/repo-check/test/guard.test.mjs, tools/repo-check/test/cli.test.mjs_
-- [ ] 4.3 Implement `tools/repo-check/lib/tenancy.mjs`
+- [x] 4.3 Implement `tools/repo-check/lib/tenancy.mjs`
   - Interface as Components: `TENANCY`, `TENANCY_CHECK_TEXT`, `paragraphs(text)`,
     `sections(text)`, `tenancyFindings(files, data?)`.
   - `files` is `[{path, text, views: {engine, supabase}}]` from the views `check.mjs` already
@@ -267,7 +267,7 @@
   - Done when: `node --test tools/repo-check/test/tenancy.test.mjs` passes.
   - _Requirements: 9.2, 9.3, 1.1, 7.1_
   - _Boundary: tools/repo-check/lib/tenancy.mjs_
-- [ ] 4.4 Wire R15 into `tools/repo-check/check.mjs`
+- [x] 4.4 Wire R15 into `tools/repo-check/check.mjs`
   - `RULES` gains `R15`, and `if (want('R15')) add(tenancyFindings(textFiles, data))` is added.
   - The data comes from `<root>/tools/repo-check/tenancy-statements.json` and `tenancy-check.md`,
     as `skill-map.json` does (`dataDir`). A missing or non-JSON file exits 2 with its path when R15
@@ -284,8 +284,8 @@
   - _Requirements: 9.2_
   - _Boundary: tools/repo-check/check.mjs_
 
-- [ ] 5. S1 in the sign-in and session Skills (per-folder plan "Sign-in and session"; after task 4; parallel with 6, 7, 8)
-- [ ] 5.1 (P) `authentication-proxy` (replanned)
+- [x] 5. S1 in the sign-in and session Skills (per-folder plan "Sign-in and session"; after task 4; parallel with 6, 7, 8)
+- [x] 5.1 (P) `authentication-proxy` (replanned)
   - Gate in `SKILL.md` and in `references/authentication-proxy.instructions.md`.
   - `SKILL.md`: TS-A at I-A(18) §CRITICAL RULE, and at I-A(32) §Auth Routes.
   - Reference: TS-A at I-A(57) §Auth Routes, and at I-A(310–318) §Environment Variables (one copy
@@ -293,31 +293,31 @@
   - Done when: FT holds for `authentication-proxy`.
   - _Requirements: 1.1, 9.2, 9.3_
   - _Boundary: authentication-proxy/_
-- [ ] 5.2 (P) `create-api-route`
+- [x] 5.2 (P) `create-api-route`
   - `SKILL.md`: I-G, TS-A.
   - `references/engine-api-routes.instructions.md` (a whole-file Engine file): I-F after line 127
     (§Sign-in Routes), with TS-A and TS-N2 as plain paragraphs.
   - Done when: FT holds for `create-api-route`.
   - _Requirements: 1.1, 3.7, 7.1, 9.3_
   - _Boundary: create-api-route/_
-- [ ] 5.3 (P) `create-project`
+- [x] 5.3 (P) `create-project`
   - `SKILL.md`: TS-A at I-A(401–413) §Critical Rules, and at I-A(427–434) §Required Environment
     Variables.
   - `references/environment.instructions.md`: TS-A at I-A(101), and at I-A(109–116).
   - Done when: FT holds for `create-project`.
   - _Requirements: 1.1, 9.3_
   - _Boundary: create-project/_
-- [ ] 5.4 (P) `add-buildpad`, `add-mcp-server`
+- [x] 5.4 (P) `add-buildpad`, `add-mcp-server`
   - `add-buildpad/SKILL.md` and `add-mcp-server/SKILL.md`: I-G, TS-A each.
   - Done when: FT holds for both folders.
   - _Requirements: 1.1_
   - _Boundary: add-buildpad/SKILL.md, add-mcp-server/SKILL.md_
-- [ ] 5.5 (P) `buildpad-reference` (replanned)
+- [x] 5.5 (P) `buildpad-reference` (replanned)
   - Gate in `SKILL.md`; I-G, TS-A.
   - Done when: FT holds for `buildpad-reference`.
   - _Requirements: 1.1, 9.2_
   - _Boundary: buildpad-reference/_
-- [ ] 5.6 (P) `add-microapp`
+- [x] 5.6 (P) `add-microapp`
   - `SKILL.md`: TS-A at I-A(345) §Implementation Steps (engine@331-409), and at I-A(1057)
     §Deployment Automation (engine@1022-1060).
   - `references/app-urls-config.instructions.md`: TS-A at I-A(248).
@@ -326,8 +326,8 @@
   - _Requirements: 1.1, 9.3_
   - _Boundary: add-microapp/_
 
-- [ ] 6. S1 in the scope and structure Skills (per-folder plan "Mode_Guide and chooser" (`manage-scope`) and "Structure"; after task 4; parallel with 5, 7, 8)
-- [ ] 6.1 (P) `manage-scope` (separate Engine file set)
+- [x] 6. S1 in the scope and structure Skills (per-folder plan "Mode_Guide and chooser" (`manage-scope`) and "Structure"; after task 4; parallel with 5, 7, 8)
+- [x] 6.1 (P) `manage-scope` (separate Engine file set)
   - `SKILL.md`:
     - I-A(797), in §"Using `mcp_daas_items` with Scope" (engine@794-1433): TS-A, then TS-N0;
     - I-A(1092), in §Steps: TS-A.
@@ -336,39 +336,39 @@
   - Done when: FT holds for `manage-scope`.
   - _Requirements: 1.1, 2.3, 7.1, 9.3_
   - _Boundary: manage-scope/_
-- [ ] 6.2 (P) `create-collection`
+- [x] 6.2 (P) `create-collection`
   - `SKILL.md`: TS-A at I-A(162) §Standard Field Groups (engine@155-166), and at I-A(403) §Scope
     (engine@400-442).
   - `references/standard-fields.instructions.md`: TS-A at I-A(392).
   - Done when: FT holds for `create-collection`.
   - _Requirements: 1.1, 9.3_
   - _Boundary: create-collection/_
-- [ ] 6.3 (P) TS-A after the Gate in eight structure Skills with no anchor
+- [x] 6.3 (P) TS-A after the Gate in eight structure Skills with no anchor
   - In the `SKILL.md` of `create-rbac`, `create-workflow`, `add-cron`, `create-cron`,
     `hooks-extensions`, `create-service`, `add-files` and `grant-module-access`: I-G, TS-A, each in
     a new Engine passage directly after the existing Gate.
   - Done when: FT holds for each of the eight folders.
   - _Requirements: 1.1_
   - _Boundary: the eight SKILL.md files named_
-- [ ] 6.4 (P) `add-i18n`
+- [x] 6.4 (P) `add-i18n`
   - `SKILL.md`: TS-A at I-A(203–209) §Step 7.
   - `references/content-translations.instructions.md`: TS-A at I-A(834).
   - Done when: FT holds for `add-i18n`.
   - _Requirements: 1.1, 9.3_
   - _Boundary: add-i18n/_
-- [ ] 6.5 (P) `add-comments` (replanned)
+- [x] 6.5 (P) `add-comments` (replanned)
   - Gate in `SKILL.md`; I-G, TS-A.
   - Done when: FT holds for `add-comments`.
   - _Requirements: 1.1, 9.2_
   - _Boundary: add-comments/_
-- [ ] 6.6 (P) `create-form-builder` (replanned)
+- [x] 6.6 (P) `create-form-builder` (replanned)
   - Gate in `SKILL.md` and in `references/form-builder.instructions.md`.
   - `SKILL.md`: I-G, TS-A.
   - Reference: TS-A at I-A(95–97) §Multi-Tenancy / Scopes.
   - Done when: FT holds for `create-form-builder`.
   - _Requirements: 1.1, 9.2, 9.3_
   - _Boundary: create-form-builder/_
-- [ ] 6.7 (P) `daas-platform`
+- [x] 6.7 (P) `daas-platform`
   - `SKILL.md`: TS-A at I-A(92–105) §Environment Variables (engine@69-108).
   - `references/builtin-features.instructions.md`: TS-A at I-A(341).
   - `references/daas-api.instructions.md`: TS-A at I-A(151–155) §Authentication.
@@ -377,13 +377,13 @@
   - _Requirements: 1.1, 9.3_
   - _Boundary: daas-platform/_
 
-- [ ] 7. S1 in the people, planning, worker, test, debugging and review Skills (per-folder plan "People, planning, …"; after task 4; parallel with 5, 6, 8)
-- [ ] 7.1 (P) `add-users` (replanned)
+- [x] 7. S1 in the people, planning, worker, test, debugging and review Skills (per-folder plan "People, planning, …"; after task 4; parallel with 5, 6, 8)
+- [x] 7.1 (P) `add-users` (replanned)
   - Gate in `SKILL.md`. At I-A(142) §The Data Layer: TS-A, then TS-N1.
   - Done when: FT holds for `add-users`.
   - _Requirements: 1.1, 2.4, 6.1 (TS-A's half; the rest in 10.6), 7.1, 9.2, 9.3_
   - _Boundary: add-users/_
-- [ ] 7.2 (P) `spec-driven-development`, `create-feature`, `idea-refine` (replanned)
+- [x] 7.2 (P) `spec-driven-development`, `create-feature`, `idea-refine` (replanned)
   - The Gate goes in each `SKILL.md`.
   - `spec-driven-development`: TS-A at I-A(47–54) §DaaS-Specific Considerations.
   - `create-feature`: TS-A at I-A(39–45) §Planning Process, and at I-A(110) §Scope-Aware Context
@@ -394,12 +394,12 @@
   - Done when: FT holds for the three folders.
   - _Requirements: 1.1, 9.2, 9.3_
   - _Boundary: spec-driven-development/, create-feature/, idea-refine/_
-- [ ] 7.3 (P) `worker-messaging`
+- [x] 7.3 (P) `worker-messaging`
   - `SKILL.md`: I-G, TS-A. At I-P(213-218), directly after ES-14n: TS-N4.
   - Done when: FT holds for `worker-messaging`, and ES-14n is unchanged.
   - _Requirements: 1.1, 7.1, 7.2_
   - _Boundary: worker-messaging/_
-- [ ] 7.4 (P) `create-tests` and `agents`
+- [x] 7.4 (P) `create-tests` and `agents`
   - `create-tests/SKILL.md`: at I-A(159) §Authentication Setup (engine@154-208): TS-A, then the
     design's 7.3 text. One copy serves the anchor at 180, which is in the same section.
   - `agents/test-engineer.md`: at I-A(92–103) §DaaS-Specific Testing: TS-A and the 7.3 text.
@@ -407,7 +407,7 @@
   - Done when: FT holds for `create-tests` and `agents`.
   - _Requirements: 1.1, 7.3, 9.3_
   - _Boundary: create-tests/, agents/test-engineer.md, agents/security-auditor.md_
-- [ ] 7.5 (P) `debugging-and-error-recovery`, `security-and-hardening`, `references`
+- [x] 7.5 (P) `debugging-and-error-recovery`, `security-and-hardening`, `references`
   - `debugging-and-error-recovery/SKILL.md`: I-G, TS-A.
   - `security-and-hardening/SKILL.md`: TS-A at I-A(154–166) §DaaS-Specific Security
     (engine@141-171).
@@ -416,15 +416,15 @@
   - _Requirements: 1.1, 9.3_
   - _Boundary: debugging-and-error-recovery/SKILL.md, security-and-hardening/SKILL.md, references/security-checklist.md_
 
-- [ ] 8. S1 in the "not available only" Skills (per-folder plan "Not available only"; after task 4; parallel with 5, 6, 7)
-- [ ] 8.1 (P) `add-external-oauth`
+- [x] 8. S1 in the "not available only" Skills (per-folder plan "Not available only"; after task 4; parallel with 5, 6, 7)
+- [x] 8.1 (P) `add-external-oauth`
   - In §On an Engine project: XAppHub sign-in only (engine@40-231), directly after its first
     paragraph (line 48) and before Step 1: TS-A, then TS-N3. This copy also serves the anchor at
     77, which is in the same section.
   - Done when: FT holds for `add-external-oauth`.
   - _Requirements: 1.1, 3.8, 7.1, 9.3_
   - _Boundary: add-external-oauth/_
-- [ ] 8.2 (P) `migrate-to-engine`
+- [x] 8.2 (P) `migrate-to-engine`
   - `SKILL.md`:
     - at I-P(55-257), directly after the paragraph at lines 56–63: TS-A, then TS-N7;
     - at I-A(176) §Part B: TS-A (one copy serves 179, 188 and 200).
@@ -435,7 +435,7 @@
   - _Boundary: migrate-to-engine/_
 
 - [ ] 9. Prove S1 whole and release it (design Release plan, S1; after tasks 1 to 8)
-- [ ] 9.1 Run the whole-tree check and the S1 read-through on the integration branch
+- [x] 9.1 Run the whole-tree check and the S1 read-through on the integration branch
   - Run `node --test "tools/repo-check/test/*.test.mjs"`, `node tools/repo-check/check.mjs` (R15
     included) and the `baseline` job's command.
   - Then `node tools/repo-check/check.mjs --render <out>`, and the manual read-through for the 34
