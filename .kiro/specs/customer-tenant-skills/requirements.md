@@ -31,9 +31,10 @@
 >
 > No request was sent to any Engine, no database was read, and no agent was run against a skill.
 >
-> **Approval-gated:** Decisions TS-1 to TS-7 are open. Each has a recommended option. The
-> companions took in rows TD-2, TD-4, TD-5, TD-7 and TD-9 on 7 November as open Decisions of their
-> own, uncommitted on their branches.
+> **Approval-gated:** Decisions TS-1 to TS-7 were settled by the maintainer on 7 November 2026,
+> each as recommended, together with the companions' Decisions (Platform 1–21, its 18 matched to Engine 192's 15 (c);
+> Engine 192 1–16). The companions took in rows TD-2, TD-4, TD-5, TD-7 and TD-9 as Decisions of their own, now
+> settled. The requirements themselves are not yet approved.
 
 ## Introduction
 
@@ -132,7 +133,8 @@ Every skill in this repository teaches the opposite.
 
 ## Decisions
 
-All are **OPEN**. The recommendation is the drafter's. Nothing is settled.
+All are **SETTLED**: chosen by the maintainer on 7 November 2026 from the cross-spec decision
+sheet, each as recommended.
 
 **TS-1: the Tenancy_Signal.**
 - (a) A member `tenancy` in `.buildpad/project.json` (`"scope"` or `"customer-tenants"`). The
@@ -144,7 +146,7 @@ All are **OPEN**. The recommendation is the drafter's. Nothing is settled.
 - (c) (a), and where it is absent, ask the developer once and record the answer in
   `.buildpad/tenancy-answer.json`, as SD-1 does for the backend.
 
-**Recommended: (c).** (b) cannot be the signal for an agent: the backend gate already forbids a
+**Settled: (c)**, as recommended. (b) cannot be the signal for an agent: the backend gate already forbids a
 Skill to open an environment file, and a Kit written before the flag was turned on holds neither.
 (b) may still exist for the app's runtime code. Needs TD-2.
 
@@ -155,7 +157,7 @@ Skill to open an environment file, and a Kit written before the flag was turned 
   a few Tenancy_Statements copied into the Engine passages that would otherwise direct one-tenant
   code. Each statement points to the guide.
 
-**Recommended: (b).** About 25 folders mention the one tenant. Most need one sentence that
+**Settled: (b)**, as recommended. About 25 folders mention the one tenant. Most need one sentence that
 redirects, not a second body of text. (a) would double the marking work of `backend-aware-skills`,
 and the Platform would have nothing to strip.
 
@@ -164,7 +166,7 @@ and the Platform would have nothing to strip.
 - (b) Now, the chooser and the "not available" text only (Requirements 1, 2 and 7). The rest lands
   when TD-1 and TD-3 are met, each passage behind its dependency.
 
-**Recommended: (b).** Today an agent asked for "one schema per customer" has nothing to stop it
+**Settled: (b)**, as recommended. Today an agent asked for "one schema per customer" has nothing to stop it
 building a substitute, such as a host credential in the app, a project per customer by hand, or a
 fake tenant column.
 
@@ -175,7 +177,7 @@ fake tenant column.
   - none: it signs the person out and says they belong to no customer.
 - (b) It always shows the chooser.
 
-**Recommended: (a).** A newly invited person has exactly one tenant, not yet entered. Asking them
+**Settled: (a)**, as recommended. A newly invited person has exactly one tenant, not yet entered. Asking them
 to choose from a list of one is friction, and the switch is what enters the profile.
 
 **TS-5: where the app keeps the Current_Tenant.**
@@ -183,7 +185,7 @@ to choose from a list of one is friction, and the switch is what enters the prof
   claim). The app keeps the last choice only as a preference for the chooser.
 - (b) It stores the chosen id in its own cookie or storage and sends it on requests.
 
-**Recommended: (a).** The Engine takes the tenant from the token alone. A second copy can only
+**Settled: (a)**, as recommended. The Engine takes the tenant from the token alone. A second copy can only
 disagree with it.
 
 **TS-6: an app that wants customers to sign themselves up ("create your company").**
@@ -192,14 +194,14 @@ disagree with it.
 - (b) A Skill directs a call to a Platform API that the app's server may call with a project-scoped
   credential.
 
-**Recommended: (a) now, and raise TD-7.** Neither companion draft offers (b). The only Engine door
+**Settled: (a) now, and raise TD-7**, as recommended. Neither companion draft offers (b). The only Engine door
 is the host credential, which the Platform's draft criterion 6.3 keeps from every app.
 
 **TS-7: role identifiers across customers.**
 - (a) The Skills may name a role by the identifier it has in the Blueprint.
 - (b) The Skills look a role up by name in the Current_Tenant.
 
-**Recommended: (a).** The two seeded roles and the two project roles have fixed identifiers in
+**Settled: (a)**, as recommended. The two seeded roles and the two project roles have fixed identifiers in
 every tenant (entries 72 and 199). A template copy keeps the identifier of every role, policy,
 permission rule and grant (Engine `src/domain/governance/feature/tenant/template/document.go:235-245`,
 `rows.go:262-283`), and entry 192's draft Decision 9 has a Release match them by identifier. A
@@ -333,8 +335,12 @@ it, so that customers do not drift from the app or lose data.
    out, migrate, roll out, then remove. It shall also say that a Rollout refuses or skips a
    customer with Drift unless the member overrides it (entry 192 Decisions 4 and 6, as settled).
 4. `add-cron` shall say that a customer created from the Blueprint receives its cron jobs inactive
-   (entry 135), and whatever entry 192 settles about a Release activating them (TD-4).
-5. `create-rbac` shall name roles as TS-7 settles.
+   (entry 135). It shall also say a Release leaves them inactive unless the member rolls it out with
+   `cron_status: "as_template"`, which gives every managed job the Blueprint's status (entry 192
+   Decision 14 (d)), so a job meant to run in every customer is started that way after the canaries
+   pass.
+5. `create-rbac` shall name a role made in the Blueprint by its identifier, which every customer
+   created from the Blueprint shares (TS-7 (a)), never by its name, which a customer may change.
 6. `spec-driven-development`, `create-feature` and `idea-refine` shall say, where they plan
    tenancy, that in this mode a plan names what is per customer (rows, people, settings) and what
    is shared through the Blueprint (structure, access model, automation).
@@ -434,15 +440,15 @@ What this repository needs from elsewhere before a criterion can hold. Statuses 
 
 | ID | Owner | What it is | Needed by | Status when read |
 |---|---|---|---|---|
-| TD-1 | Platform | `project-tenants` approved, and its Wave 1 shipped: the flag, the Customers page and the creation of Customer_Tenants | 2.3, 3, 4, 5, 6 | Unmet. Requirements only, Decisions 1–15 open, not approved |
-| TD-2 | Platform | The Tenancy_Signal written into every Kit (`.buildpad/project.json` `tenancy`) and reported by `get_project_detail` (TS-1) | 1.1 | Unmet. Taken into the draft on 7 November as its Decision 19 (open), and its criterion 11.1 no longer names `BUILDPAD_TENANCY=schema`. A Kit already downloaded keeps the value it was written with |
-| TD-3 | Engine | Entry 192 applied: Releases, Rollouts, Drift, and destructive changes behind `allow_destructive` | 4.2, 5.2, 5.3 | Unmet. Requirements only, Decisions 1–16 open (amended 7 November) |
-| TD-4 | Engine | Whether a Release activates cron jobs that a creation from the template copied inactive | 5.4 | Open as entry 192's Decision 14. Entry 135 copies cron jobs inactive (`template/document.go:169-172`). Recommended there: new jobs stay inactive unless a Rollout asks for `cron_status: "as_template"` |
-| TD-5 | Engine, Platform | Whether a template copy keeps a custom role's identifier (TS-7), and a mark by which an app can tell the Platform's own accounts in a customer from the customer's people | 5.5, 6.3 | Half met. A copy keeps role identifiers (see TS-7). The mark is open as the Platform draft's Decision 17, which recommends `provider = 'platform'` plus the fixed `admin@example.com`; `data-service-roles`, whose Platform slice has not shipped, is what would write that provider |
+| TD-1 | Platform | `project-tenants` approved, and its Wave 1 shipped: the flag, the Customers page and the creation of Customer_Tenants | 2.3, 3, 4, 5, 6 | Unmet. Requirements only, Decisions 1–21 settled 7 November; requirements not approved |
+| TD-2 | Platform | The Tenancy_Signal written into every Kit (`.buildpad/project.json` `tenancy`) and reported by `get_project_detail` (TS-1) | 1.1 | Unmet. Taken into the draft on 7 November as its Decision 19, settled (b), and its criterion 11.1 no longer names `BUILDPAD_TENANCY=schema`. A Kit already downloaded keeps the value it was written with |
+| TD-3 | Engine | Entry 192 applied: Releases, Rollouts, Drift, and destructive changes behind `allow_destructive` | 4.2, 5.2, 5.3 | Unmet. Requirements only, Decisions 1–16 settled 7 November; requirements not approved |
+| TD-4 | Engine | Whether a Release activates cron jobs that a creation from the template copied inactive | 5.4 | Settled as entry 192's Decision 14 (d). Entry 135 copies cron jobs inactive (`template/document.go:169-172`). New jobs stay inactive unless a Rollout asks for `cron_status: "as_template"` |
+| TD-5 | Engine, Platform | Whether a template copy keeps a custom role's identifier (TS-7), and a mark by which an app can tell the Platform's own accounts in a customer from the customer's people | 5.5, 6.3 | Half met. A copy keeps role identifiers (see TS-7). The mark is settled as the Platform draft's Decision 17 (a): `provider = 'platform'` plus the fixed `admin@example.com`; `data-service-roles`, whose Platform slice has not shipped, is what would write that provider |
 | TD-6 | `buildpad-ui` | SDK and templates that, in `customer-tenants` mode, send no `X-Tenant-Id` at sign-in, switch an Unbound_Session and replace the client's session with the switched pair | 3.1–3.4 | Unmet. No issue or spec found. `backend-aware-skills` PP-34 is the one-tenant counterpart, also unmet |
-| TD-7 | Platform | A way for an app's server to create a customer with a project-scoped credential, if wanted (TS-6) | 7.1 | Open as the Platform draft's Decision 20; recommended there: not offered now. Its criterion 6.3 keeps every host credential from apps |
+| TD-7 | Platform | A way for an app's server to create a customer with a project-scoped credential, if wanted (TS-6) | 7.1 | Settled as the Platform draft's Decision 20 (a): not offered now. Its criterion 6.3 keeps every host credential from apps |
 | TD-8 | Platform, Engine | Mapping a host name to a Customer_Tenant, so anonymous reads name the right tenant | 3.7, 7.1 | Planned as the Platform draft's Wave 2 (Decision 11 (b)) |
-| TD-9 | Platform, Engine | Which tenant an XAppHub first sign-in creates its account in, when a project has Customer_Tenants | 3.8, 7.1 | Open as the Platform draft's Decision 21; recommended there: not available while a project has customers. The Engine's `id_token` grant creates the first profile in the tenant `X-Tenant-Id` names (`external_sign_in.go:66-67`, `:98-100`), and only the Project_Tenant trusts the client id |
+| TD-9 | Platform, Engine | Which tenant an XAppHub first sign-in creates its account in, when a project has Customer_Tenants | 3.8, 7.1 | Settled as the Platform draft's Decision 21 (a): not available while a project has customers. The Engine's `id_token` grant creates the first profile in the tenant `X-Tenant-Id` names (`external_sign_in.go:66-67`, `:98-100`), and only the Project_Tenant trusts the client id |
 | TD-10 | Platform | Per-customer workers | 7.1, 7.2 | Out of scope of the draft (Decision 13 (a), Wave 3). The Engine already allows a `data` token per tenant (`docs/OPERATOR_UNATTENDED_SETUP.md:92-123`) |
 | TD-11 | Engine | That a refresh of a switched session stays bound to the tenant it was switched to | 3.3 | Met in code, untested: the switch issues a session in the named tenant and its refresh record keeps it through rotation (`tenant_switch.go:223`, `auth_service.go:383-387`, `refresh_rotation.go:183-193`). No route test switches and then refreshes |
 
