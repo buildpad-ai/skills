@@ -59,6 +59,8 @@ Quick reference for web application security. Use alongside the `security-and-ha
 - [ ] No password recovery flow and no password change through the Supabase client: neither is available on an Engine project, and an administrator resets a user's password in the Studio's Users module
 - [ ] An account that holds no role in the project's tenant is refused at password sign-in, and the application ends an XAppHub session of such an account: every user is given a role there when it is created, and an administrator gives one to each account that XAppHub sign-in creates
 - [ ] Account lockout after repeated failures (optional, with notification)
+
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 <!-- /buildpad-backend -->
 
 ## Authorization

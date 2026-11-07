@@ -37,6 +37,10 @@ backend's parts and copy no code from them; everything else holds for both. On a
 something is not available, tell the developer so and stop: do not build a substitute.
 <!-- backend-gate:end -->
 
+<!-- buildpad-backend: engine -->
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
+
+<!-- /buildpad-backend -->
 Use this when a Next.js/Amplify app needs to **offload a long-running task** to a
 background **worker**, or when one worker needs to **hand work to another worker**.
 Communication is over the project's **RabbitMQ** broker using a single, standard
@@ -214,6 +218,8 @@ main().catch((e) => { console.error(e); process.exit(1); });
 ### Reaching the data service from a worker
 
 On an Engine project a worker reaches the data API at `DAAS_URL`, the Engine_URL, and presents its own worker token, read from `DAAS_TOKEN`, as `Authorization: Bearer`; never the project's MCP token. The worker may create, read, update and delete the items of every collection a member creates, and may change no collection, field, relation, role, policy, permission, account or setting. Until the Engine accepts the worker token on its data API, a worker cannot reach the data API of an Engine project: tell the developer so and stop.
+
+On an Engine project with Customer_Tenants a worker acts in the Blueprint only, with the project's own worker token; a worker that acts in a customer's tenant is not available. Work that must run in every customer runs as stored code (cron jobs, hooks) built in the Blueprint, which each customer receives as it receives the structure. Tell the developer so and stop: never give a worker a customer's credential or a host credential.
 
 <!-- /buildpad-backend -->
 ## Step 4 — Hand off the contract to the other repo (REQUIRED)

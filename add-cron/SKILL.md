@@ -37,6 +37,10 @@ backend's parts and copy no code from them; everything else holds for both. On a
 something is not available, tell the developer so and stop: do not build a substitute.
 <!-- backend-gate:end -->
 
+<!-- buildpad-backend: engine -->
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
+
+<!-- /buildpad-backend -->
 A ready-made cron administration surface installed via the Buildpad CLI (Copy & Own — the code is copied into your project). It manages two records of DaaS's built-in scheduler — **jobs** (`daas_cron_jobs`: a JavaScript snippet, a cron schedule read in a timezone, a timeout and a memory limit) and **runs** (`daas_cron_history`: one row per execution, with its outcome, trigger, duration, error and console output).
 
 Two screens ship together:

@@ -100,6 +100,10 @@ For every function or component:
 - Test roles, policies, permissions and scope with users that hold different roles
 - On an Engine project an administrator creates every user who signs in with a password, through the Engine's user API (`POST /api/users` with an administrator's session) or the Studio's Users module, and gives the user a role in the project's tenant (`POST /api/users/:id/roles` with `role_id`, or the Users module). A user's first XAppHub sign-in creates that user's account, which holds no role until an administrator gives it one in the same way. An administrator resets a user's password, in the Studio's Users module.
 - Use `auth.setup.ts` to provision test users that way, each with a role in the project's tenant: an account with no role there is refused at sign-in
+
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
+
+In the mode `customer-tenants` tests sign in to the Blueprint, as ES-12 says. A test of a customer's path needs a customer made for testing on the Platform's Customers page; the pipeline holds that customer's test administrator's email and password as secrets, beside the test administrator's. A test never creates, suspends or deletes a customer.
 <!-- /buildpad-backend -->
 
 ## Output Format
