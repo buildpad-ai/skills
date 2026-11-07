@@ -1,0 +1,23 @@
+{
+  "feature_name": "customer-tenant-skills",
+  "created_at": "2026-11-07T00:00:00Z",
+  "updated_at": "2026-11-07T12:00:00Z",
+  "language": "en",
+  "phase": "requirements-generated",
+  "phase_note": "Written 2026-11-07 at the maintainer's request ('Draft cross-repo spec') as this repository's part of schema-isolated customer tenants. Companions, both requirements only and unapproved, written 2026-10-26: buildpad-platform .kiro/specs/project-tenants (branch spec/project-tenants 009ca176) and buildpad-daas-go entry 192 tenant-schema-fan-out (branch spec/tenant-schema-fan-out e88512d3). Read, not observed: this repository fbcde74 (origin/main 3cb4a00), Engine origin/main cf2da226, Platform origin/main 423f7d3d and docs/project-roles-live. 9 requirements; Decisions TS-1 to TS-7 OPEN, each with a recommendation; dependencies TD-1 to TD-11, of which TD-2, TD-7 and TD-9 are in neither companion draft. Lists what the companions must take in since 26 October. Written as untracked files; nothing committed. NOT YET APPROVED. design.md and tasks.md follow approval. Amended 2026-11-07 after both companions were amended (uncommitted on spec/project-tenants and spec/tenant-schema-fan-out): data-service-roles corrected to approved but its Platform slice unshipped; TS-1 (a) no longer has the Platform rewrite a downloaded Kit; TS-7 recommendation moved to (a) because a template copy keeps role ids; TD-3, TD-4, TD-5, TD-7, TD-9 and TD-11 restated against the companions' new Decisions and the Engine code.",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": false
+    },
+    "design": {
+      "generated": false,
+      "approved": false
+    },
+    "tasks": {
+      "generated": false,
+      "approved": false
+    }
+  },
+  "ready_for_implementation": false
+}
