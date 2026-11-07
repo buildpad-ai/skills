@@ -18,9 +18,9 @@
 > [Dependencies](#dependencies). [What the companion drafts must take in](#what-the-companion-drafts-must-take-in)
 > lists what has changed in the other two repositories since they were written.
 >
-> Status: **planned**. Written 2026-11-07 at the maintainer's request ("Draft cross-repo spec"),
-> before any change to a skill, requirements only. Nothing here is approved. design.md and tasks.md
-> follow approval.
+> Status: **requirements approved** 2026-11-07 by the maintainer ("Approve and design"). Written
+> 2026-11-07 at the maintainer's request ("Draft cross-repo spec"), before any change to a skill.
+> design.md was generated the same day and is not yet approved; tasks.md follows its approval.
 >
 > Read, not observed:
 > - this repository at `docs/xcrm-engine-mcp-lessons` `fbcde74` (`origin/main` `3cb4a00`, the
@@ -34,7 +34,7 @@
 > **Approval-gated:** Decisions TS-1 to TS-7 were settled by the maintainer on 7 November 2026,
 > each as recommended, together with the companions' Decisions (Platform 1–21, its 18 matched to Engine 192's 15 (c);
 > Engine 192 1–16). The companions took in rows TD-2, TD-4, TD-5, TD-7 and TD-9 as Decisions of their own, now
-> settled. The requirements themselves are not yet approved.
+> settled. The requirements themselves were approved on 7 November 2026.
 
 ## Introduction
 
