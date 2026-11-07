@@ -1,0 +1,256 @@
+{
+  "register": "CONTRIBUTING.md, section Tenancy statements",
+  "opening": "On an Engine project with Customer_Tenants",
+  "dependencies": {
+    "TD-1": "Platform project-tenants Wave 1 shipped: the flag, the Customers page, creating customers",
+    "TD-3": "Engine entry 192 applied, and the Platform's Releases (project-tenants Requirement 9) shipped",
+    "TD-7": "Customers that sign themselves up (Platform Decision 20 (b), a later spec)",
+    "TD-8": "A host name mapped to a customer (Platform Decision 11 (b), Wave 2)",
+    "TD-9": "XAppHub sign-in in a customer (Platform Decision 21 (b), Wave 2)",
+    "TD-10": "Workers per customer (Platform Decision 13, Wave 3)",
+    "TD-12": "Backup and restore of one customer (Platform Decision 14, Wave 3)",
+    "TD-13": "Open Studio into a customer (Platform Requirement 10, Wave 2)"
+  },
+  "met": [],
+  "anchors": [
+    {
+      "es": "ES-3",
+      "text": "NEXT_PUBLIC_BUILDPAD_TENANT_ID=<the project's tenant id>"
+    },
+    {
+      "es": "ES-4",
+      "text": "The requests that take their tenant from the header"
+    },
+    {
+      "es": "ES-5",
+      "text": "An account that holds no role in the project's tenant"
+    },
+    {
+      "es": "ES-7",
+      "text": "gives the user a role in the project's tenant"
+    },
+    {
+      "es": "ES-9",
+      "text": "the project is one tenant"
+    }
+  ],
+  "tenancyCheck": {
+    "file": "tools/repo-check/tenancy-check.md",
+    "in": [
+      "add-multitenancy/SKILL.md",
+      "add-multitenancy/references/engine-customer-tenants.instructions.md"
+    ]
+  },
+  "statements": [
+    {
+      "id": "TS-A",
+      "requires": [],
+      "until": [],
+      "text": "On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.",
+      "in": [
+        "add-multitenancy/SKILL.md",
+        "manage-scope/SKILL.md",
+        "authentication-proxy/SKILL.md",
+        "create-api-route/SKILL.md",
+        "create-project/SKILL.md",
+        "add-buildpad/SKILL.md",
+        "buildpad-reference/SKILL.md",
+        "add-microapp/SKILL.md",
+        "add-mcp-server/SKILL.md",
+        "create-collection/SKILL.md",
+        "create-rbac/SKILL.md",
+        "create-workflow/SKILL.md",
+        "add-cron/SKILL.md",
+        "create-cron/SKILL.md",
+        "hooks-extensions/SKILL.md",
+        "create-service/SKILL.md",
+        "add-i18n/SKILL.md",
+        "add-comments/SKILL.md",
+        "add-files/SKILL.md",
+        "create-form-builder/SKILL.md",
+        "grant-module-access/SKILL.md",
+        "daas-platform/SKILL.md",
+        "add-users/SKILL.md",
+        "spec-driven-development/SKILL.md",
+        "create-feature/SKILL.md",
+        "idea-refine/SKILL.md",
+        "worker-messaging/SKILL.md",
+        "create-tests/SKILL.md",
+        "debugging-and-error-recovery/SKILL.md",
+        "security-and-hardening/SKILL.md",
+        "add-external-oauth/SKILL.md",
+        "migrate-to-engine/SKILL.md",
+        "agents/test-engineer.md",
+        "agents/security-auditor.md",
+        "references/security-checklist.md",
+        "add-multitenancy/references/engine-customer-tenants.instructions.md"
+      ]
+    },
+    {
+      "id": "TS-B",
+      "requires": [
+        "TD-1"
+      ],
+      "until": [],
+      "text": "On an Engine project with Customer_Tenants the password sign-in names no tenant: the application's own server route sends it without `X-Tenant-Id`. When the session it answers is bound to no tenant, the same route lists the person's tenants with `GET /api/auth/tenants`, switches with `POST /api/auth/tenant`, and replaces the session's access and refresh tokens with the pair the switch answers. The application takes its current tenant from the session, never from the environment or from the request, and sends no tenant id on a request that carries a session.",
+      "in": [
+        "authentication-proxy/SKILL.md",
+        "authentication-proxy/references/authentication-proxy.instructions.md",
+        "create-api-route/references/engine-api-routes.instructions.md",
+        "create-project/SKILL.md",
+        "create-project/references/environment.instructions.md",
+        "add-buildpad/SKILL.md",
+        "buildpad-reference/SKILL.md",
+        "add-microapp/SKILL.md",
+        "add-mcp-server/SKILL.md",
+        "daas-platform/references/daas-api.instructions.md",
+        "create-tests/SKILL.md",
+        "add-multitenancy/references/engine-customer-tenants.instructions.md"
+      ]
+    },
+    {
+      "id": "TS-Cn",
+      "requires": [
+        "TD-1"
+      ],
+      "until": [
+        "TD-3"
+      ],
+      "text": "On an Engine project with Customer_Tenants collections, fields, relations, roles, policies, permissions, workflows, cron jobs, hooks and custom services are built in the Blueprint, through the project's MCP token or an administrator's session bound there, never in a customer's tenant. A customer receives them once, when it is created from the Blueprint. Releases are not available yet, so a change made in the Blueprint later reaches no customer that already exists: tell the developer so before changing anything a customer already holds.",
+      "in": [
+        "create-collection/SKILL.md",
+        "create-rbac/SKILL.md",
+        "create-workflow/SKILL.md",
+        "add-cron/SKILL.md",
+        "create-cron/SKILL.md",
+        "hooks-extensions/SKILL.md",
+        "create-service/SKILL.md",
+        "add-i18n/SKILL.md",
+        "add-comments/SKILL.md",
+        "add-files/SKILL.md",
+        "create-form-builder/SKILL.md",
+        "grant-module-access/SKILL.md",
+        "daas-platform/SKILL.md",
+        "add-multitenancy/references/engine-customer-tenants.instructions.md"
+      ]
+    },
+    {
+      "id": "TS-Cm",
+      "requires": [
+        "TD-3"
+      ],
+      "until": [],
+      "text": "On an Engine project with Customer_Tenants collections, fields, relations, roles, policies, permissions, workflows, cron jobs, hooks and custom services are built in the Blueprint, through the project's MCP token or an administrator's session bound there, never in a customer's tenant. A customer receives a change only when a Platform member publishes a Release of the Blueprint and rolls it out from the Platform's Customers page; never change a customer's structure through its own schema routes.",
+      "in": [
+        "create-collection/SKILL.md",
+        "create-rbac/SKILL.md",
+        "create-workflow/SKILL.md",
+        "add-cron/SKILL.md",
+        "create-cron/SKILL.md",
+        "hooks-extensions/SKILL.md",
+        "create-service/SKILL.md",
+        "add-i18n/SKILL.md",
+        "add-comments/SKILL.md",
+        "add-files/SKILL.md",
+        "create-form-builder/SKILL.md",
+        "grant-module-access/SKILL.md",
+        "daas-platform/SKILL.md",
+        "add-multitenancy/references/engine-customer-tenants.instructions.md"
+      ]
+    },
+    {
+      "id": "TS-N0",
+      "requires": [],
+      "until": [
+        "TD-1"
+      ],
+      "text": "On an Engine project with Customer_Tenants each customer would be a tenant of its own, which the Buildpad platform does not offer yet: no project can have Customer_Tenants until it does. Tell the developer so and stop. Build no substitute: no tenant column, no project made by hand for each customer, and no host credential in the application. Scopes inside the project's one tenant are available now, with the `manage-scope` skill.",
+      "in": [
+        "add-multitenancy/SKILL.md",
+        "manage-scope/SKILL.md",
+        "add-multitenancy/references/engine-customer-tenants.instructions.md"
+      ]
+    },
+    {
+      "id": "TS-N1",
+      "requires": [],
+      "until": [
+        "TD-7"
+      ],
+      "text": "On an Engine project with Customer_Tenants customers that sign themselves up are not available: only a Platform member creates a customer, on the Platform's Customers page, and no credential an application may hold can create one. Tell the developer so and stop: never put the host administrator's credential or a call to the Engine's tenant routes in the application.",
+      "in": [
+        "add-multitenancy/SKILL.md",
+        "add-users/SKILL.md",
+        "add-multitenancy/references/engine-customer-tenants.instructions.md"
+      ]
+    },
+    {
+      "id": "TS-N2",
+      "requires": [],
+      "until": [
+        "TD-8"
+      ],
+      "text": "On an Engine project with Customer_Tenants a public page of one customer is not available: a request without a session acts in the tenant `X-Tenant-Id` names, and nothing maps a host name to a customer yet. A page without a session reads the Blueprint only, through `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. Tell the developer so and stop: do not put a customer's tenant id in the application or let a visitor choose it.",
+      "in": [
+        "create-api-route/references/engine-api-routes.instructions.md",
+        "add-multitenancy/references/engine-customer-tenants.instructions.md"
+      ]
+    },
+    {
+      "id": "TS-N3",
+      "requires": [],
+      "until": [
+        "TD-9"
+      ],
+      "text": "On an Engine project with Customer_Tenants XAppHub sign-in is not available: its first sign-in would create the person's account in the Blueprint, outside every customer. Tell the developer so and stop: people sign in with a password, as the `add-multitenancy` skill's guide says.",
+      "in": [
+        "add-external-oauth/SKILL.md",
+        "add-multitenancy/references/engine-customer-tenants.instructions.md"
+      ]
+    },
+    {
+      "id": "TS-N4",
+      "requires": [],
+      "until": [
+        "TD-10"
+      ],
+      "text": "On an Engine project with Customer_Tenants a worker acts in the Blueprint only, with the project's own worker token; a worker that acts in a customer's tenant is not available. Work that must run in every customer runs as stored code (cron jobs, hooks) built in the Blueprint, which each customer receives as it receives the structure. Tell the developer so and stop: never give a worker a customer's credential or a host credential.",
+      "in": [
+        "worker-messaging/SKILL.md",
+        "add-multitenancy/references/engine-customer-tenants.instructions.md"
+      ]
+    },
+    {
+      "id": "TS-N5",
+      "requires": [],
+      "until": [
+        "TD-12"
+      ],
+      "text": "On an Engine project with Customer_Tenants a backup or a restore of one customer is not available: a project backup holds every customer, and restoring it rolls every customer back. Tell the developer so and stop: build no export or restore of a customer's tenant in the application.",
+      "in": [
+        "add-multitenancy/references/engine-customer-tenants.instructions.md"
+      ]
+    },
+    {
+      "id": "TS-N6",
+      "requires": [],
+      "until": [
+        "TD-13"
+      ],
+      "text": "On an Engine project with Customer_Tenants opening the Studio in a customer's tenant is not available from the Platform yet: it opens the Studio in the Blueprint. Tell the developer so and stop.",
+      "in": [
+        "add-multitenancy/references/engine-customer-tenants.instructions.md"
+      ]
+    },
+    {
+      "id": "TS-N7",
+      "requires": [],
+      "until": [],
+      "text": "On an Engine project with Customer_Tenants moving an application built on scopes into Customer_Tenants is not available: nothing moves a customer's rows, people or files out of the project's tenant into a tenant of its own. Tell the developer so and stop.",
+      "in": [
+        "migrate-to-engine/SKILL.md",
+        "add-multitenancy/references/engine-customer-tenants.instructions.md"
+      ]
+    }
+  ]
+}
