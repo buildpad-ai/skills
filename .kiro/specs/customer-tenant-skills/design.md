@@ -1,6 +1,6 @@
 # Design Document: Customer-Tenant Skills (skills repository part)
 
-> **Status.** Not approved. Phase 2 of a gated spec, written 2026-11-07 against the **approved**
+> **Status.** Approved 2026-11-07 by the maintainer ("Approve as recommended"). Phase 2 of a gated spec, written 2026-11-07 against the **approved**
 > requirements of this folder (9 requirements, 39 criteria; Decisions TS-1 to TS-7 settled as
 > recommended; the companions' Decisions settled: Platform 1–21, Engine entry 192 1–16). No skill
 > folder, `CONTRIBUTING.md`, test or tool is changed by this document; tasks.md follows approval.
@@ -996,12 +996,13 @@ maintainer or a companion.
    later change should bring ES copies to verbatim.
 2. **Statements in Engine passages versus `wording only` folders.** Nine folders of the Skill map hold
    no marker today, four of them may hold none (R4). Resolved by replanning them `BP` with the Gate
-   (Skill map confirmed); the same rows of `backend-aware-skills`' Skill map are amended. **(ask)**
-   that amending that approved spec's table is acceptable.
+   (Skill map confirmed); the same rows of `backend-aware-skills`' Skill map are amended. The maintainer
+   accepted amending that approved spec's table (2026-11-07).
 3. **MINOR and the Gate.** The CHANGELOG's rule makes any change to what a Supabase agent reads
    MAJOR; adding the Gate to 12 files changes what it reads, though R7 removes the Gate before
    comparing. The design follows 9.4 and R7 (MINOR) and names the Gate additions in the
-   Supabase-projects subsection. **(ask)** if the maintainer counts it as MAJOR.
+   Supabase-projects subsection. The maintainer
+   settled it as MINOR (2026-11-07).
 4. **`add-mobile-app`** names no tenant; dropped. **`create-cron`, `create-service`** build what
    TS-C names; added. Requirement 5.1's list is met and extended.
 5. **Who turns the feature on.** Requirement 2.3 says "a Platform member"; the Platform's criterion

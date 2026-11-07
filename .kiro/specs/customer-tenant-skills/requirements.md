@@ -20,7 +20,7 @@
 >
 > Status: **requirements approved** 2026-11-07 by the maintainer ("Approve and design"). Written
 > 2026-11-07 at the maintainer's request ("Draft cross-repo spec"), before any change to a skill.
-> design.md was generated the same day and is not yet approved; tasks.md follows its approval.
+> design.md was generated and approved the same day; tasks.md follows.
 >
 > Read, not observed:
 > - this repository at `docs/xcrm-engine-mcp-lessons` `fbcde74` (`origin/main` `3cb4a00`, the
