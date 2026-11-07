@@ -3,7 +3,8 @@
 > **Status.** Approved 2026-11-07 by the maintainer ("Approve as recommended"). Phase 2 of a gated spec, written 2026-11-07 against the **approved**
 > requirements of this folder (9 requirements, 39 criteria; Decisions TS-1 to TS-7 settled as
 > recommended; the companions' Decisions settled: Platform 1–21, Engine entry 192 1–16). No skill
-> folder, `CONTRIBUTING.md`, test or tool is changed by this document; tasks.md follows approval.
+> folder, `CONTRIBUTING.md`, test or tool is changed by this document. tasks.md was generated on
+> 2026-11-07 and is not yet approved.
 >
 > **Revisions read (read, not run).**
 > - This repository: worktree branch `spec/customer-tenant-skills`, cut from `origin/main` `3cb4a00`
@@ -1041,8 +1042,9 @@ maintainer or a companion.
     instead). TS-A says the guide replaces ES-5 in this mode; ES-5 stays verbatim (9.3).
 17. **Removing a Platform account in a customer** is left to the Platform's design (its Decision 17).
     The skills tell apps not to offer it (P-9). **(ask, Platform design)**.
-18. **TD-11 is untested.** The switch-and-refresh path the guide relies on has no route test in the
-    Engine; a regression would bind a refreshed session elsewhere. **(ask, Engine)** for a test; entry 192's design lists it among its open items.
+18. **TD-11's test.** Thought untested when this design was written; entry 192's tasks found that
+    `src/api/tenant_token_route_test.go` `TestAPersonListsAndSwitchesTheirTenants` already switches
+    and then refreshes at both doors. Entry 192's task 18.2 runs a negative control against it.
 
 ## Supporting References
 

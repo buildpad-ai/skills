@@ -20,7 +20,8 @@
 >
 > Status: **requirements approved** 2026-11-07 by the maintainer ("Approve and design"). Written
 > 2026-11-07 at the maintainer's request ("Draft cross-repo spec"), before any change to a skill.
-> design.md was generated and approved the same day; tasks.md follows.
+> design.md was generated and approved the same day, and tasks.md was generated the same day (not
+> yet approved).
 >
 > Read, not observed:
 > - this repository at `docs/xcrm-engine-mcp-lessons` `fbcde74` (`origin/main` `3cb4a00`, the
@@ -450,7 +451,7 @@ What this repository needs from elsewhere before a criterion can hold. Statuses 
 | TD-8 | Platform, Engine | Mapping a host name to a Customer_Tenant, so anonymous reads name the right tenant | 3.7, 7.1 | Planned as the Platform draft's Wave 2 (Decision 11 (b)) |
 | TD-9 | Platform, Engine | Which tenant an XAppHub first sign-in creates its account in, when a project has Customer_Tenants | 3.8, 7.1 | Settled as the Platform draft's Decision 21 (a): not available while a project has customers. The Engine's `id_token` grant creates the first profile in the tenant `X-Tenant-Id` names (`external_sign_in.go:66-67`, `:98-100`), and only the Project_Tenant trusts the client id |
 | TD-10 | Platform | Per-customer workers | 7.1, 7.2 | Out of scope of the draft (Decision 13 (a), Wave 3). The Engine already allows a `data` token per tenant (`docs/OPERATOR_UNATTENDED_SETUP.md:92-123`) |
-| TD-11 | Engine | That a refresh of a switched session stays bound to the tenant it was switched to | 3.3 | Met in code, untested: the switch issues a session in the named tenant and its refresh record keeps it through rotation (`tenant_switch.go:223`, `auth_service.go:383-387`, `refresh_rotation.go:183-193`). No route test switches and then refreshes |
+| TD-11 | Engine | That a refresh of a switched session stays bound to the tenant it was switched to | 3.3 | Met, and tested: the switch issues a session in the named tenant and its refresh record keeps it through rotation (`tenant_switch.go:223`, `auth_service.go:383-387`, `refresh_rotation.go:183-193`); `src/api/tenant_token_route_test.go` `TestAPersonListsAndSwitchesTheirTenants` switches and then refreshes (found 2026-11-07 by entry 192's tasks) |
 
 ## What the companion drafts must take in
 
