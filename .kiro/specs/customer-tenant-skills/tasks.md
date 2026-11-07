@@ -4,7 +4,7 @@
 > (9 requirements, 39 criteria; Decisions TS-1 to TS-7 settled) and the approved `design.md`
 > (approved 2026-11-07, "Approve as recommended": the nine folders replanned `RW` to `BP` with the
 > Gate, amending `backend-aware-skills`' Skill map rows; every stage a MINOR release). Generated
-> 2026-11-07; not yet approved.
+> and approved 2026-11-07.
 >
 > **Names.** Stages S1, S2, S3 (design T3); statements TS-A, TS-B, TS-Cn, TS-Cm, TS-N0 to TS-N7
 > (T4); insertion points I-A(n), I-G, I-P(a–b), I-F (T7); Mode_Guide sections §1 to §12; rule R15

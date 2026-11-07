@@ -3,8 +3,8 @@
 > **Status.** Approved 2026-11-07 by the maintainer ("Approve as recommended"). Phase 2 of a gated spec, written 2026-11-07 against the **approved**
 > requirements of this folder (9 requirements, 39 criteria; Decisions TS-1 to TS-7 settled as
 > recommended; the companions' Decisions settled: Platform 1–21, Engine entry 192 1–16). No skill
-> folder, `CONTRIBUTING.md`, test or tool is changed by this document. tasks.md was generated on
-> 2026-11-07 and is not yet approved.
+> folder, `CONTRIBUTING.md`, test or tool is changed by this document. tasks.md was generated and
+> approved on 2026-11-07.
 >
 > **Revisions read (read, not run).**
 > - This repository: worktree branch `spec/customer-tenant-skills`, cut from `origin/main` `3cb4a00`
