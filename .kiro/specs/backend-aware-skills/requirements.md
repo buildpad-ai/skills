@@ -658,6 +658,16 @@ the maintainer's approval (see [Skill-map corrections, 16 October 2026](#skill-m
 the rows `worker-messaging`, `grant-module-access` and `references`, and the treatment of the two
 microfrontend Skills while PP-35 is unmet.
 
+Amended 7 November 2026 by `customer-tenant-skills` (its design, section "Skill map confirmed";
+accepted by the maintainer 2026-11-07): the rows `add-multitenancy`, `create-form-builder`,
+`idea-refine`, `spec-driven-development`, `add-comments`, `add-users`, `authentication-proxy`,
+`buildpad-reference` and `create-feature` become *partial* and "both paths, chosen by backend;
+Engine passages for Customer_Tenants (customer-tenant-skills)", because each now holds Engine
+passages for Customer_Tenants and so the Gate. As the amended table reads, with the 20 unchanged
+folders: 69 folders; Dependence: core 3, partial 34, wording only 7, none 25; plans in
+`tools/repo-check/skill-map.json`: BP 33, EF 3, US 1, NY 2, RW 8, RW+G 2, UC 20. The Counts line
+below is kept as the record of 16 October 2026.
+
 | Folder | Dependence | Treatment | Size |
 |---|---|---|---|
 | `add-external-oauth` | core | says unavailable on the Engine and stops | small |
@@ -670,14 +680,14 @@ microfrontend Skills while PP-35 is unmet.
 | `add-microapp` | partial | both paths, chosen by backend | medium |
 | `add-microfrontend` | partial | both paths, chosen by backend; on the Engine, not yet available while Decision Y's PP-35 is unmet (4.7) | medium |
 | `add-microfrontend-zones` | partial | both paths, chosen by backend; on the Engine, not yet available while Decision Y's PP-35 is unmet (4.7) | small |
-| `add-users` | partial | reworded to be true for both | small |
+| `add-users` | partial | both paths, chosen by backend; Engine passages for Customer_Tenants (customer-tenant-skills) | small |
 | `add-workflows` | partial | both paths, chosen by backend | small |
 | `agents` | partial | both paths, chosen by backend | small |
-| `authentication-proxy` | partial | reworded to be true for both | small |
-| `buildpad-reference` | partial | reworded to be true for both | small |
+| `authentication-proxy` | partial | both paths, chosen by backend; Engine passages for Customer_Tenants (customer-tenant-skills) | small |
+| `buildpad-reference` | partial | both paths, chosen by backend; Engine passages for Customer_Tenants (customer-tenant-skills) | small |
 | `create-collection` | partial | both paths, chosen by backend | medium |
 | `create-cron` | partial | both paths, chosen by backend | medium |
-| `create-feature` | partial | reworded to be true for both | small |
+| `create-feature` | partial | both paths, chosen by backend; Engine passages for Customer_Tenants (customer-tenant-skills) | small |
 | `create-project` | partial | both paths, chosen by backend | medium |
 | `create-rbac` | partial | both paths, chosen by backend | medium |
 | `create-service` | partial | both paths, chosen by backend | medium |
@@ -691,22 +701,22 @@ microfrontend Skills while PP-35 is unmet.
 | `references` | partial | both paths, chosen by backend (amended 16 October 2026) | small |
 | `relational-permissions` | partial | both paths, chosen by backend | small |
 | `security-and-hardening` | partial | both paths, chosen by backend | small |
-| `add-multitenancy` | wording only | reworded to be true for both | small |
+| `add-multitenancy` | partial | both paths, chosen by backend; Engine passages for Customer_Tenants (customer-tenant-skills) | small |
 | `buildpad-steering-custom` | wording only | reworded to be true for both | small |
 | `context-engineering` | wording only | reworded to be true for both | small |
-| `create-form-builder` | wording only | reworded to be true for both | small |
-| `idea-refine` | wording only | reworded to be true for both | small |
+| `create-form-builder` | partial | both paths, chosen by backend; Engine passages for Customer_Tenants (customer-tenant-skills) | small |
+| `idea-refine` | partial | both paths, chosen by backend; Engine passages for Customer_Tenants (customer-tenant-skills) | small |
 | `incremental-implementation` | wording only | reworded to be true for both | small |
 | `performance-optimization` | wording only | reworded to be true for both | none |
 | `planning-and-task-breakdown` | wording only | reworded to be true for both | small |
 | `review-code` | wording only | reworded to be true for both | small |
-| `spec-driven-development` | wording only | reworded to be true for both | small |
+| `spec-driven-development` | partial | both paths, chosen by backend; Engine passages for Customer_Tenants (customer-tenant-skills) | small |
 | `subagent-delegation` | wording only | reworded to be true for both | small |
 | `buildpad-steering` | none | reworded to be true for both | small |
 | `worker-messaging` | none | both paths, chosen by backend, with an Engine passage only (amended 16 October 2026) | small |
 | `add-mobile-app` | none | new skill, true for both kinds of project (wraps the deployed web app; no backend-specific step) | small |
 | `add-mcp-server` | none | new skill, true for both kinds of project (the MCP route forwards the caller's own token to the data API; no backend-specific step) | small |
-| `add-comments` | none | new skill, true for both kinds of project (stored code uses only `services.items`, `services.custom` and `services.mail`; no backend-specific step) | small |
+| `add-comments` | partial | both paths, chosen by backend; Engine passages for Customer_Tenants (customer-tenant-skills) | small |
 | `migrate-to-engine` | partial | new skill, both paths, chosen by backend: on an Engine project it ports the automation and app code of a project moved from Supabase; on a Supabase project it says the skill applies after the move and stops | medium |
 | `add-ai-chat` | none | new skill, true for both kinds of project (the chat talks only to the Chocolate Factory agent, never to the data API; no backend-specific step) | small |
 

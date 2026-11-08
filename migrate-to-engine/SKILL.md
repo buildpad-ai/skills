@@ -61,6 +61,10 @@ files and the records. Two things are left, and this skill does both:
 - **Part A, automation:** each hook, cron job or custom service the Engine could not run as it was.
 - **Part B, app code:** every place where the app still talks to Supabase.
 
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
+
+On an Engine project with Customer_Tenants moving an application built on scopes into Customer_Tenants is not available: nothing moves a customer's rows, people or files out of the project's tenant into a tenant of its own. Tell the developer so and stop.
+
 Removing what the Engine lacks is the work of this skill. Where a step below says a feature is not
 available on an Engine project, remove its code, tell the developer what you removed and what takes
 its place, build no substitute, and go on with the next step.
@@ -237,6 +241,8 @@ On an Engine project the data API's address is the Engine_URL, which both `NEXT_
   and the tests, and fix what fails. Sign in as a moved user with their old password, and read and
   write a record of each collection the app uses. Report to the developer what changed, what was
   removed, and what is left for cut-over.
+
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
 ## Permission rules that change meaning
 

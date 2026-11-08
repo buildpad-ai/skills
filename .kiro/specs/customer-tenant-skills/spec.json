@@ -1,0 +1,23 @@
+{
+  "feature_name": "customer-tenant-skills",
+  "created_at": "2026-11-07T00:00:00Z",
+  "updated_at": "2026-11-07T16:30:00Z",
+  "language": "en",
+  "phase": "tasks-generated",
+  "phase_note": "Written 2026-11-07 at the maintainer's request ('Draft cross-repo spec') as this repository's part of schema-isolated customer tenants. Companions, both requirements only and unapproved, written 2026-10-26: buildpad-platform .kiro/specs/project-tenants (branch spec/project-tenants 009ca176) and buildpad-daas-go entry 192 tenant-schema-fan-out (branch spec/tenant-schema-fan-out e88512d3). Read, not observed: this repository fbcde74 (origin/main 3cb4a00), Engine origin/main cf2da226, Platform origin/main 423f7d3d and docs/project-roles-live. 9 requirements; Decisions TS-1 to TS-7 OPEN, each with a recommendation; dependencies TD-1 to TD-11, of which TD-2, TD-7 and TD-9 are in neither companion draft. Lists what the companions must take in since 26 October. Written as untracked files; nothing committed. NOT YET APPROVED. design.md and tasks.md follow approval. Amended 2026-11-07 after both companions were amended (uncommitted on spec/project-tenants and spec/tenant-schema-fan-out): data-service-roles corrected to approved but its Platform slice unshipped; TS-1 (a) no longer has the Platform rewrite a downloaded Kit; TS-7 recommendation moved to (a) because a template copy keeps role ids; TD-3, TD-4, TD-5, TD-7, TD-9 and TD-11 restated against the companions' new Decisions and the Engine code. DECISIONS SETTLED 2026-11-07 by the maintainer from the cross-spec decision sheet: TS-1 to TS-7 as recommended, with Platform 1-21 (18 matched to Engine 15 (c)) and Engine 192 1-16. Criteria 5.4 (cron status per entry 192 Decision 14 (d)) and 5.5 (roles by identifier, TS-7 (a)) restated; TD-1 to TD-5, TD-7 and TD-9 restated against the settled companions. Requirements not yet approved. REQUIREMENTS APPROVED 2026-11-07 by the maintainer ('Approve and design'); design.md follows. DESIGN GENERATED 2026-11-07 (design.md), not approved: Tenancy check (tools/repo-check/tenancy-check.md) in add-multitenancy/SKILL.md and the Mode_Guide; record file .buildpad/tenancy-answer.json; Tenancy_Statements TS-A, TS-B, TS-Cn, TS-Cm, TS-N0 to TS-N7 with a When column; new Repository_Check rule R15 with tools/repo-check/tenancy-statements.json; stages S1 (now: Requirements 1, 2, 7, 9), S2 (TD-1), S3 (TD-3), each a MINOR release; Skill map confirmed (add-mobile-app dropped, create-cron and create-service added, 9 folders replanned RW to BP); a Companion contract assumed section (P-1 to P-18, E-1 to E-14, X-1 to X-12, X rows verified at buildpad-daas-go origin/main 9bf9d457); 18 issues, 8 asking the maintainer or a companion design. requirements.md header restated as approved. DESIGN APPROVED 2026-11-07 by the maintainer ('Approve as recommended'): nine folders replanned RW to BP with the Gate, amending backend-aware-skills' Skill map rows; the release is MINOR. tasks.md follows. TASKS GENERATED 2026-11-07 (tasks.md), not approved: S1 tasks 1 to 9 in full (1 the nine skill-map.json rows RW to BP and the matching backend-aware-skills Skill map rows; 2 tenancy-check.md, tenancy-statements.json and the CONTRIBUTING register, docs test first; 3 the chooser and Mode_Guide sections 1 to 4 and 9; 4 rule R15 in lib/tenancy.mjs with tenancy.test.mjs, guard and cli tests written first; 5 to 8 TS-A, TS-N0 to TS-N7 and the 7.3 text in 34 folders; 9 whole-tree check, read-through, CHANGELOG, README install tag and tag v9.1.0, provisional); S1 merges to main as one pull request from an integration branch, because R15 has no per-folder switch. S2 task 10 gated on TD-1 (with the Platform's Requirement 11 / Decision 19 kit member recorded) and S3 task 11 gated on TD-3, each opened by a gate sub-task that reconciles the companion contract rows; deferred task 12 for TD-6 to TD-10, TD-12, TD-13. Every one of the 39 criteria is traced to a task. Written uncommitted on spec/customer-tenant-skills. TASKS APPROVED 2026-11-07 by the maintainer ('Approve the tasks'); ready for implementation.",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true
+}

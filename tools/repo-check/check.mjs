@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Repository_Check (design, Requirement 7): runs R1 to R14 over the checked set.
+// Repository_Check (design, Requirement 7): runs R1 to R15 over the checked set.
 //
 //   node tools/repo-check/check.mjs [--root DIR] [--baseline-ref v1.0.0] [--skill-map FILE]
 //                                   [--tag TAG] [--only R1,R2,...] [--render OUT_DIR]
@@ -24,8 +24,9 @@ import { BaselineError, assertRef, readAtRef, supabaseViewFindings, nameFindings
 import { frontMatterIssues, frontMatterYamlIssues } from './lib/frontmatter.mjs';
 import { mapIssues, validateSkillMap, templateIssues, readmeIssues, SKILL_MAP_PATH } from './lib/map.mjs';
 import { parseChangeFile, releaseIssues, convertedFindings, CHANGE_DIR, CONVERTED_DIR } from './lib/release.mjs';
+import { tenancyFindings } from './lib/tenancy.mjs';
 
-export const RULES = ['R1', 'R2', 'R3', 'R4', 'R5', 'R6a', 'R6b', 'R7', 'R8', 'R9', 'R10', 'R11', 'R12', 'R13', 'R14'];
+export const RULES = ['R1', 'R2', 'R3', 'R4', 'R5', 'R6a', 'R6b', 'R7', 'R8', 'R9', 'R10', 'R11', 'R12', 'R13', 'R14', 'R15'];
 const USAGE = 'usage: node tools/repo-check/check.mjs [--root DIR] [--baseline-ref v1.0.0] [--skill-map FILE] [--tag TAG] [--only R1,R2,...] [--render OUT_DIR]';
 
 class UsageError extends Error {}
@@ -186,6 +187,21 @@ function runCheck(opts, { stdout, env }) {
       throw new UsageError(`skill map ${skillMapPath} is not JSON: ${e.message}`);
     }
   }
+  // R15's data (customer-tenant-skills): the checked root's own copies, as for the Skill map.
+  let tenancy = null;
+  if (want('R15')) {
+    const statementsPath = path.join(dataDir, 'tenancy-statements.json');
+    const checkPath = path.join(dataDir, 'tenancy-check.md');
+    if (!existsSync(statementsPath)) throw new UsageError(`tenancy statements ${statementsPath} not found`);
+    let data;
+    try {
+      data = readJson(statementsPath);
+    } catch (e) {
+      throw new UsageError(`tenancy statements ${statementsPath} is not JSON: ${e.message}`);
+    }
+    if (!existsSync(checkPath)) throw new UsageError(`tenancy check ${checkPath} not found`);
+    tenancy = { data, checkText: readFileSync(checkPath, 'utf8') };
+  }
   const convertedDir = path.join(dataDir, 'converted');
   const converted = new Set(existsSync(convertedDir) ? readdirSync(convertedDir).filter((n) => !n.startsWith('.')) : []);
   const changeDir = path.join(dataDir, 'supabase-view-changes');
@@ -326,6 +342,8 @@ function runCheck(opts, { stdout, env }) {
   }
 
   if (want('R12')) add(runContractTest());
+
+  if (want('R15')) add(tenancyFindings(textFiles, tenancy.data, tenancy.checkText));
 
   if (want('R13') && opts.tag) add(convertedFindings(skillMap, converted));
 

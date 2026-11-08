@@ -52,6 +52,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=buildpad-engine-public-anon-key
 NEXT_PUBLIC_BUILDPAD_TENANT_ID=<the project's tenant id>
 ```
 
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
+
 Remove the service-role key variable from every environment file, from the deployment's settings
 and from CI, and remove every line of code that reads it. `BUILDPAD_DAAS_URL`, where the app sets
 it, is the Engine_URL too. A variable that held the old project's Supabase address under another
@@ -104,6 +106,8 @@ Keep the session refresh in the middleware and the sign-out: both work through t
 Sign-out ends the user's sessions on every device. An account that holds no role in the project's
 tenant is refused at sign-in: the move lists those accounts, and an administrator gives each a role.
 Users keep their passwords; tell the developer which pages were removed.
+
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
 ## 3. Data calls
 

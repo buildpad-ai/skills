@@ -47,6 +47,10 @@ Supabase client's `signInWithIdToken`. The Engine checks the token and answers w
 session. Sign-in with any other provider (Azure AD, Google, Okta, Auth0 or another OIDC provider)
 is not available on an Engine project: tell the developer so and stop.
 
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
+
+On an Engine project with Customer_Tenants XAppHub sign-in is not available: its first sign-in would create the person's account in the Blueprint, outside every customer. Tell the developer so and stop: people sign in with a password, as the `add-multitenancy` skill's guide says.
+
 On an Engine project these are not available, and XAppHub sign-in uses none of them: a service-role
 key, the Supabase administration API, a session made from a magic link or a one-time code, and a
 role assignment that the application writes. The Platform's password-less handoff is for opening
