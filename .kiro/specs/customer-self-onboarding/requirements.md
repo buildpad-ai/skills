@@ -1,7 +1,7 @@
 # Requirements Document
 
 > **This is the skills repository's part of a change that spans three repositories.** The other
-> two parts were written the same day, requirements only, neither approved:
+> two parts were written the same day, requirements only; all three were approved on 8 November 2026:
 >
 > - the Engine's `buildpad-daas-go` ledger entry 204 `customer-self-onboarding` (branch
 >   `spec/customer-self-onboarding`): an Onboarding_Key, server-only, that admits an app's server to
@@ -16,9 +16,9 @@
 > Decisions of this document are written **K-n**. Rows it needs from elsewhere are `TD-n`,
 > continuing `customer-tenant-skills`' numbering, in [Dependencies](#dependencies).
 >
-> Status: **draft, not approved.** Written 2026-11-08, before any change to a skill. Decisions K-1
-> to K-10 were SETTLED by the user on 8 November 2026, each as recommended. The requirements are
-> not approved. design.md and tasks.md follow approval.
+> Status: **requirements approved** by the user on 8 November 2026 ("Approve and design"). Written 2026-11-08, before any change to a skill. Decisions K-1
+> to K-10 were SETTLED by the user on 8 November 2026, each as recommended. The requirements were
+> approved the same day. design.md and tasks.md follow approval.
 >
 > Read, not observed:
 > - this repository at `origin/main` `0f667fb` (v9.1.0, `customer-tenant-skills` S1), and
@@ -84,7 +84,7 @@ All are **SETTLED**, chosen by the user on 8 November 2026, each as recommended:
 Engine Decision 12, the rest together ("Accept all remaining"). The companions' Decisions this spec
 assumes (E-1, E-4) were settled the same day as assumed. The `scope` branch of K-10 waits for TD-17,
 which the Engine's deferral of its Requirement 10 puts in a later stage. The last column is the
-settled option. The requirements themselves are not approved yet.
+settled option. The requirements were approved the same day.
 
 
 | # | Question | Options | Recommended |
@@ -251,8 +251,8 @@ it, in one sitting.
 |---|---|---|---|---|
 | TD-1 | Platform | `project-tenants` Wave 1 switched on (its task 12.3) | every requirement | Unmet: deployed to dev and production, `CUSTOMER_TENANTS_ENABLED` unset |
 | TD-7 | Platform, Engine | Restated: an app's server can create a customer for a verified person, with a credential that is not the host's. **Met when TD-14 and TD-15 are met** | 1, 3 | Unmet. Was "settled as Decision 20 (a), not offered"; the companions are its later spec |
-| TD-14 | Engine | Entry 204 applied and released; its Decisions settled as this spec assumes (E-1 (a), E-2 (a), E-4 (a), E-6 (a), E-10 (a), E-11 (a)); the version the Platform gates on | 3 | Unmet: requirements only, not approved |
-| TD-15 | Platform | `customer-self-onboarding` shipped and switched on: the flag, the switch, the key in the app's environment, Adoption | 2, 3 | Unmet: requirements only, not approved |
+| TD-14 | Engine | Entry 204 applied and released; its Decisions settled as this spec assumes (E-1 (a), E-2 (a), E-4 (a), E-6 (a), E-10 (a), E-11 (a)); the version the Platform gates on | 3 | Unmet: requirements approved 2026-11-08, nothing built |
+| TD-15 | Platform | `customer-self-onboarding` shipped and switched on: the flag, the switch, the key in the app's environment, Adoption | 2, 3 | Unmet: requirements approved 2026-11-08, nothing built |
 | TD-17 | Engine, Platform | Workspaces as scope nodes: the Engine entry that takes over entry 204's Requirement 10 (deferred by its Decision 12; scoped administration included) and the Platform's Requirement 10 | 3.11 | Unmet: requirements only; the Engine may defer it to an entry of its own |
 | TD-16 | Platform | The Onboarding_Signal: `selfOnboarding` in `.buildpad/project.json` and `get_project_detail` (P Requirement 8) | 2.2 | Unmet: requirements only |
 
