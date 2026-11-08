@@ -17,7 +17,8 @@
 > continuing `customer-tenant-skills`' numbering, in [Dependencies](#dependencies).
 >
 > Status: **draft, not approved.** Written 2026-11-08, before any change to a skill. Decisions K-1
-> to K-10 are OPEN, each with options and a recommendation. design.md and tasks.md follow approval.
+> to K-9 are OPEN, each with options and a recommendation. K-10 was SETTLED by the user on
+> 8 November 2026 as (c). design.md and tasks.md follow approval.
 >
 > Read, not observed:
 > - this repository at `origin/main` `0f667fb` (v9.1.0, `customer-tenant-skills` S1), and
@@ -79,7 +80,8 @@ customer. Everything that reads the key runs on the server.
 
 ## Decisions
 
-All are **OPEN**. The last column is the drafter's recommendation, not a settlement.
+K-1 to K-9 are **OPEN**: the last column is the drafter's recommendation, not a settlement. K-10
+is **SETTLED** as (c), chosen by the user on 8 November 2026, with Engine Decision 12.
 
 | # | Question | Options | Recommended |
 |---|---|---|---|
@@ -92,7 +94,7 @@ All are **OPEN**. The last column is the drafter's recommendation, not a settlem
 | K-7 | How the key's handling is checked | **(a)** A new Repository_Check rule R16: a skill file that names `NEXT_PUBLIC_BUILDPAD_ONBOARDING_KEY`, or reads `BUILDPAD_ONBOARDING_KEY` in a file it marks as client code, fails. **(b)** Text only | **(a)**. A misplaced prefix is the likeliest way this key leaks, and R15 already checks text this way |
 | K-8 | ES-5's "not available: sign-up" in this mode | **(a)** ES-5 is unchanged; TS-O1 replaces its sign-up clause for a project with Customer_Tenants and Self_Onboarding on, as TS-A replaces ES-3 to ES-9, and the `security-and-hardening` checklist names the exception. **(b)** Amend ES-5 | **(a)**. ES-5 holds for every other Engine project, and the replacement pattern already exists |
 | K-9 | How it ships | **(a)** One MINOR release, stage S4, once TD-7 is met (TD-14, TD-15 and TD-16), after S2 (TD-1). **(b)** Ship the skill early, held behind the Gate | **(a)**. A skill that directs routes the Engine does not serve fails on its first call; `customer-tenant-skills` ships each stage when its dependency is met |
-| K-10 | What a self-made Workspace is (same question as E-12 and P-10). The app wants Slack's "create your workspace" | **(a)** A customer (Customer_Tenant) only: the skill works in the mode `customer-tenants` alone. **(b)** A Workspace_Node only: a scope node in the project's one tenant, in the mode `scope`; the skill builds "create your workspace" on `POST /api/onboarding/workspaces` and the owner's member screen on the Engine's scoped administration (E Requirement 10), with `manage-scope`'s conventions for reading the Current_Scope. **(c)** Both, by the Tenancy_Mode: the same skill, one branch per mode | **(c)**, as the companions recommend: (b) for many small workspaces where shared tables are acceptable, (a) for customers who need hard isolation. The developer chooses by the mode, which the chooser in `add-multitenancy` already asks about; the chooser gains the scale-and-isolation guide. The `scope` branch cannot be worded as a Tenancy_Statement, whose opening is fixed to Customer_Tenants (`tenancy-statements.json` `opening`), so it needs a statement row of its own (ES-style), named in design. If the Engine defers its Requirement 10, the `scope` branch ships in a later stage and says until then that workspaces are not available |
+| K-10 | What a self-made Workspace is (same question as E-12 and P-10). The app wants Slack's "create your workspace" | **(a)** A customer (Customer_Tenant) only: the skill works in the mode `customer-tenants` alone. **(b)** A Workspace_Node only: a scope node in the project's one tenant, in the mode `scope`; the skill builds "create your workspace" on `POST /api/onboarding/workspaces` and the owner's member screen on the Engine's scoped administration (E Requirement 10), with `manage-scope`'s conventions for reading the Current_Scope. **(c)** Both, by the Tenancy_Mode: the same skill, one branch per mode | **SETTLED (c)**, 8 November 2026, as recommended and as the companions settle it: (b) for many small workspaces where shared tables are acceptable, (a) for customers who need hard isolation. The developer chooses by the mode, which the chooser in `add-multitenancy` already asks about; the chooser gains the scale-and-isolation guide. The `scope` branch cannot be worded as a Tenancy_Statement, whose opening is fixed to Customer_Tenants (`tenancy-statements.json` `opening`), so it needs a statement row of its own (ES-style), named in design. If the Engine defers its Requirement 10, the `scope` branch ships in a later stage and says until then that workspaces are not available |
 
 ## Boundary Context
 
