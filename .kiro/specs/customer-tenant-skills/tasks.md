@@ -434,7 +434,7 @@
   - _Requirements: 1.1, 7.1, 9.3_
   - _Boundary: migrate-to-engine/_
 
-- [ ] 9. Prove S1 whole and release it (design Release plan, S1; after tasks 1 to 8)
+- [x] 9. Prove S1 whole and release it (design Release plan, S1; after tasks 1 to 8)
 - [x] 9.1 Run the whole-tree check and the S1 read-through on the integration branch
   - Run `node --test "tools/repo-check/test/*.test.mjs"`, `node tools/repo-check/check.mjs` (R15
     included) and the `baseline` job's command.
@@ -457,7 +457,9 @@
     - every Skill installs, and the installed files equal the tree;
     - reader, date and candidate commit are noted for 9.2.
   - _Requirements: 1.1, 1.4, 2.5, 9.2, 9.3, 9.4_
-- [ ] 9.2 Write the release: `CHANGELOG.md` and the README's install tag, then merge S1
+- [x] 9.2 Write the release: `CHANGELOG.md` and the README's install tag, then merge S1
+  - Done 2026-11-08: pull request buildpad-ai/skills#66, `check` and `baseline` green, merged as
+    `0f667fb`. `check.mjs --tag v9.1.0` exits 0 on that commit.
   - Add a `v9.1.0` section above `v9.0.0`. If another release takes `v9.1.0` first, use the next
     MINOR; S1 is MINOR in every case (design Issue 3, settled).
   - The section holds:
@@ -475,7 +477,11 @@
     - the pull request is merged.
   - _Requirements: 9.4_
   - _Boundary: CHANGELOG.md, README.md_
-- [ ] 9.3 Tag `v9.1.0` and publish the GitHub Release (maintainer)
+- [x] 9.3 Tag `v9.1.0` and publish the GitHub Release (maintainer)
+  - Done 2026-11-08: annotated tag `v9.1.0` on `0f667fb`, tag-push `repo-check` green, Release
+    published (Latest). `npx skills@1.7.1 add buildpad-ai/skills#v9.1.0 --all` installed 67 Skills
+    whose 243 files equal `git ls-tree -r v9.1.0`; `#v9.1.0@add-multitenancy` installed its 3 files,
+    equal. `v9.0.0` was never tagged; left to the maintainer.
   - Create the annotated tag on the merge commit of 9.2, push it, and publish the Release with the
     CHANGELOG section.
   - Then install `#v9.1.0 --all` and `#v9.1.0@add-multitenancy` into a scratch folder.
@@ -504,6 +510,8 @@
     record, from the Platform's design, the answers to Issue 17 (a Platform account removed in a
     customer) and to row P-9.
   - Done when: the amendment is approved, and the design is either confirmed or revised.
+  - 8 November 2026: reconciled (design "Reconciliation of 8 November 2026"); design revised and
+    criterion 8.1 amended, approved by the maintainer the same day. TD-1 still unmet: Platform task 12.3 not run.
   - _Requirements: none closed (gate)_
 - [ ] 10.1 Move the data to S2
   - In `tenancy-statements.json`, set `"met": ["TD-1"]`.

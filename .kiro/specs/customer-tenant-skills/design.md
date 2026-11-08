@@ -426,8 +426,9 @@ Rules the guide states with it:
 - **The chooser** (TS-4 (a), 3.5) lists each tenant's `name`; marks the one whose `id` equals
   `NEXT_PUBLIC_BUILDPAD_TENANT_ID` as the application's own tenant (only its developers hold it);
   shows `accepted: false` entries as invitations with "Join" (the switch, which enters it) and
-  "Decline"; shows an entry whose `state` is not `ready` as unavailable, with the cause of the
-  table below. It may preselect the last choice, kept in the browser as a preference only (TS-5).
+  "Decline"; shows an entry whose `state` is not `ready` (`provisioning`, `suspended`, `migrating`, `failed`)
+  as unavailable, with the cause of the table below; a `ready` entry may still answer 503 at the
+  switch, which the app shows the same way. It may preselect the last choice, kept in the browser as a preference only (TS-5).
 - **The switch** (3.3) runs only in the app's server route, with the current session. After
   `setSession` the old access token is never sent again; the old pair is not signed out (the
   Supabase client's default sign-out ends every session of the person, the new one included). The
@@ -449,10 +450,10 @@ is retried):
 |---|---|---|---|
 | 401 `TENANT_SUSPENDED` | A Platform member suspended this customer | "Access to <customer> is suspended. Ask your administrator." Then sign out | No |
 | 401 `TOKEN_INVALID` | The session ended, or this customer was deleted | "Your session has ended. Sign in again." Then the sign-in page | No |
-| 503 `SERVICE_UNAVAILABLE` | The customer is being updated (a Rollout or an Engine upgrade), or the Engine's session store is unavailable | "<customer> is being updated. Try again in a minute." | Yes: up to 3 times, after 2, 5 and 10 seconds |
+| 503 `SERVICE_UNAVAILABLE` | The customer is not serving for a moment (being migrated or behind the Engine's version during an Engine upgrade, or failed), or the Engine's session store is unavailable. A Rollout does not cause it: requests wait on its locks and complete | "<customer> is being updated. Try again in a minute." | Yes: up to 3 times, after 2, 5 and 10 seconds |
 | 403 `FORBIDDEN`, "This token is not bound to a tenant. Switch to a tenant first." | The session was never switched | The chooser (`settleTenant`) | After the switch |
 | 403 `TENANT_SUSPENDED` from the switch | The chosen customer is suspended | As 401 `TENANT_SUSPENDED`, staying on the chooser | No |
-| 403 `FORBIDDEN` from the switch | The person holds no place in that tenant | "You are not a member of that customer." | No |
+| 403 `FORBIDDEN` from the switch | The person holds no place in that tenant (an XAppHub session is also refused here, but XAppHub is not available in this mode: TS-N3) | "You are not a member of that customer." | No |
 | 401 `USER_SUSPENDED` from the switch | The person's account is not active | "Your account is not active. Ask your administrator." Then sign out | No |
 
 ## Scopes inside a customer (Requirement 4)
@@ -539,12 +540,15 @@ Mode_Guide §8, S2, with `add-users` and `create-rbac`:
 - A person who already has an account anywhere on the Engine is attached, not duplicated: their
   password is unchanged, and the new profile is not entered until they switch to the customer,
   which the application's chooser does on their next sign-in (TS-4) (6.2). Until then they see it
-  as an invitation (`accepted: false`), which they may decline.
+  as an invitation (`accepted: false`), which they may decline. Adding someone already in the
+  customer answers 409; adding back a person whose profile was deleted restores it as it was,
+  entered or not.
 - Each customer's user list holds the Platform's own accounts: the account the Platform's server
   uses, `admin@example.com`, named "BuildPad (platform access)" (Platform criterion 3.8), and, once
   members open the Studio in a customer, members' own accounts, whose `provider` is `platform`
   (Platform Decision 17 (a)). An application tells them apart by those two marks, shows them as the
-  Platform's, and does not offer to remove or suspend them (6.3; Issue 17).
+  Platform's, and does not offer to remove or suspend them: the Platform cannot open a customer
+  whose platform account was removed (6.3; Issue 17, settled).
 - The application's people screens (`add-users`, `create-rbac`) act in the current customer only:
   they call the Engine with the session, which is bound to it, and never name another tenant (6.4).
 
@@ -563,7 +567,7 @@ S2. **8.1**, added to `debugging-and-error-recovery`'s tree (the fence in its En
 - 403 FORBIDDEN "This token is not bound to a tenant" → an unbound session that was never switched → switch (`settleTenant`) before any data call;
 - signs in but shows nothing → the profile is not yet entered, or the session is bound to the Blueprint → switch to the customer; the chooser does it;
 - 401 TENANT_SUSPENDED → a Platform member suspended the customer → nothing in the app; the member resumes it;
-- 503 SERVICE_UNAVAILABLE during a Rollout or an Engine upgrade → the customer is being updated → retry after a few seconds;
+- 503 SERVICE_UNAVAILABLE → the customer is not serving for a moment (an Engine upgrade migrating it), or the session store → retry after a few seconds; a Rollout makes requests wait, not fail;
 - a field in the Blueprint and not in a customer → S2: made after the customer was created, and Releases are not available yet; S3: not yet released, or the customer was skipped (Drift, a Conflict or a destructive change) → ask the Platform member which Release the customer is at (the Customers page shows it).
 
 **8.2**, added to `security-and-hardening` (§Always Do, engine@60-62; §Red Flags, engine@263-265),
@@ -783,7 +787,11 @@ Line numbers in findings are the raw file's (through the existing `rawLineOf`).
 Every route, field, file member, state and error code the skills text will name, with what it is
 assumed to be and where that comes from. Rows P- and E- cite the companions' requirements as read
 (Platform `f155ebce`, Engine `ad76ce05`); rows X- are verified in the Engine's code at `9bf9d457`.
-A companion design that differs from a row is a Revalidation Trigger.
+A companion design that differs from a row is a Revalidation Trigger. **Reconciled 8 November 2026
+(task 10.0):** rows P- against the Platform's approved design and code at its `origin/main`
+`0648004e`, rows X- and E-13 against the Engine's `origin/main` `6011cf29`; the rows below are as
+revised (approved by the maintainer the same day), and "Reconciliation of 8 November 2026" lists
+what changed.
 
 **Platform `project-tenants`**
 
@@ -792,15 +800,15 @@ A companion design that differs from a row is a Revalidation Trigger.
 | P-1 | `.buildpad/project.json` member `tenancy`, values `"scope"` and `"customer-tenants"` | Written by the kit assembler beside `backend` in every Engine Kit; `"scope"` when the flag is off; absent from Supabase Kits. The Platform never writes `.buildpad/tenancy-answer.json` | Decision 19 (b); criterion 11.1 | T1, T2 |
 | P-2 | "download the kit again or set `tenancy`" | A Kit is not rewritten when the flag changes; the member downloads it again or sets the member | Decision 19, rationale | T2 step 1 |
 | P-3 | Customer_Tenants "turned on for the project on the Buildpad platform" | A project feature flag `customer_tenants`, set only by a host user with `manage_feature_flags`; Engine projects only; cannot be turned off while customers exist (409) | Decision 9 (a); criteria 1.1 to 1.4 | Chooser, T2 step 3 |
-| P-4 | "the project's Customers page" | Offered only with the flag on; lists customers (name, slug, state, Release, creation) and shows the Blueprint apart | Decision 1 (a); criteria 1.1, 2.1, 2.4 | Chooser, TS-N1, TS-Cm, §7.4, §11 |
+| P-4 | "the project's Customers page" | Offered only with the server setting `CUSTOMER_TENANTS_ENABLED`, an Engine project and the flag on (else 404); lists customers (name, slug, state, Release and sync outcome, creation) with the Blueprint on a card of its own, a read-only table "Made outside the Platform", the quota and the separate-project guide | Decision 1 (a); criteria 1.1, 2.1, 2.4; Platform design (reconciled 8 November) | Chooser, TS-N1, TS-Cm, §7.4, §11 |
 | P-5 | "a Platform member creates each customer" | A member holding the project action `manage_project_tenants` (lowest role project Admin) creates, suspends, resumes and deletes customers | Decision 8 (c); criteria 3.1, 4.1, 4.2, 5.1 | Chooser, TS-N1, §7.4 |
 | P-6 | A customer's first administrator; an existing address "accepts at the next sign-in" | `admin@example.com` is the tenant's first administrator; the Customer_Administrator is added as a second Administrator with a random password shown once, or a reset mail; an address with an Engine identity sees an invitation | Decisions 6 (b), 7 (c); criteria 3.2 to 3.4, 3.7 | §8, TS-4 chooser |
 | P-7 | "BuildPad (platform access)", `admin@example.com` | The Project_Administrator's profile in every customer is named so, and no other Platform account is made at creation | Criterion 3.8 | §8 (6.3) |
 | P-8 | `provider` `platform` | A member's Person_Account in a customer carries `provider = 'platform'` and `external_identifier`; made only on Open Studio into the customer (Wave 2) | Decisions 16 (b), 17 (a); criterion 3.9 | §8 (6.3) |
-| P-9 | What happens when a customer's administrator removes a Platform account | Not settled ("for design"); the skills tell apps not to offer it | Decision 17, last sentence | §8; Issue 17 |
+| P-9 | What happens when a customer's administrator removes a Platform account | Settled by the Platform's design (reconciled 8 November): the Platform does not prevent it; once removed, Open Studio into that customer (Wave 2) answers 409 "BuildPad's platform access was removed from this customer by its administrator" and nothing is retried. The skills tell apps not to offer it, because the Platform can no longer open that customer | Decision 17; Platform design, Open Studio | §8; Issue 17 |
 | P-10 | The Blueprint is the project's tenant | `NEXT_PUBLIC_BUILDPAD_TENANT_ID` stays its id in every Kit | Decision 4 (a); criterion 11.2 | TS-A, 3.7, TS-N2 |
-| P-11 | Publishing a Release; dry run; canaries; roll out; destructive confirm by typing the Blueprint's path; pause, resume, cancel | As listed; the member chooses canaries and "options" | Decision 12 (a); criteria 9.1 to 9.5 | TS-Cm, §7.4, §7.5 |
-| P-12 | Rollout options "start cron jobs as in the Blueprint" (`cron_status: "as_template"`) and "override Drift" (`overwrite_drift`) | Offered among the options of criterion 9.3, which does not name them | Criterion 9.3; Engine E-2 | §7.3, §7.5; Issue 8 |
+| P-11 | Publishing a Release; dry run; canaries; roll out; destructive confirm by typing the Blueprint's path; pause, resume, cancel | As listed, and (reconciled 8 November): Roll out is offered only after a completed dry run of the same Release and customers; canaries default to the first customer by name; only `ready` and `suspended` customers are rolled out (a suspended one is `skipped_not_serving`); Releases are offered only on an Engine at or above the Platform's minimum version; a publish before the first customer answers 409 `BLUEPRINT_NOT_TEMPLATE` (Platform P1 (a)); a publish with one of the four seeded roles missing or renamed answers 400 | Decision 12 (a); criteria 9.1 to 9.5; Platform design P1 | TS-Cm, §7.4, §7.5 |
+| P-12 | Rollout options "start cron jobs as in the Blueprint" (`cron_status: "as_template"`) and "override Drift" (`overwrite_drift`) | Settled (reconciled 8 November): both are checkboxes in the Rollout dialog, off by default, labelled "Start cron jobs as they are in the Blueprint" and "Overwrite drift (a customer's own changes to managed objects)" | Platform design; `Releases.tsx` | §7.3, §7.5; Issue 8 |
 | P-13 | No host credential in any app, Kit, worker, MCP tool or agent | As stated | Criterion 6.3 | §3, TS-N1 |
 | P-14 | The worker and the MCP token stay in the Blueprint | As stated; per-customer workers are Wave 3 | Decision 13 (a) | §2, TS-N4 |
 | P-15 | Backups restore every customer | Project backups stay whole; per-customer restore is Wave 3 | Decision 14 (a) | Chooser, TS-N5 |
@@ -824,25 +832,52 @@ A companion design that differs from a row is a Revalidation Trigger.
 | E-10 | Cron jobs at creation and on a Rollout | Creation copies jobs inactive (entry 135 criterion 6.4, not amended); a Rollout keeps a held job's status and adds new ones inactive unless `cron_status: "as_template"` | Decision 14 (d); criterion 3.7 | §7.3 (5.4) |
 | E-11 | A customer created after the first Release starts at the latest Release | Creation copies the latest revision's document, plus the Blueprint's own scope types as they are then | Decision 10 (b); criterion 6.1; entry 192 design | §7.4; Issue 6 |
 | E-12 | Canary customers first; a failed canary pauses | As stated | Decision 8 (b); criteria 5.4, 5.5 | §7.3, §7.4 |
-| E-13 | 503 during a Rollout | A customer being applied may answer 503 `SERVICE_UNAVAILABLE` (lock timeout 5 s, statement timeout 60 s) | Criterion 5.6; the binder's not-serving answer (X-6) | 3.6 table, §11 |
+| E-13 | A request to a customer during a Rollout | Revised 8 November: the apply does not make the customer stop serving (no registry state changes); a request may wait on the apply's locks (lock timeout 5 s, statement timeout 60 s on the apply) and then completes. The 503 `SERVICE_UNAVAILABLE` comes from the binder's not-serving states only (X-6) | Engine `docs/tenant-releases.md` "A tenant keeps serving while it is applied"; entry 192 as applied | 3.6 table, §11 |
 | E-14 | A role's `scope_config` in a Release | A Rollout rewrites a pattern naming the Blueprint's node and own scope types per customer, as a creation does; a type the customer lacks is a Conflict `scope_type_unmapped` | Entry 192 design (`RewriteScopeConfig`) | §6 last bullet; Issue 7 |
 
-**Engine, already served** (verified at `9bf9d457`)
+**Engine, already served** (verified at `9bf9d457`; re-verified at `6011cf29` on 8 November)
 
 | Id | Named in the skills | Verified shape | Source |
 |---|---|---|---|
-| X-1 | `GET /api/auth/tenants` | `RequireAuth`, any binding including an unbound token. 200 `{"data": [{"id", "name", "uri_path" (string or null), "current" (bool), "kind" ("host" or "tenant"), "accepted" (bool), "state" ("ready", "suspended", "migrating" or "failed")}]}`. The host is listed first when the person has a place there; the others sorted by name; a tenant being deleted or deleted is not listed | `auth_routes.go:178`; `tenant_handler.go` `ListTenants`; `tenant_switch.go:44-160` |
-| X-2 | `POST /api/auth/tenant` | Body `{"tenant": "<id>"}`. 200 `{"data": {"access_token", "refresh_token", "expires"}}`, `expires` the remaining lifetime in **milliseconds**. 403 `FORBIDDEN` (no place there, an unknown tenant, or an id that is not a UUID: one answer); 403 `TENANT_SUSPENDED`; 401 `USER_SUSPENDED` (account not active); 503 `SERVICE_UNAVAILABLE` (tenant not serving, or the session store). The switch enters a profile not yet entered | `auth_routes.go:179`; `tenant_handler.go` `SwitchTenant`; `tenant_switch.go:186-262`; `auth_service.go:225-245` |
+| X-1 | `GET /api/auth/tenants` | `RequireAuth`, any binding including an unbound token. 200 `{"data": [{"id", "name", "uri_path" (string or null), "current" (bool), "kind" ("host" or "tenant"), "accepted" (bool), "state"}]}`. `state` is the registry's state passed through: `"provisioning"`, `"ready"`, `"suspended"`, `"migrating"` or `"failed"` (revised 8 November: `provisioning` added); `ready` does not promise the tenant serves, since one behind the Engine's version answers 503. The host is listed first when the person has a place there; the others sorted by name (byte order); a tenant being deleted, deleted or retired is not listed | `auth_routes.go:178`; `tenant_switch.go:44-160`; `directory.go:67-71,96-98` |
+| X-2 | `POST /api/auth/tenant` | Body `{"tenant": "<id>"}`. 200 `{"data": {"access_token", "refresh_token", "expires"}}`, `expires` the remaining lifetime in **milliseconds**. 400 for a malformed body; 403 `FORBIDDEN` (no place there, an unknown tenant, or an id that is not a UUID: one answer, "You cannot switch to that tenant."; also a session from an `id_token` sign-in switching to the host or to an administrator role); 403 `TENANT_SUSPENDED`; 401 `USER_SUSPENDED` (account not active); 503 `SERVICE_UNAVAILABLE` (tenant not serving, or the session store). The switch enters a profile not yet entered | `auth_routes.go:179`; `tenant_handler.go:47-92`; `tenant_switch.go:186-262`; `auth_service.go:225-245` |
 | X-3 | `DELETE /api/auth/tenants/:id` | 204; 409 `CONFLICT` (already entered, or the tenant's records refer to the profile); 404 `NOT_FOUND` | `auth_routes.go:183`; `tenant_handler.go` `DeclineTenant` |
 | X-4 | Sign-in with no `X-Tenant-Id` | Binds the host if the person holds a role there; else their one entered tenant; with two or more entered tenants, no tenant (unbound); else an entered host profile; else unbound. Only entered memberships count; suspended or retired tenants are skipped | `tenant_binding.go:30-133` |
 | X-5 | 403 `FORBIDDEN` "This token is not bound to a tenant. Switch to a tenant first." | An unbound token on any route but the identity routes | `swagger.yaml` (e.g. line 11169) |
 | X-6 | 401 `TENANT_SUSPENDED`, 401 `TOKEN_INVALID`, 503 `SERVICE_UNAVAILABLE` | Suspended; deleted or unknown; not serving (migrating, failed, behind the Engine's version). Messages "This tenant has been suspended by the platform operator." and "This tenant is being migrated or is unavailable. Please retry shortly." The identity routes stay served for a tenant that does not serve | `tenant_binder.go:197-275`; `constant_error.go:87-152` |
 | X-7 | Seeded role ids | `00000000-0000-0000-0000-000000000001` Administrator, `…0002` User, `…0003` Project Developer, `…0004` Project Viewer | `20260909000006_seed_reference_data.up.sql:24-28`; `20261102100000_project_roles.up.sql:12-13` |
 | X-8 | The Supabase client's password sign-in | `POST /auth/v1/token` reads `X-Tenant-Id` and binds through the same rules (X-4) | `gotrue_handler.go:47-73`; `auth_service.go:850` |
-| X-9 | A switched session refreshes in its tenant (TD-11) | Met in code, untested by a route test | Requirements TD-11; `tenant_switch.go:223` |
+| X-9 | A switched session refreshes in its tenant (TD-11) | Met and tested (revised 8 November): `TestAPersonListsAndSwitchesTheirTenants`, subtest "renews at both doors", switches A to B and refreshes at `/auth/v1/token` and `/api/auth/refresh`, asserting `tnt` is B both times; entry 192 task 18 ran a negative control | `tenant_token_route_test.go:634-667`; `auth_service.go:1005` |
 | X-10 | `tnt` | The access token's tenant claim | `constant_auth.go:155` |
 | X-11 | A refresh of an unbound session | Must not send the access token with the refresh | `swagger.yaml:11698` |
-| X-12 | `POST /api/users` attaches an existing identity, not entered | As the requirements read it | Requirements, What the Engine already does (`identity_credentials.go:188-277`, not re-read) |
+| X-12 | `POST /api/users` attaches an existing identity, not entered | Re-read 8 November: an existing identity gets a profile, its credential unchanged; a trigger sets `accepted_at` NULL when the identity exists elsewhere, so the profile starts not entered; an existing member answers 409; a deleted profile added again is reactivated with its old `accepted_at` | `identity_credentials.go:188-277,297-299`; `20261005100000_profile_accepted_at.up.sql` |
+
+### Reconciliation of 8 November 2026 (task 10.0)
+
+Read: the Platform's approved `project-tenants` design and code at `origin/main` `0648004e` (PR #274,
+on production, not switched on), and the Engine at `origin/main` `6011cf29` (entry 192 applied,
+released as `0.1.0-dev.22`). Since `9bf9d457` only `swagger.yaml`, `constant_error.go` and
+`constant_tenant.go` changed among the files rows X- cite; no identity route, binder or binding
+answer changed, and the registry has no state for a tenant being applied.
+
+| Row | Outcome | Effect on the skills text |
+|---|---|---|
+| P-1, P-2, P-3, P-5 to P-8, P-10, P-13 to P-18 | Hold | None. P-1: the Platform writes `tenancy` in the project kit and the worker starter, and never writes `.buildpad/tenancy-answer.json`; `migrate-to-engine`'s Fix_App writes `.buildpad/project.json` without `tenancy`, which T2 already covers (the record file or the question). P-18: `get_project_detail` still returns credentials, so T1 keeps not using it |
+| P-4 | Details added | None for S2; §11's "ask the Platform member which Release" holds (the page shows Release and sync outcome) |
+| P-9 | Settled | §8 (6.3) gives the reason; Issue 17 settled |
+| P-11 | Details added; Platform P1 (a) | S3 only (§7.4, §7.5): a dry run comes first; no Release before the first customer; the first customer copies the live Blueprint and later ones start at the latest Release (E-11); the four seeded roles are never removed or renamed (a publish answers 400), as §7.2 says |
+| P-12 | Settled | S3 §7.3 and §7.5 name the two options by their labels |
+| X-1 | Revised: `provisioning`; `ready` may 503 | S2 chooser rule |
+| X-2 | Details added: 400; the `id_token` refusal | S2 answers table, 403 row |
+| X-3 to X-8, X-10, X-11 | Hold | None |
+| X-9 | Met and tested | None (Issue 18, TD-11 already say so) |
+| X-12 | Re-read; 409 and reactivation added | S2 §8 (6.2) |
+| E-13 | Revised: a Rollout makes requests wait, not answer 503 | S2 answers table and §11 row (8.1) |
+
+Platform P2 (c) (deleting a project needs the customer count confirmed) concerns members only and
+changes no skills text. Requirement 3.6 holds as written. Criterion 8.1's fourth symptom ("503 during
+a Rollout or an upgrade") is amended with this reconciliation to "503 during an Engine upgrade, and a
+slow request during a Rollout".
 
 ## Release plan
 
@@ -1041,7 +1076,9 @@ maintainer or a companion.
 16. **ES-5 is false in this mode** ("refused at password sign-in": the person gets an unbound session
     instead). TS-A says the guide replaces ES-5 in this mode; ES-5 stays verbatim (9.3).
 17. **Removing a Platform account in a customer** is left to the Platform's design (its Decision 17).
-    The skills tell apps not to offer it (P-9). **(ask, Platform design)**.
+    The skills tell apps not to offer it (P-9). **Settled 8 November** by the Platform's design: it
+    does not prevent the removal; Open Studio into that customer then answers 409 and is not
+    retried. The advice stands, with that reason.
 18. **TD-11's test.** Thought untested when this design was written; entry 192's tasks found that
     `src/api/tenant_token_route_test.go` `TestAPersonListsAndSwitchesTheirTenants` already switches
     and then refreshes at both doors. Entry 192's task 18.2 runs a negative control against it.
