@@ -17,7 +17,7 @@
 > continuing `customer-tenant-skills`' numbering, in [Dependencies](#dependencies).
 >
 > Status: **draft, not approved.** Written 2026-11-08, before any change to a skill. Decisions K-1
-> to K-9 are OPEN, each with options and a recommendation. design.md and tasks.md follow approval.
+> to K-10 are OPEN, each with options and a recommendation. design.md and tasks.md follow approval.
 >
 > Read, not observed:
 > - this repository at `origin/main` `0f667fb` (v9.1.0, `customer-tenant-skills` S1), and
@@ -92,6 +92,7 @@ All are **OPEN**. The last column is the drafter's recommendation, not a settlem
 | K-7 | How the key's handling is checked | **(a)** A new Repository_Check rule R16: a skill file that names `NEXT_PUBLIC_BUILDPAD_ONBOARDING_KEY`, or reads `BUILDPAD_ONBOARDING_KEY` in a file it marks as client code, fails. **(b)** Text only | **(a)**. A misplaced prefix is the likeliest way this key leaks, and R15 already checks text this way |
 | K-8 | ES-5's "not available: sign-up" in this mode | **(a)** ES-5 is unchanged; TS-O1 replaces its sign-up clause for a project with Customer_Tenants and Self_Onboarding on, as TS-A replaces ES-3 to ES-9, and the `security-and-hardening` checklist names the exception. **(b)** Amend ES-5 | **(a)**. ES-5 holds for every other Engine project, and the replacement pattern already exists |
 | K-9 | How it ships | **(a)** One MINOR release, stage S4, once TD-7 is met (TD-14, TD-15 and TD-16), after S2 (TD-1). **(b)** Ship the skill early, held behind the Gate | **(a)**. A skill that directs routes the Engine does not serve fails on its first call; `customer-tenant-skills` ships each stage when its dependency is met |
+| K-10 | What a self-made Workspace is (same question as E-12 and P-10). The app wants Slack's "create your workspace" | **(a)** A customer (Customer_Tenant) only: the skill works in the mode `customer-tenants` alone. **(b)** A Workspace_Node only: a scope node in the project's one tenant, in the mode `scope`; the skill builds "create your workspace" on `POST /api/onboarding/workspaces` and the owner's member screen on the Engine's scoped administration (E Requirement 10), with `manage-scope`'s conventions for reading the Current_Scope. **(c)** Both, by the Tenancy_Mode: the same skill, one branch per mode | **(c)**, as the companions recommend: (b) for many small workspaces where shared tables are acceptable, (a) for customers who need hard isolation. The developer chooses by the mode, which the chooser in `add-multitenancy` already asks about; the chooser gains the scale-and-isolation guide. The `scope` branch cannot be worded as a Tenancy_Statement, whose opening is fixed to Customer_Tenants (`tenancy-statements.json` `opening`), so it needs a statement row of its own (ES-style), named in design. If the Engine defers its Requirement 10, the `scope` branch ships in a later stage and says until then that workspaces are not available |
 
 ## Boundary Context
 
@@ -147,8 +148,10 @@ how to build it, and on one where it is off, to be told who turns it on.
 
 #### Acceptance Criteria
 
-1. `add-customer-onboarding` shall begin with the Gate and the Tenancy check; in the mode `scope`,
-   or on a Supabase project, it shall say the flow needs Customer_Tenants and stop.
+1. `add-customer-onboarding` shall begin with the Gate and the Tenancy check. On a Supabase
+   project it shall say the flow needs an Engine project and stop. In the mode `scope` it shall
+   follow criterion 3.11 where K-10 (b) or (c) is taken and TD-17 is met; otherwise it shall say
+   the flow needs Customer_Tenants and stop.
 2. It shall then read the Onboarding_Signal as K-3 settles; while it is off, it shall say TS-O1's
    "off" branch and stop.
 3. It shall then establish a Mail_Sender (K-4): find one in the app, or ask the developer which
@@ -200,6 +203,12 @@ it, in one sitting.
    new company's name.
 10. The skill shall add no other route that sends the key, and no client component that imports
     the module of criterion 1.
+11. Where K-10 (b) or (c) is taken, in the mode `scope` the skill shall build criteria 2 to 5 as
+    written and, in place of criterion 6, "create your workspace" on `POST /api/onboarding/workspaces`.
+    After creation the session is switched into the project's tenant (TS-B's switch, or ES-4's
+    sign-in where the session is already bound there). The skill shall add a members screen for the
+    workspace owner over the Engine's scoped administration, and read the current workspace from the
+    person's role at the node, never from the request.
 
 ### Requirement 4: The skills that speak of sign-up know the mode
 
@@ -238,6 +247,7 @@ it, in one sitting.
 | TD-7 | Platform, Engine | Restated: an app's server can create a customer for a verified person, with a credential that is not the host's. **Met when TD-14 and TD-15 are met** | 1, 3 | Unmet. Was "settled as Decision 20 (a), not offered"; the companions are its later spec |
 | TD-14 | Engine | Entry 204 applied and released; its Decisions settled as this spec assumes (E-1 (a), E-2 (a), E-4 (a), E-6 (a), E-10 (a), E-11 (a)); the version the Platform gates on | 3 | Unmet: requirements only, not approved |
 | TD-15 | Platform | `customer-self-onboarding` shipped and switched on: the flag, the switch, the key in the app's environment, Adoption | 2, 3 | Unmet: requirements only, not approved |
+| TD-17 | Engine, Platform | Workspaces as scope nodes: Engine entry 204 Requirement 10 (with scoped administration) and the Platform's Requirement 10 | 3.11 | Unmet: requirements only; the Engine may defer it to an entry of its own |
 | TD-16 | Platform | The Onboarding_Signal: `selfOnboarding` in `.buildpad/project.json` and `get_project_detail` (P Requirement 8) | 2.2 | Unmet: requirements only |
 
 Where a companion settles a Decision otherwise than this spec assumes (for instance E-4 (b), a
@@ -252,3 +262,4 @@ webhook, or E-10 (b), a session from creation), Requirement 3 is restated before
 | The sign-up, create-customer and switch flow | K-4 to K-6; Requirement 3 |
 | The key stays on the server | K-7; Requirements 3.1, 3.10, 5 |
 | Shipping | K-9; Requirement 6; Dependencies |
+| What a Workspace is | K-10; Requirement 3.11; TD-17 |
