@@ -558,7 +558,7 @@
   - Done when: FT holds for each folder; R15 finds TS-B in all 12 files.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 8.2_
   - Done 2026-11-10: TS-B in all 12 files; FT holds for the nine folders.
-- [ ] 10.4 Scope folders, S2 column (the URI rule 4.1, and 4.3)
+- [x] 10.4 Scope folders, S2 column (the URI rule 4.1, and 4.3)
   - `manage-scope`: `SKILL.md` at 797 (§6 bullets, linking `../add-multitenancy/SKILL.md`),
     `references/engine-scope-management.instructions.md` and
     `references/scope-client.instructions.md` I-P(56-69).
@@ -569,6 +569,7 @@
   - `create-feature` at 110.
   - Done when: FT holds for each folder.
   - _Requirements: 4.1, 4.2, 4.3_
+  - Done 2026-11-10: TS-N0 out of `manage-scope/SKILL.md`; the URI rule in all eight spots; FT holds.
 - [ ] 10.5 Structure folders, S2 column
   - TS-Cn goes in the 13 structure `SKILL.md` files at the per-folder plan's points, with these
     specifics:

@@ -406,6 +406,8 @@ If this collection needs to be partitioned by organization, department or region
 
 On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
+In the mode `customer-tenants` every scope URI begins with the current customer's node: the `uri_path` of the `current` entry of `GET /api/auth/tenants`, never the Blueprint's and never one built from `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. A `resource_uri` value, an `X-Resource-Uri` header and a `ScopeProvider`'s root all begin with it.
+
 When enabling scope on a collection:
 
 1. **Add the `resource_uri` field as a many-to-one to `daas_scope_items`:**
