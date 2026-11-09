@@ -3,7 +3,7 @@
 > Phase 3 of the gated spec `customer-self-onboarding` (skills repository part), from the approved
 > `requirements.md` (6 requirements; K-1 to K-10 settled; criteria 1.2 and 2.2 amended 2026-11-09 by
 > S-2 (b) and S-1 (a)) and the approved `design.md` (approved 2026-11-09, "Approve as
-> recommended"). **Generated 2026-11-09, not approved.**
+> recommended"). **Generated 2026-11-09; approved by the user on 2026-11-09 ("Approve tasks").**
 >
 > **Names.** Stage S4 (design O6). Statements TS-O1 (O3) and ES-17n (O4). The Onboarding check (O2)
 > and its record `.buildpad/onboarding-answer.json` (O1). Rule R16 and its codes (O5). Mode_Guide
