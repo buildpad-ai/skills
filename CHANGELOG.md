@@ -14,6 +14,52 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
+## v9.2.0
+
+Customer_Tenants are now available on the Buildpad platform, and the skills say how to build for
+them. Install it with `npx skills add buildpad-ai/skills#v9.2.0`. This is the second stage of
+`customer-tenant-skills`, opened when the Platform switched Customer_Tenants on in production
+(9 November 2026). In the mode `customer-tenants` an application signs people in without naming a
+tenant, lets them choose their customer, and takes the current customer from the session; structure
+is built in the Blueprint and reaches each customer when it is created. Releases, which carry later
+changes to existing customers, are not available yet. It is a MINOR release: every new text stands
+in text for Engine projects only, no skill is added, removed or renamed, and the "Establish the
+backend first" procedure stays at version 1.
+
+TS-N0 ("Customer_Tenants are not offered yet") is retired. TS-B (sign-in, switch and current
+customer) and TS-Cn (structure is built in the Blueprint; no Releases yet) are copied into the files
+`tools/repo-check/tenancy-statements.json` names.
+
+- **`add-multitenancy`:** the chooser no longer stops at "not offered yet". The guide `engine-customer-tenants` gains its S2 sections: signing in and the current customer (the four app routes, `lib/auth/tenants.ts` with `listTenants`, `switchTenant` and `settleTenant`, the chooser, switch and current-customer rules, and the Engine's answers with what the app shows), scopes inside a customer, structure built in the Blueprint (roles by id with the four seeded ids, cron jobs arriving inactive), people, planning, what to check when something goes wrong, and review checks.
+- **`manage-scope`:** scopes live inside each customer: the URI rule, scope types looked up by name, no root type or first-level node; in its Engine scope reference and scope client reference too.
+- **`authentication-proxy`:** TS-B and the four auth routes of the guide, in the skill and its reference; `NEXT_PUBLIC_BUILDPAD_TENANT_ID` stays the Blueprint's id.
+- **`create-api-route`:** in its Engine routes reference, a section for the mode `customer-tenants` with TS-B, the login route without `X-Tenant-Id`, `lib/auth/tenants.ts`, the tenants, switch and decline routes, and the answers the forwarder passes back.
+- **`create-project`:** TS-B in the Critical Rules, and the Blueprint's tenant id, in the skill and its environment reference.
+- **`add-buildpad`:** TS-B, and the CLI's generated sign-in route replaced in this mode; `DaaSProvider` starts in the new customer after a switch.
+- **`buildpad-reference`:** TS-B and the reload after a switch.
+- **`add-microapp`:** TS-B; every app reads the current customer from the session, and only the main app offers the switch.
+- **`add-mcp-server`:** TS-B; the consent step signs in without `X-Tenant-Id` and switches before storing the session.
+- **`create-collection`:** TS-Cn, and the URI rule in Scope and its standard fields reference.
+- **`create-rbac`:** TS-Cn, roles named by id, the `scope_config` rule, and people screens acting in the current customer.
+- **`create-workflow`**, **`hooks-extensions`**, **`create-service`**, **`add-comments`:** TS-Cn.
+- **`add-cron`**, **`create-cron`:** TS-Cn, and cron jobs arrive inactive in a new customer.
+- **`add-i18n`:** TS-Cn; `languages` rows are data; the URI rule in its content translations reference.
+- **`add-files`:** TS-Cn; folders are rows, per customer.
+- **`create-form-builder`:** TS-Cn; a form definition is a row; the URI rule in its reference.
+- **`grant-module-access`:** TS-Cn; module access keys belong to the structure.
+- **`daas-platform`:** TS-Cn in the Backend-First Rule; the Blueprint's tenant id; TS-B in its data API reference; the URI rule in its built-in features reference; no MCP tool reaches a customer.
+- **`add-users`:** people in the current customer, existing accounts attached as invitations, and the Platform's own accounts left alone.
+- **`spec-driven-development`**, **`create-feature`**, **`idea-refine`:** a plan says what is per customer and what is shared through the Blueprint; `create-feature`'s `ScopeProvider` root is the current customer's node.
+- **`create-tests`:** a script that signs in as a customer's person sends no `X-Tenant-Id` and switches.
+- **`debugging-and-error-recovery`:** five rows for the mode `customer-tenants` in the decision tree.
+- **`security-and-hardening`**, **`references`** (`security-checklist.md`), **`agents`** (`security-auditor`, `test-engineer`): the review checks for the mode `customer-tenants`.
+- **Repository check:** `tenancy-statements.json` marks TD-1 met, so R15 retires TS-N0 and requires TS-B and TS-Cn.
+
+### Supabase projects
+
+Nothing a Supabase project's agent reads changes: every new text is in text for Engine projects
+only, and no file gains the "Establish the backend first" procedure.
+
 ## v9.1.0
 
 Skills now know that an Engine project's customers may each be a tenant of their own

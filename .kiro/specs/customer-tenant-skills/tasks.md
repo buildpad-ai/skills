@@ -516,7 +516,7 @@
     Engine `2d58083f` and hold for S2 (design "Re-read of 10 November 2026"). Amendment approved by
     the maintainer the same day ("Approve and continue"). Gate open.
   - _Requirements: none closed (gate)_
-- [ ] 10.1 Move the data to S2
+- [x] 10.1 Move the data to S2
   - In `tenancy-statements.json`, set `"met": ["TD-1"]`.
   - R15 then forces:
     - TS-N0 out of `add-multitenancy/SKILL.md`, `manage-scope/SKILL.md` and the Mode_Guide
@@ -525,8 +525,9 @@
   - Done when: `node --test "tools/repo-check/test/*.test.mjs"` passes, and
     `node tools/repo-check/check.mjs --only R15` reports only those findings, before 10.2 to 10.7
     clear them.
+  - Done 2026-11-10 (`bb97e6d`).
   - _Requirements: 2.3, 9.1, 9.2_
-- [ ] 10.2 Mode_Guide S2 sections
+- [x] 10.2 Mode_Guide S2 sections
   - Restate §1: "Available: sign-in, scopes, structure built in the Blueprint, people. Not yet:
     Releases".
   - Add these sections:
@@ -547,6 +548,9 @@
     - **§12 Review checks:** 8.2.
   - Done when: FT holds for `add-multitenancy`, and `add-multitenancy/SKILL.md` no longer holds
     TS-N0.
+  - Done 2026-11-10 (`bef8941`). The planning text (§10 and the three planning skills, 10.6)
+    says a shared change reaches only customers created after it, not "plans each shared change as
+    a Release": S2 offers no Releases (T5). S3 restores the Release wording (`b8253ab`).
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 4.1, 4.2, 4.3, 5.1, 5.4 (creation half), 5.5, 5.6, 6.1, 6.2, 6.3, 6.4, 8.1, 8.2_
 - [x] 10.3 Sign-in and session folders, S2 column
   - `authentication-proxy` (both files), `create-api-route` (the "### In the mode
