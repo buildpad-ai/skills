@@ -175,6 +175,24 @@ On an Engine project an administrator creates every user who signs in with a pas
 <!-- buildpad-backend: engine -->
 On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
+In the mode `customer-tenants` people belong to each customer:
+
+- A person's role is a role in the customer's tenant, not in the project's tenant. A customer's
+  administrator, signed in to that customer, adds a person with `POST /api/users` and gives a role
+  with `POST /api/users/:id/roles`, or in the application's people screens.
+- A person who already has an account anywhere on the Engine is attached, not duplicated: their
+  password is unchanged, and the new profile is not entered until they switch to the customer, which
+  the application's chooser does on their next sign-in. Until then they see it as an invitation
+  (`accepted: false`), which they may decline. Adding someone already in the customer answers 409;
+  adding back a person whose profile was deleted restores it as it was, entered or not.
+- Each customer's user list holds the Platform's own accounts: the account the Platform's server
+  uses, `admin@example.com`, named "BuildPad (platform access)", and, once members open the Studio in
+  a customer, members' own accounts, whose `provider` is `platform`. An application tells them apart
+  by those two marks, shows them as the Platform's, and does not offer to remove or suspend them: the
+  Platform cannot open a customer whose platform account was removed.
+- The application's people screens act in the current customer only: they call the Engine with the
+  session, which is bound to it, and never name another tenant.
+
 On an Engine project with Customer_Tenants customers that sign themselves up are not available: only a Platform member creates a customer, on the Platform's Customers page, and no credential an application may hold can create one. Tell the developer so and stop: never put the host administrator's credential or a call to the Engine's tenant routes in the application.
 
 <!-- /buildpad-backend -->

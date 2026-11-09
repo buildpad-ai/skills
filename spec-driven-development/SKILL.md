@@ -87,6 +87,8 @@ When writing specs for DaaS applications:
 <!-- buildpad-backend: engine -->
 On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
+In the mode `customer-tenants` a plan says, for each thing it adds, whether it is per customer (rows, people, role assignments, settings, files, scope nodes and scope types) or shared through the Blueprint (collections, fields, relations, roles, policies, permissions, workflows, cron jobs, hooks, custom services, module access keys), and plans each shared change as a Release.
+
 <!-- /buildpad-backend -->
 ## Common Rationalizations
 

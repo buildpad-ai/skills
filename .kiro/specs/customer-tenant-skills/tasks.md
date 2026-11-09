@@ -585,11 +585,12 @@
   - Done when: FT holds for each folder; R15 finds TS-Cn in all 14 files.
   - _Requirements: 5.1, 5.2 (S2 half: no Release yet, said by TS-Cn), 5.4 (creation half), 5.5, 6.4_
   - Done 2026-11-10: TS-Cn in all 13 structure `SKILL.md` files; FT holds.
-- [ ] 10.6 People and planning folders, S2 column
+- [x] 10.6 People and planning folders, S2 column
   - `add-users`: the §8 bullets next to TS-A.
   - `spec-driven-development`, `create-feature` at 39–45, and `idea-refine`: the 5.6 text.
   - Done when: FT holds for each folder.
   - _Requirements: 5.6, 6.1, 6.2, 6.3, 6.4_
+  - Done 2026-11-10: the §8 bullets in `add-users`, 5.6 in the three planning Skills; FT holds.
 - [ ] 10.7 Debugging and review folders, S2 column
   - `debugging-and-error-recovery`: the 8.1 rows in the fence at 180–196 (S2 cause in the last
     row).
