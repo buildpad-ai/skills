@@ -591,7 +591,7 @@
   - Done when: FT holds for each folder.
   - _Requirements: 5.6, 6.1, 6.2, 6.3, 6.4_
   - Done 2026-11-10: the §8 bullets in `add-users`, 5.6 in the three planning Skills; FT holds.
-- [ ] 10.7 Debugging and review folders, S2 column
+- [x] 10.7 Debugging and review folders, S2 column
   - `debugging-and-error-recovery`: the 8.1 rows in the fence at 180–196 (S2 cause in the last
     row).
   - The 8.2 checks go in:
@@ -601,6 +601,7 @@
     - `agents/test-engineer.md`, engine@99-103.
   - Done when: FT holds for each folder.
   - _Requirements: 8.1, 8.2_
+  - Done 2026-11-10: the 8.1 rows in the debugging tree, the 8.2 checks in the five spots; FT holds.
 - [ ] 10.8 Release S2 (MINOR)
   - Run the 9.1 checks, with S2's statement placement in place of S1's. Write the CHANGELOG
     section: one bullet per changed folder, and a Supabase projects subsection saying nothing a
