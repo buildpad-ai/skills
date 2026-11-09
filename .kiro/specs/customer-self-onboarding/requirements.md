@@ -16,7 +16,7 @@
 > Decisions of this document are written **K-n**. Rows it needs from elsewhere are `TD-n`,
 > continuing `customer-tenant-skills`' numbering, in [Dependencies](#dependencies).
 >
-> Status: **requirements approved** by the user on 8 November 2026 ("Approve and design"). Written 2026-11-08, before any change to a skill. Decisions K-1
+> Status: **requirements approved** by the user on 8 November 2026 ("Approve and design"); **design generated 2026-11-09, not approved** (open decisions S-1, S-2). Written 2026-11-08, before any change to a skill. Decisions K-1
 > to K-10 were SETTLED by the user on 8 November 2026, each as recommended. The requirements were
 > approved the same day. design.md and tasks.md follow approval.
 >
