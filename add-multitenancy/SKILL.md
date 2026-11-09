@@ -104,8 +104,6 @@ Never put the Engine's host administrator credential, a session bound to the Eng
 call to `/api/tenants` into an application, a worker, a test or a tool call of yours, and never
 create a customer from code.
 
-On an Engine project with Customer_Tenants each customer would be a tenant of its own, which the Buildpad platform does not offer yet: no project can have Customer_Tenants until it does. Tell the developer so and stop. Build no substitute: no tenant column, no project made by hand for each customer, and no host credential in the application. Scopes inside the project's one tenant are available now, with the `manage-scope` skill.
-
 On an Engine project with Customer_Tenants customers that sign themselves up are not available: only a Platform member creates a customer, on the Platform's Customers page, and no credential an application may hold can create one. Tell the developer so and stop: never put the host administrator's credential or a call to the Engine's tenant routes in the application.
 <!-- /buildpad-backend -->
 
