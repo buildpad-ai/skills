@@ -319,7 +319,7 @@ administrator's. A test never creates, suspends or deletes a customer.
 In the mode `customer-tenants` a plan says, for each thing it adds, whether it is per customer
 (rows, people, role assignments, settings, files, scope nodes and scope types) or shared through the
 Blueprint (collections, fields, relations, roles, policies, permissions, workflows, cron jobs, hooks,
-custom services, module access keys), and plans each shared change as a Release.
+custom services, module access keys), and says, for each shared change, that it reaches only the customers created after it: Releases are not available yet.
 
 ## 11. When something goes wrong
 
