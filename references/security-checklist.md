@@ -191,4 +191,9 @@ res.status(500).json({
 - [ ] The data API's cross-origin setting is the provisioned any-origin-without-credentials, unchanged
 - [ ] Access is enforced by roles, policies and permissions on every request, not by client-side gating
 - [ ] On an Engine project some files the Buildpad CLI generates cannot be used yet: `lib/supabase/admin.ts`, the OAuth callback and provider routes of the `external-oauth` module, the server-side enforcer and session modules, and `lib/module-access/enforce.ts`. Do not call them; check module access by forwarding the user's token to `GET <Engine_URL>/api/permissions/me` and reading `isAdmin` and `moduleAccess`. For XAppHub sign-in the CLI installs the `external-oauth-engine` module in place of `external-oauth`; its routes are used as the `add-external-oauth` skill says.
+- [ ] In the mode `customer-tenants`:
+  - [ ] No tenant id is taken from user input except the one the switch route receives, and the Engine checks it
+  - [ ] No host credential or host session is present anywhere
+  - [ ] No request reaches two customers with one token, and no server code holds two customers' sessions at once
+  - [ ] No cache in the application (server or browser) is keyed without the current customer, and a switch reloads the page
 <!-- /buildpad-backend -->

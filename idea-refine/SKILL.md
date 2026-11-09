@@ -119,6 +119,8 @@ On an Engine project with Customer_Tenants each customer of the application is a
 
 Customers with their own data, people and administrators: the [`add-multitenancy`](../add-multitenancy/SKILL.md) skill chooses between scopes, Customer_Tenants and a project per customer.
 
+In the mode `customer-tenants` a plan says, for each thing it adds, whether it is per customer (rows, people, role assignments, settings, files, scope nodes and scope types) or shared through the Blueprint (collections, fields, relations, roles, policies, permissions, workflows, cron jobs, hooks, custom services, module access keys), and says, for each shared change, that it reaches only the customers created after it: Releases are not available yet.
+
 <!-- /buildpad-backend -->
 **If DaaS provides it, the idea refinement should focus on how to configure and present it — not whether to build it.**
 

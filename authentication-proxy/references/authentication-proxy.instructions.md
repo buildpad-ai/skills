@@ -90,6 +90,17 @@ On an Engine project the Supabase client is kept for sign-in only. Password sign
 <!-- buildpad-backend: engine -->
 On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
+On an Engine project with Customer_Tenants the password sign-in names no tenant: the application's own server route sends it without `X-Tenant-Id`. When the session it answers is bound to no tenant, the same route lists the person's tenants with `GET /api/auth/tenants`, switches with `POST /api/auth/tenant`, and replaces the session's access and refresh tokens with the pair the switch answers. The application takes its current tenant from the session, never from the environment or from the request, and sends no tenant id on a request that carries a session.
+
+In the mode `customer-tenants` the application holds these four auth routes in place of the CLI's login route (the `create-api-route` skill writes them, and the [`add-multitenancy`](../../add-multitenancy/SKILL.md) skill's guide `engine-customer-tenants` gives the chooser and the switch):
+
+| App route | Engine call | Answer to the browser |
+|---|---|---|
+| `POST /api/auth/login` | Supabase client `signInWithPassword` against the Engine_URL **with no `X-Tenant-Id` header**; then `settleTenant` | `{data: {tenant}}`, `{data: {choose: [...]}}`, or 403 with "Your account does not belong to any customer of this application" |
+| `GET /api/auth/tenants` | `GET <Engine_URL>/api/auth/tenants`, `Authorization: Bearer <access token>` | the entries of `kind: "tenant"`, each with `blueprint: id === NEXT_PUBLIC_BUILDPAD_TENANT_ID` |
+| `POST /api/auth/tenant` | `POST <Engine_URL>/api/auth/tenant`, body `{"tenant": "<id>"}`, `Authorization: Bearer <access token>`; then `supabase.auth.setSession` with the answered pair | `{data: {tenant}}`; the browser then reloads the page (`window.location.assign("/")`) |
+| `DELETE /api/auth/tenants/[id]` | `DELETE <Engine_URL>/api/auth/tenants/:id` (decline an invitation not yet entered) | 204, or the Engine's 409 or 404 |
+
 <!-- /buildpad-backend -->
 ## ❌ WRONG: Direct Supabase Auth from Browser
 
@@ -346,6 +357,10 @@ On an Engine project the environment is: `NEXT_PUBLIC_SUPABASE_URL=<Engine_URL>`
 
 <!-- buildpad-backend: engine -->
 On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
+
+In the mode `customer-tenants`, `NEXT_PUBLIC_BUILDPAD_TENANT_ID` stays the Blueprint's id, the project's own tenant. It labels the application's own tenant in the customer chooser and names the tenant of a request without a session. It never names the current customer, and no customer's tenant id goes into the environment.
+
+On an Engine project with Customer_Tenants a public page of one customer is not available: a request without a session acts in the tenant `X-Tenant-Id` names, and nothing maps a host name to a customer yet. A page without a session reads the Blueprint only, through `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. Tell the developer so and stop: do not put a customer's tenant id in the application or let a visitor choose it.
 
 <!-- /buildpad-backend -->
 ```env

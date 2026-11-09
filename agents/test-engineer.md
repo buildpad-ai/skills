@@ -104,6 +104,16 @@ For every function or component:
 On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
 In the mode `customer-tenants` tests sign in to the Blueprint, as ES-12 says. A test of a customer's path needs a customer made for testing on the Platform's Customers page; the pipeline holds that customer's test administrator's email and password as secrets, beside the test administrator's. A test never creates, suspends or deletes a customer.
+
+In the mode `customer-tenants` these review checks hold, and tests prove them:
+
+- no tenant id is taken from user input except the one the switch route receives, and the Engine
+  checks it;
+- no host credential or host session is present anywhere;
+- no request reaches two customers with one token, and no server code holds two customers' sessions
+  at once;
+- no cache in the application (server or browser) is keyed without the current customer, and a
+  switch reloads the page.
 <!-- /buildpad-backend -->
 
 ## Output Format

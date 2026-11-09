@@ -11,7 +11,7 @@
     "TD-12": "Backup and restore of one customer (Platform Decision 14, Wave 3)",
     "TD-13": "Open Studio into a customer (Platform Requirement 10, Wave 2)"
   },
-  "met": [],
+  "met": ["TD-1"],
   "anchors": [
     {
       "es": "ES-3",

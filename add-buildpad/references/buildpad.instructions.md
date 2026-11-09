@@ -929,6 +929,8 @@ import { createClient } from "@/lib/supabase/client";
   <App />
 </DaaSProvider>;
 ```
+
+In the mode `customer-tenants` the session is bound to the current customer, and `getToken` returns its access token. After a switch of customer the browser reloads the whole page, so `DaaSProvider`, any `ScopeProvider` and every client cache start in the new customer; never key a cache without the current customer, and never keep a provider across a switch.
 <!-- /buildpad-backend -->
 
 ### useDaaSContext Hook

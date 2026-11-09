@@ -318,6 +318,8 @@ On an Engine project collections, fields, relations, roles, policies and permiss
 | --------------- | ----------------------------------------------------------------------------------- |
 | `system-prompt` | Load DaaS-specific AI context; not listed while the project's settings turn it off |
 
+In the mode `customer-tenants` the project's MCP token is bound to the Blueprint: no tool reaches a customer. Every tool in this file reads and builds in the Blueprint only.
+
 ### One Tool per Verb
 
 The Engine also serves an older set of tools that name the operation in the tool, not in an `action` argument: `daas_read_items`, `daas_create_item`, `daas_update_item`, `daas_delete_item` (listed only while deletes are allowed), `daas_list_collections`, `daas_get_schema`, `daas_create_collection` (administrators only), `daas_list_files`, `daas_list_workflows` and `daas_trigger_transition`. The same permissions apply.

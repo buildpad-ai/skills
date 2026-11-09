@@ -78,6 +78,8 @@ For each collection in the feature, answer these questions during the design sta
 <!-- buildpad-backend: engine -->
 On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
+In the mode `customer-tenants` a plan says, for each thing it adds, whether it is per customer (rows, people, role assignments, settings, files, scope nodes and scope types) or shared through the Blueprint (collections, fields, relations, roles, policies, permissions, workflows, cron jobs, hooks, custom services, module access keys), and says, for each shared change, that it reaches only the customers created after it: Releases are not available yet.
+
 <!-- /buildpad-backend -->
 On an Engine project some files the Buildpad CLI generates cannot be used yet: `lib/supabase/admin.ts`, the OAuth callback and provider routes of the `external-oauth` module, the server-side enforcer and session modules, and `lib/module-access/enforce.ts`. Do not call them; check module access by forwarding the user's token to `GET <Engine_URL>/api/permissions/me` and reading `isAdmin` and `moduleAccess`. For XAppHub sign-in the CLI installs the `external-oauth-engine` module in place of `external-oauth`; its routes are used as the `add-external-oauth` skill says.
 
@@ -146,6 +148,8 @@ On an Engine project the project is one tenant. Every scope hierarchy begins bel
 
 <!-- buildpad-backend: engine -->
 On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
+
+In the mode `customer-tenants` the `ScopeProvider`'s root is the current customer's node: the `uri_path` of the `current` entry of `GET /api/auth/tenants`, never the Blueprint's and never one built from `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. Every scope URI the feature sends begins with it, and a switch of customer reloads the page, so the provider starts again in the new customer.
 
 <!-- /buildpad-backend -->
 > **Bug 26:** Any React context or component that calls DaaS on mount AND lives inside `ScopeProvider` must wait for the scope to be ready before fetching. Firing the request before the `daas_resource_uri` cookie is set results in a 401. The `.catch()` handler will have set state to `false`/empty, and the effect will NOT re-run unless `scopeLoading` is in the dependency array.

@@ -434,7 +434,7 @@
   - _Requirements: 1.1, 7.1, 9.3_
   - _Boundary: migrate-to-engine/_
 
-- [ ] 9. Prove S1 whole and release it (design Release plan, S1; after tasks 1 to 8)
+- [x] 9. Prove S1 whole and release it (design Release plan, S1; after tasks 1 to 8)
 - [x] 9.1 Run the whole-tree check and the S1 read-through on the integration branch
   - Run `node --test "tools/repo-check/test/*.test.mjs"`, `node tools/repo-check/check.mjs` (R15
     included) and the `baseline` job's command.
@@ -457,7 +457,9 @@
     - every Skill installs, and the installed files equal the tree;
     - reader, date and candidate commit are noted for 9.2.
   - _Requirements: 1.1, 1.4, 2.5, 9.2, 9.3, 9.4_
-- [ ] 9.2 Write the release: `CHANGELOG.md` and the README's install tag, then merge S1
+- [x] 9.2 Write the release: `CHANGELOG.md` and the README's install tag, then merge S1
+  - Done 2026-11-08: pull request buildpad-ai/skills#66, `check` and `baseline` green, merged as
+    `0f667fb`. `check.mjs --tag v9.1.0` exits 0 on that commit.
   - Add a `v9.1.0` section above `v9.0.0`. If another release takes `v9.1.0` first, use the next
     MINOR; S1 is MINOR in every case (design Issue 3, settled).
   - The section holds:
@@ -475,7 +477,11 @@
     - the pull request is merged.
   - _Requirements: 9.4_
   - _Boundary: CHANGELOG.md, README.md_
-- [ ] 9.3 Tag `v9.1.0` and publish the GitHub Release (maintainer)
+- [x] 9.3 Tag `v9.1.0` and publish the GitHub Release (maintainer)
+  - Done 2026-11-08: annotated tag `v9.1.0` on `0f667fb`, tag-push `repo-check` green, Release
+    published (Latest). `npx skills@1.7.1 add buildpad-ai/skills#v9.1.0 --all` installed 67 Skills
+    whose 243 files equal `git ls-tree -r v9.1.0`; `#v9.1.0@add-multitenancy` installed its 3 files,
+    equal. `v9.0.0` was never tagged; left to the maintainer.
   - Create the annotated tag on the merge commit of 9.2, push it, and publish the Release with the
     CHANGELOG section.
   - Then install `#v9.1.0 --all` and `#v9.1.0@add-multitenancy` into a scratch folder.
@@ -489,7 +495,7 @@
 ### Stage S2 (when TD-1 is met)
 
 - [ ] 10. S2: sign-in, scopes, structure built in the Blueprint, people, planning, debugging and review (design T3 S2; Release plan S2)
-- [ ] 10.0 Gate: TD-1 met, and the companions reconciled
+- [x] 10.0 Gate: TD-1 met, and the companions reconciled
   - **Blocked until** the requirements' Dependencies record TD-1 as met, by a dated amendment the
     maintainer approves. TD-1 is met when `buildpad-platform` `project-tenants` is approved and its
     Wave 1 is on production: the flag, the Customers page and the creation of Customer_Tenants.
@@ -504,8 +510,13 @@
     record, from the Platform's design, the answers to Issue 17 (a Platform account removed in a
     customer) and to row P-9.
   - Done when: the amendment is approved, and the design is either confirmed or revised.
+  - 8 November 2026: reconciled (design "Reconciliation of 8 November 2026"); design revised and
+    criterion 8.1 amended, approved by the maintainer the same day. TD-1 still unmet: Platform task 12.3 not run.
+  - 10 November 2026: TD-1 met (Platform 12.3 done 9 November, `01a8f25e`); rows X- re-read at
+    Engine `2d58083f` and hold for S2 (design "Re-read of 10 November 2026"). Amendment approved by
+    the maintainer the same day ("Approve and continue"). Gate open.
   - _Requirements: none closed (gate)_
-- [ ] 10.1 Move the data to S2
+- [x] 10.1 Move the data to S2
   - In `tenancy-statements.json`, set `"met": ["TD-1"]`.
   - R15 then forces:
     - TS-N0 out of `add-multitenancy/SKILL.md`, `manage-scope/SKILL.md` and the Mode_Guide
@@ -514,8 +525,9 @@
   - Done when: `node --test "tools/repo-check/test/*.test.mjs"` passes, and
     `node tools/repo-check/check.mjs --only R15` reports only those findings, before 10.2 to 10.7
     clear them.
+  - Done 2026-11-10 (`bb97e6d`).
   - _Requirements: 2.3, 9.1, 9.2_
-- [ ] 10.2 Mode_Guide S2 sections
+- [x] 10.2 Mode_Guide S2 sections
   - Restate §1: "Available: sign-in, scopes, structure built in the Blueprint, people. Not yet:
     Releases".
   - Add these sections:
@@ -536,8 +548,11 @@
     - **§12 Review checks:** 8.2.
   - Done when: FT holds for `add-multitenancy`, and `add-multitenancy/SKILL.md` no longer holds
     TS-N0.
+  - Done 2026-11-10 (`bef8941`). The planning text (§10 and the three planning skills, 10.6)
+    says a shared change reaches only customers created after it, not "plans each shared change as
+    a Release": S2 offers no Releases (T5). S3 restores the Release wording (`b8253ab`).
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 4.1, 4.2, 4.3, 5.1, 5.4 (creation half), 5.5, 5.6, 6.1, 6.2, 6.3, 6.4, 8.1, 8.2_
-- [ ] 10.3 Sign-in and session folders, S2 column
+- [x] 10.3 Sign-in and session folders, S2 column
   - `authentication-proxy` (both files), `create-api-route` (the "### In the mode
     `customer-tenants`" section after the Login route; the answers table in the forwarder section,
     lines 60–120), `create-project` (both files), `add-buildpad` (`SKILL.md` §CRITICAL and
@@ -546,7 +561,8 @@
     script sign-in at 180). Each gets TS-B and the specifics of the per-folder plan's S2 column.
   - Done when: FT holds for each folder; R15 finds TS-B in all 12 files.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 8.2_
-- [ ] 10.4 Scope folders, S2 column (the URI rule 4.1, and 4.3)
+  - Done 2026-11-10: TS-B in all 12 files; FT holds for the nine folders.
+- [x] 10.4 Scope folders, S2 column (the URI rule 4.1, and 4.3)
   - `manage-scope`: `SKILL.md` at 797 (§6 bullets, linking `../add-multitenancy/SKILL.md`),
     `references/engine-scope-management.instructions.md` and
     `references/scope-client.instructions.md` I-P(56-69).
@@ -557,7 +573,8 @@
   - `create-feature` at 110.
   - Done when: FT holds for each folder.
   - _Requirements: 4.1, 4.2, 4.3_
-- [ ] 10.5 Structure folders, S2 column
+  - Done 2026-11-10: TS-N0 out of `manage-scope/SKILL.md`; the URI rule in all eight spots; FT holds.
+- [x] 10.5 Structure folders, S2 column
   - TS-Cn goes in the 13 structure `SKILL.md` files at the per-folder plan's points, with these
     specifics:
     - **`create-rbac`:** 7.2 roles by id at I-P(61-71); the `scope_config` rule at I-P(117-149);
@@ -571,12 +588,14 @@
       Tools ("no tool reaches a customer").
   - Done when: FT holds for each folder; R15 finds TS-Cn in all 14 files.
   - _Requirements: 5.1, 5.2 (S2 half: no Release yet, said by TS-Cn), 5.4 (creation half), 5.5, 6.4_
-- [ ] 10.6 People and planning folders, S2 column
+  - Done 2026-11-10: TS-Cn in all 13 structure `SKILL.md` files; FT holds.
+- [x] 10.6 People and planning folders, S2 column
   - `add-users`: the §8 bullets next to TS-A.
   - `spec-driven-development`, `create-feature` at 39–45, and `idea-refine`: the 5.6 text.
   - Done when: FT holds for each folder.
   - _Requirements: 5.6, 6.1, 6.2, 6.3, 6.4_
-- [ ] 10.7 Debugging and review folders, S2 column
+  - Done 2026-11-10: the §8 bullets in `add-users`, 5.6 in the three planning Skills; FT holds.
+- [x] 10.7 Debugging and review folders, S2 column
   - `debugging-and-error-recovery`: the 8.1 rows in the fence at 180–196 (S2 cause in the last
     row).
   - The 8.2 checks go in:
@@ -586,6 +605,7 @@
     - `agents/test-engineer.md`, engine@99-103.
   - Done when: FT holds for each folder.
   - _Requirements: 8.1, 8.2_
+  - Done 2026-11-10: the 8.1 rows in the debugging tree, the 8.2 checks in the five spots; FT holds.
 - [ ] 10.8 Release S2 (MINOR)
   - Run the 9.1 checks, with S2's statement placement in place of S1's. Write the CHANGELOG
     section: one bullet per changed folder, and a Supabase projects subsection saying nothing a

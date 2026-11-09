@@ -120,6 +120,18 @@ export async function forwardToEngine(
 }
 ```
 
+In the mode `customer-tenants` the Engine also gives the answers below. The forwarder passes them back unchanged, as it passes every answer; the application shows each as the table says, and retries only the 503:
+
+| Engine answer | Cause | What the app shows | Retry |
+|---|---|---|---|
+| 401 `TENANT_SUSPENDED` | A Platform member suspended this customer | "Access to <customer> is suspended. Ask your administrator." Then sign out | No |
+| 401 `TOKEN_INVALID` | The session ended, or this customer was deleted | "Your session has ended. Sign in again." Then the sign-in page | No |
+| 503 `SERVICE_UNAVAILABLE` | The customer is not serving for a moment (being migrated or behind the Engine's version during an Engine upgrade, or failed), or the Engine's session store is unavailable | "<customer> is being updated. Try again in a minute." | Yes: up to 3 times, after 2, 5 and 10 seconds |
+| 403 `FORBIDDEN`, "This token is not bound to a tenant. Switch to a tenant first." | The session was never switched | The chooser (`settleTenant`, under Sign-in Routes) | After the switch |
+| 403 `TENANT_SUSPENDED` from the switch | The chosen customer is suspended | As 401 `TENANT_SUSPENDED`, staying on the chooser | No |
+| 403 `FORBIDDEN` from the switch | The person holds no place in that tenant | "You are not a member of that customer." | No |
+| 401 `USER_SUSPENDED` from the switch | The person's account is not active | "Your account is not active. Ask your administrator." Then sign out | No |
+
 ## Sign-in Routes
 
 On an Engine project the Supabase client is kept for sign-in only. Password sign-in, session refresh, reading the signed-in user and sign-out work through it, and its default sign-out ends the user's sessions on every device. An account that holds no role in the project's tenant is refused at password sign-in. XAppHub sign-in also works through it while the project's XAppHub connector is connected: the application's server gives the ID token from XAppHub to `signInWithIdToken` with the provider `my-apps`, and ends the session of an account that holds no role yet (the `add-external-oauth` skill). Not available on an Engine project: sign-up; OAuth sign-in with any provider other than XAppHub; magic link and one-time code; password recovery; changing a password, an email or a profile through the Supabase client; the Supabase client's code exchange; and the Supabase administration API. The Platform's password-less handoff opens the Studio; it is not a way for an application to sign a user in.
@@ -177,6 +189,196 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ data: { user: data.user } });
 }
 ```
+
+### In the mode `customer-tenants`
+
+On an Engine project with Customer_Tenants the password sign-in names no tenant: the application's own server route sends it without `X-Tenant-Id`. When the session it answers is bound to no tenant, the same route lists the person's tenants with `GET /api/auth/tenants`, switches with `POST /api/auth/tenant`, and replaces the session's access and refresh tokens with the pair the switch answers. The application takes its current tenant from the session, never from the environment or from the request, and sends no tenant id on a request that carries a session.
+
+The Buildpad CLI's generated sign-in route and the SDK do not know this mode yet: the generated login route sends `X-Tenant-Id` and has no switch. In the mode `customer-tenants`, replace the login route with the one below and add the three routes after it; a later release of the skills names the SDK's functions instead.
+
+`lib/auth/tenants.ts` holds the Engine calls the four routes share. Run `settleTenant` after every sign-in, and in the layout when a signed-in request finds no current customer (a refresh of a session bound to no tenant stays bound to none):
+
+```typescript
+// lib/auth/tenants.ts — server only. In the mode customer-tenants.
+import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+const ENGINE = process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL!; // the Engine_URL
+
+type ServerClient = SupabaseClient; // the @supabase/ssr server client of the request
+
+export type MyTenant = {
+  id: string; name: string; uri_path: string | null; current: boolean;
+  kind: "host" | "tenant"; accepted: boolean; state: string;
+};
+
+async function engineError(r: Response) {
+  const body = await r.json().catch(() => ({}));
+  const first = body?.errors?.[0];
+  return Object.assign(new Error(first?.message ?? `Engine answered ${r.status}`), {
+    status: r.status, code: first?.extensions?.code as string | undefined,
+  });
+}
+
+export async function listTenants(accessToken: string): Promise<MyTenant[]> {
+  const r = await fetch(`${ENGINE}/api/auth/tenants`, {
+    headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store",
+  });
+  if (!r.ok) throw await engineError(r);
+  // The Engine lists the host too when the person has a place there: never offer it.
+  return ((await r.json()).data as MyTenant[]).filter((t) => t.kind === "tenant");
+}
+
+export async function switchTenant(accessToken: string, tenant: string) {
+  const r = await fetch(`${ENGINE}/api/auth/tenant`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ tenant }),
+  });
+  if (!r.ok) throw await engineError(r);
+  // { access_token, refresh_token, expires }: expires is the remaining lifetime in milliseconds.
+  return (await r.json()).data as { access_token: string; refresh_token: string; expires: number };
+}
+
+export async function settleTenant(supabase: ServerClient, accessToken: string) {
+  const tenants = await listTenants(accessToken);
+  const current = tenants.find((t) => t.current);
+  if (current) return { tenant: current };                        // bound to a customer already
+  if (tenants.length === 0) {                                     // belongs to no customer
+    await supabase.auth.signOut();
+    return { error: "NO_CUSTOMER" as const };
+  }
+  if (tenants.length === 1) {                                     // one: switch without asking
+    const pair = await switchTenant(accessToken, tenants[0].id);  // this also enters an invitation
+    await supabase.auth.setSession({ access_token: pair.access_token, refresh_token: pair.refresh_token });
+    return { tenant: tenants[0] };
+  }
+  return { choose: tenants };                                     // several: the person chooses
+}
+```
+
+The login route sends no `X-Tenant-Id`, then settles the session's tenant. It answers `{ data: { tenant } }` when the session is bound to a customer, `{ data: { choose: [...] } }` when the person chooses, and 403 when the account belongs to no customer:
+
+```typescript
+// app/api/auth/login/route.ts — in the mode customer-tenants
+import { type NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { settleTenant } from "@/lib/auth/tenants";
+
+export async function POST(request: NextRequest) {
+  const { email, password } = await request.json();
+  if (!email || !password) {
+    return NextResponse.json(
+      { errors: [{ message: "Email and password are required" }] },
+      { status: 400 },
+    );
+  }
+
+  const cookieStore = await cookies();
+  // No X-Tenant-Id header: the sign-in names no tenant.
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!, // the Engine_URL
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: (list) =>
+          list.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options),
+          ),
+      },
+    },
+  );
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error || !data.session) {
+    return NextResponse.json(
+      { errors: [{ message: error?.message ?? "Sign-in failed" }] },
+      { status: 401 },
+    );
+  }
+
+  const settled = await settleTenant(supabase, data.session.access_token);
+  if ("error" in settled) {
+    return NextResponse.json(
+      { errors: [{ message: "Your account does not belong to any customer of this application" }] },
+      { status: 403 },
+    );
+  }
+  return NextResponse.json({ data: settled });
+}
+```
+
+The three routes after it list the person's tenants, switch, and decline an invitation not yet entered. Each reads the access token from the session, and passes an Engine answer that is not a success back with its status and code:
+
+```typescript
+// app/api/auth/tenants/route.ts — in the mode customer-tenants
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { listTenants } from "@/lib/auth/tenants";
+
+export async function GET() {
+  const supabase = await createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    return NextResponse.json({ errors: [{ message: "Unauthorized" }] }, { status: 401 });
+  }
+  try {
+    const blueprint = process.env.NEXT_PUBLIC_BUILDPAD_TENANT_ID; // the application's own tenant
+    const tenants = await listTenants(session.access_token);
+    return NextResponse.json({
+      data: tenants.map((t) => ({ ...t, blueprint: t.id === blueprint })),
+    });
+  } catch (e) {
+    const { message, status = 502, code } = e as Error & { status?: number; code?: string };
+    return NextResponse.json({ errors: [{ message, extensions: { code } }] }, { status });
+  }
+}
+
+// app/api/auth/tenant/route.ts — in the mode customer-tenants
+import { type NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { listTenants, switchTenant } from "@/lib/auth/tenants";
+
+export async function POST(request: NextRequest) {
+  const { tenant } = await request.json(); // the one tenant id taken from the request: the Engine checks it
+  const supabase = await createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    return NextResponse.json({ errors: [{ message: "Unauthorized" }] }, { status: 401 });
+  }
+  try {
+    const pair = await switchTenant(session.access_token, tenant);
+    // From here on the old access token is never sent again. Do not sign the old pair out:
+    // the default sign-out ends every session of the person, the new one included.
+    await supabase.auth.setSession({
+      access_token: pair.access_token,
+      refresh_token: pair.refresh_token,
+    });
+    const current = (await listTenants(pair.access_token)).find((t) => t.current);
+    return NextResponse.json({ data: { tenant: current } }); // the browser then reloads the page
+  } catch (e) {
+    const { message, status = 502, code } = e as Error & { status?: number; code?: string };
+    return NextResponse.json({ errors: [{ message, extensions: { code } }] }, { status });
+  }
+}
+
+// app/api/auth/tenants/[id]/route.ts — in the mode customer-tenants
+import { type NextRequest } from "next/server";
+import { forwardToEngine } from "@/lib/api/forward";
+
+// Declines an invitation not yet entered: 204, or the Engine's 409 or 404.
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  return forwardToEngine(request, `/api/auth/tenants/${encodeURIComponent(id)}`);
+}
+```
+
+After the switch answers, the browser reloads the whole page (`window.location.assign("/")`), so every client cache, `DaaSProvider` and any `ScopeProvider` start in the new customer. The `add-multitenancy` skill's guide `engine-customer-tenants` gives the chooser, the current customer and the switch menu.
 
 ### Logout and current user
 

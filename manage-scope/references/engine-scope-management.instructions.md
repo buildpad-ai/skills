@@ -42,6 +42,8 @@ On an Engine project the project is one tenant. Every scope hierarchy begins bel
 
 On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
+In the mode `customer-tenants` every scope URI begins with the current customer's node: the `uri_path` of the `current` entry of `GET /api/auth/tenants`, never the Blueprint's and never one built from `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. A customer's administrator may create scope types and nodes beneath their own tenant node. Direct no root type and no first-level node: a first-level node is a tenant, which only the host creates.
+
 The Engine's scope system provides hierarchical data separation inside the project using `daas_scope_types` (hierarchy levels) and `daas_scope_items` (concrete nodes). The active scope of any request is the `X-Resource-Uri` header; a cookie on the app's origin never reaches the Engine. Every write below needs an administrator's session (`Authorization: Bearer <access token>`); never send the project's MCP token to these routes.
 
 ---

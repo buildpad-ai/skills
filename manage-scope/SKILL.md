@@ -798,7 +798,24 @@ On an Engine project the project is one tenant. Every scope hierarchy begins bel
 
 On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
-On an Engine project with Customer_Tenants each customer would be a tenant of its own, which the Buildpad platform does not offer yet: no project can have Customer_Tenants until it does. Tell the developer so and stop. Build no substitute: no tenant column, no project made by hand for each customer, and no host credential in the application. Scopes inside the project's one tenant are available now, with the `manage-scope` skill.
+In the mode `customer-tenants`, scopes live inside each customer:
+
+- Every scope URI begins with the current customer's node: the `uri_path` of the `current` entry of
+  `GET /api/auth/tenants`, never the Blueprint's and never one built from
+  `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. A `ScopeProvider`'s root is that node.
+- A scope type's id differs in every customer (a creation copies the Blueprint's scope types under
+  new ids): look scope types up by name in the current customer. Roles are the opposite: a role
+  made in the Blueprint keeps its id in every customer.
+- A creation copies the Blueprint's scope types as they are at that moment, so a scope type made in
+  the Blueprint reaches every customer created after it, and no customer created before it. The
+  application's setup screen for a customer's administrator therefore creates a scope type it needs
+  when it finds it missing, beneath their own tenant node.
+- A customer's administrator may create scope types and nodes beneath their own tenant node. Direct
+  no root type and no first-level node: a first-level node is a tenant, which only the host creates.
+- A role's `scope_config` made in the Blueprint may name the Blueprint's node and its own scope
+  types: a creation rewrites them to the new customer's node and same-named types.
+
+The [`add-multitenancy`](../add-multitenancy/SKILL.md) skill's guide `engine-customer-tenants` gives the rest of the mode: signing in, the current customer and the switch.
 
 > **MCP or API:** each route below has a `scope` MCP tool action that applies the same checks (`create_type`, `create_item`, `update_config`, `assign_user_role` and the rest; the [daas-platform skill](../daas-platform/SKILL.md) points to the full list), so the agent can do the setup through the project's MCP configuration. To call the routes instead, or when the project's Engine is older than 0.1.0-dev.19 and the tool offers only `assign_user_role` and `create_config`, sign in as an administrator and send that session's access token as `Authorization: Bearer`. The token in the project's MCP configuration is accepted only on the MCP endpoint: never send it to these routes.
 

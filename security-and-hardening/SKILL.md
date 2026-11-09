@@ -59,6 +59,7 @@ Security-first development practices for web applications. Treat every external 
 <!-- /buildpad-backend -->
 <!-- buildpad-backend: engine -->
 - **Query through the API, never with SQL** — the Engine refuses caller-supplied SQL; pass user input only as values of its API's `filter`, `sort` and `search` parameters
+- **In the mode `customer-tenants`, keep customers apart** — take no tenant id from user input except the one the switch route receives, which the Engine checks; hold no host credential or host session anywhere; let no request reach two customers with one token, and no server code hold two customers' sessions at once; key no cache in the application (server or browser) without the current customer, and reload the page on a switch
 <!-- /buildpad-backend -->
 - **Encode output** to prevent XSS (use framework auto-escaping, don't bypass it)
 - **Use HTTPS** for all external communication
@@ -264,6 +265,7 @@ export async function POST(req: NextRequest) {
 <!-- /buildpad-backend -->
 <!-- buildpad-backend: engine -->
 - A call to the Engine sent with cookies, or any change to the Engine's cross-origin setting
+- In the mode `customer-tenants`: a tenant id taken from user input anywhere but the switch route; a host credential or host session anywhere; one token reaching two customers, or server code holding two customers' sessions at once; a cache in the application keyed without the current customer, or a switch that does not reload the page
 <!-- /buildpad-backend -->
 - No rate limiting on authentication endpoints
 - Stack traces or internal errors exposed to users

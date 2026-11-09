@@ -188,6 +188,10 @@ A setup script or an API test runs in Node, not in a browser, so it signs in dir
 - password sign-in through the Supabase client, created against the Engine_URL with the global header `X-Tenant-Id`;
 - `POST <Engine_URL>/api/auth/login` with the header `X-Tenant-Id` and the body `{ "email": "...", "password": "...", "tenant": "<the tenant id>" }`. The body's `tenant` names the tenant the session acts in. The answer is `{ "data": { "access_token": "...", "refresh_token": "...", "expires": <Unix time> } }`.
 
+On an Engine project with Customer_Tenants the password sign-in names no tenant: the application's own server route sends it without `X-Tenant-Id`. When the session it answers is bound to no tenant, the same route lists the person's tenants with `GET /api/auth/tenants`, switches with `POST /api/auth/tenant`, and replaces the session's access and refresh tokens with the pair the switch answers. The application takes its current tenant from the session, never from the environment or from the request, and sends no tenant id on a request that carries a session.
+
+In the mode `customer-tenants` a script that signs in as a customer's person sends no `X-Tenant-Id` and switches: it lists the person's tenants with `GET <Engine_URL>/api/auth/tenants`, switches with `POST <Engine_URL>/api/auth/tenant` and the body `{ "tenant": "<the customer's tenant id>" }`, and sends the access token the switch answers from then on. A script that signs in to the Blueprint, as the test users above do, keeps the header.
+
 Send the access token as `Authorization: Bearer <access token>`. It expires after one hour unless the Engine's operator set another lifetime; sign in again then.
 
 **Budgets.** The Engine limits how fast tests may create accounts and send requests:

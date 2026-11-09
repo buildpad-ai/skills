@@ -90,6 +90,10 @@ node --version && pnpm --version && npx --version
 The CLI also writes the sign-in layer and the proxy routes (`lib/supabase/`, `middleware.ts`, `lib/api/auth-headers.ts`, `app/api/`). Do not write those by hand either.
 
 On an Engine project some files the Buildpad CLI generates cannot be used yet: `lib/supabase/admin.ts`, the OAuth callback and provider routes of the `external-oauth` module, the server-side enforcer and session modules, and `lib/module-access/enforce.ts`. Do not call them; check module access by forwarding the user's token to `GET <Engine_URL>/api/permissions/me` and reading `isAdmin` and `moduleAccess`. For XAppHub sign-in the CLI installs the `external-oauth-engine` module in place of `external-oauth`; its routes are used as the `add-external-oauth` skill says.
+
+On an Engine project with Customer_Tenants the password sign-in names no tenant: the application's own server route sends it without `X-Tenant-Id`. When the session it answers is bound to no tenant, the same route lists the person's tenants with `GET /api/auth/tenants`, switches with `POST /api/auth/tenant`, and replaces the session's access and refresh tokens with the pair the switch answers. The application takes its current tenant from the session, never from the environment or from the request, and sends no tenant id on a request that carries a session.
+
+In the mode `customer-tenants` the CLI's generated sign-in route sends `X-Tenant-Id` and has no switch: replace it as the `authentication-proxy` skill says.
 <!-- /buildpad-backend -->
 
 ## Installation Commands

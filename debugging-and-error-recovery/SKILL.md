@@ -191,7 +191,13 @@ Problem → Root Cause → Fix
 ├── Collection data empty → Missing read permission → Check the role's policies and permissions
 ├── Hook or cron job fails with ReferenceError → Stored code used fetch, process or require, which the Engine's runtime does not have → Use services.fetch, and services.env for settings
 ├── Stored code refused with 501 RUNTIME_SUPABASE_UNAVAILABLE → It asked for the Supabase service, which the Engine refuses → Use services.items(collection)
-└── Form fields missing → Missing field permissions → Check the permission's field list
+├── Form fields missing → Missing field permissions → Check the permission's field list
+└── In the mode customer-tenants:
+    ├── 403 FORBIDDEN "This token is not bound to a tenant" → An unbound session that was never switched → Switch (settleTenant) before any data call
+    ├── Signs in but shows nothing → The profile is not yet entered, or the session is bound to the Blueprint → Switch to the customer; the chooser does it
+    ├── 401 TENANT_SUSPENDED → A Platform member suspended the customer → Nothing in the app; the member resumes it
+    ├── 503 SERVICE_UNAVAILABLE → The customer is not serving for a moment (an Engine upgrade migrating it), or the session store → Retry after a few seconds
+    └── A field in the Blueprint and not in a customer → Made after the customer was created, and Releases are not available yet → Ask the Platform member; the change reaches only customers created after it
 ```
 
 The Engine's log is at `GET <Engine_URL>/api/logs`, for an administrator or a user whose role grants the `system:logs` module key.
