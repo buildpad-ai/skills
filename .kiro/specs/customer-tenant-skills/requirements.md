@@ -439,11 +439,12 @@ Draft texts, to be fixed in design:
 
 What this repository needs from elsewhere before a criterion can hold. Statuses as read on
 7 November 2026; TD-1, TD-2 and TD-3 re-read on 8 November 2026 (task 10.0, amendment approved by
-the maintainer the same day).
+the maintainer the same day); TD-1 re-read on 10 November 2026 (task 10.0, amendment approved by the
+maintainer the same day).
 
 | ID | Owner | What it is | Needed by | Status when read |
 |---|---|---|---|---|
-| TD-1 | Platform | `project-tenants` approved, and its Wave 1 shipped: the flag, the Customers page and the creation of Customer_Tenants | 2.3, 3, 4, 5, 6 | **Unmet, 8 November.** `project-tenants` approved and its Wave 1 code on production (Platform `main` `0648004e`, PR #274, deployed and smoke-checked), but not switched on: the server setting `CUSTOMER_TENANTS_ENABLED` is unset, and tasks 12.1 to 12.3 (dev and production switch-on with a test customer) are not run. Met when task 12.3 is done |
+| TD-1 | Platform | `project-tenants` approved, and its Wave 1 shipped: the flag, the Customers page and the creation of Customer_Tenants | 2.3, 3, 4, 5, 6 | **Met, 9 November** (re-read 10 November). Platform tasks 12.1 to 12.3 are done (Platform `docs/project-tenants-deployed` `01a8f25e`). On production, `CUSTOMER_TENANTS_ENABLED` is `true` (14:54 UTC, pipeline `112650ba`, Platform `c6ed1830`), the worker runs, and the flag is on for one Engine_Project, Event-RSVP-Manager (15:04 UTC). At 22:23 UTC that project listed its Blueprint, and the test customer "Switch-on Test" was created and then scheduled for deletion. The flag is per project: a project whose flag is off still answers 404 on its Customers page, and its Kit still says `"tenancy": "scope"` |
 | TD-2 | Platform | The Tenancy_Signal written into every Kit (`.buildpad/project.json` `tenancy`) and reported by `get_project_detail` (TS-1) | 1.1 | **Met, 8 November.** Platform task 10.1 (`fb0a9de9`) writes `tenancy` in every Engine Kit and the worker starter, `"scope"` until the flag is on; `get_project_detail` reports `project.tenancy` and `customers`. On production with `0648004e`. A Kit already downloaded keeps the value it was written with |
 | TD-3 | Engine | Entry 192 applied: Releases, Rollouts, Drift, and destructive changes behind `allow_destructive` | 4.2, 5.2, 5.3 | **Half met, 8 November.** Entry 192 is applied (Engine `main` `6011cf29`, PR #42) and released as `0.1.0-dev.22` (production catalog `2026.11.10`). The Platform's Requirement 9 code is on production but not switched on (tasks 13.7 and 13.8 not run). Met when task 13.8 is done |
 | TD-4 | Engine | Whether a Release activates cron jobs that a creation from the template copied inactive | 5.4 | Settled as entry 192's Decision 14 (d). Entry 135 copies cron jobs inactive (`template/document.go:169-172`). New jobs stay inactive unless a Rollout asks for `cron_status: "as_template"` |

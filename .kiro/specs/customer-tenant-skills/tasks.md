@@ -495,7 +495,7 @@
 ### Stage S2 (when TD-1 is met)
 
 - [ ] 10. S2: sign-in, scopes, structure built in the Blueprint, people, planning, debugging and review (design T3 S2; Release plan S2)
-- [ ] 10.0 Gate: TD-1 met, and the companions reconciled
+- [x] 10.0 Gate: TD-1 met, and the companions reconciled
   - **Blocked until** the requirements' Dependencies record TD-1 as met, by a dated amendment the
     maintainer approves. TD-1 is met when `buildpad-platform` `project-tenants` is approved and its
     Wave 1 is on production: the flag, the Customers page and the creation of Customer_Tenants.
@@ -512,6 +512,9 @@
   - Done when: the amendment is approved, and the design is either confirmed or revised.
   - 8 November 2026: reconciled (design "Reconciliation of 8 November 2026"); design revised and
     criterion 8.1 amended, approved by the maintainer the same day. TD-1 still unmet: Platform task 12.3 not run.
+  - 10 November 2026: TD-1 met (Platform 12.3 done 9 November, `01a8f25e`); rows X- re-read at
+    Engine `2d58083f` and hold for S2 (design "Re-read of 10 November 2026"). Amendment approved by
+    the maintainer the same day ("Approve and continue"). Gate open.
   - _Requirements: none closed (gate)_
 - [ ] 10.1 Move the data to S2
   - In `tenancy-statements.json`, set `"met": ["TD-1"]`.

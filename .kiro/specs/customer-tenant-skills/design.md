@@ -791,7 +791,8 @@ A companion design that differs from a row is a Revalidation Trigger. **Reconcil
 (task 10.0):** rows P- against the Platform's approved design and code at its `origin/main`
 `0648004e`, rows X- and E-13 against the Engine's `origin/main` `6011cf29`; the rows below are as
 revised (approved by the maintainer the same day), and "Reconciliation of 8 November 2026" lists
-what changed.
+what changed. **Re-read 10 November 2026 (task 10.0, TD-1 met):** rows X- against the Engine's
+`origin/main` `2d58083f`; they hold for S2 (see "Re-read of 10 November 2026").
 
 **Platform `project-tenants`**
 
@@ -878,6 +879,24 @@ Platform P2 (c) (deleting a project needs the customer count confirmed) concerns
 changes no skills text. Requirement 3.6 holds as written. Criterion 8.1's fourth symptom ("503 during
 a Rollout or an upgrade") is amended with this reconciliation to "503 during an Engine upgrade, and a
 slow request during a Rollout".
+
+### Re-read of 10 November 2026 (task 10.0, TD-1 met)
+
+TD-1 is met (requirements, Dependencies). Rows X- were re-read at the Engine's `origin/main`
+`2d58083f`, which adds entries 204 and 205 (customer self-onboarding) since `6011cf29`. In the
+files rows X-1 to X-12 cite, the changes are:
+
+- **Sign-in** (`auth_service.go`, `gotrue_handler.go`, `external_sign_in.go`): an identity that
+  customer self-onboarding made and nobody has verified is refused after its password, with
+  `EMAIL_NOT_CONFIRMED` (400 `invalid_grant` at `/auth/v1/token`), and at the `id_token` grant. An
+  identity made by any other door has no sign-up row and signs in as before.
+- **Unbound sessions** (`tenant_binder.go`): `POST /api/onboarding/customers` joins the routes an
+  unbound session may call.
+
+Neither changes S2. No S2 app has self-made identities: those belong to stage S4 of
+`customer-self-onboarding` (TS-O1), which owns their sign-in text. Rows X-1 to X-12 hold, and no S2
+text changes. Rows P- were not re-read: the Platform's changes since `0648004e` are self-onboarding
+(PR #278), off until its own switch-on, and production runs `c6ed1830`. Rows E- are unchanged.
 
 ## Release plan
 
