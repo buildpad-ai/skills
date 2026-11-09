@@ -139,6 +139,10 @@ On an Engine project register keys with the MCP `items` tool on the collection `
   }
 }
 ```
+
+On an Engine project with Customer_Tenants collections, fields, relations, roles, policies, permissions, workflows, cron jobs, hooks and custom services are built in the Blueprint, through the project's MCP token or an administrator's session bound there, never in a customer's tenant. A customer receives them once, when it is created from the Blueprint. Releases are not available yet, so a change made in the Blueprint later reaches no customer that already exists: tell the developer so before changing anything a customer already holds.
+
+In the mode `customer-tenants` module access keys belong to the structure, like the policies that grant them: register a key and grant it in the Blueprint, never in a customer's tenant.
 <!-- /buildpad-backend -->
 
 Key format rules:

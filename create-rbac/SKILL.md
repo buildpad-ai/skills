@@ -72,6 +72,10 @@ Role → Access → Policy → Permission (collection × action × filter)
 ```
 
 On an Engine project a permission's `presets` and `validation` are stored but not applied on write, so the matrix has no presets column: `user_created` is filled by its `user-created` special, and every other value comes from the request. The Engine keeps one rule per policy, collection and action.
+
+On an Engine project with Customer_Tenants collections, fields, relations, roles, policies, permissions, workflows, cron jobs, hooks and custom services are built in the Blueprint, through the project's MCP token or an administrator's session bound there, never in a customer's tenant. A customer receives them once, when it is created from the Blueprint. Releases are not available yet, so a change made in the Blueprint later reaches no customer that already exists: tell the developer so before changing anything a customer already holds.
+
+In the mode `customer-tenants` a role or policy made in the Blueprint keeps its id in every customer created from it; a customer may rename it. Application code names such a role by its id, never by its name. The four seeded roles have fixed ids in every tenant: Administrator `00000000-0000-0000-0000-000000000001`, User `00000000-0000-0000-0000-000000000002`, Project Developer `00000000-0000-0000-0000-000000000003`, Project Viewer `00000000-0000-0000-0000-000000000004`.
 <!-- /buildpad-backend -->
 
 ### Step 2: Create Roles (via MCP)
@@ -150,6 +154,8 @@ Use `scope_config` to control where a role can be assigned. On an Engine project
 A role takes `name`, `icon`, `description`, `ip_access`, `enforce_tfa`, `scope_config` and `parent`; `admin_access` and `app_access` belong on a policy, and the Engine refuses them on a role. An assignment outside the patterns is refused with `ROLE_SCOPE_MISMATCH`, and one of a locked role with `ROLE_SCOPE_LOCKED`.
 
 When reading roles, each includes a computed `assignable: boolean` based on the request's `X-Resource-Uri`.
+
+In the mode `customer-tenants` a role's `scope_config` made in the Blueprint may name the Blueprint's node and its own scope types: a creation rewrites them to each new customer's node and same-named types.
 <!-- /buildpad-backend -->
 
 ### Step 3: Create Policies
@@ -224,6 +230,8 @@ To grant a role that is only effective within a specific scope node (and its des
 ```
 
 Through the API, with an administrator's session: `POST /api/users/:id/roles` with `{ "role_id": "<role-uuid>", "resource_uri": "<uri_path>" }` (it answers 201). The role is only evaluated when the user's active scope URI is equal to or a descendant of `resource_uri`. To assign at a scope node, use one of these two: the MCP `users` tool's `update` takes `add_roles` and `remove_roles` (lists of role IDs, administrators only, from Engine 0.1.0-dev.19), but they bind a role at no scope, as the Studio's Users module does.
+
+In the mode `customer-tenants` the application's people screens act in the current customer only: they call the Engine with the session, which is bound to it, and never name another tenant. An assignment's `resource_uri` begins with the current customer's node.
 <!-- /buildpad-backend -->
 
 See `/manage-scope` skill for full scope setup.

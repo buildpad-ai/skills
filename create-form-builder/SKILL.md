@@ -40,6 +40,10 @@ something is not available, tell the developer so and stop: do not build a subst
 <!-- buildpad-backend: engine -->
 On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
+On an Engine project with Customer_Tenants collections, fields, relations, roles, policies, permissions, workflows, cron jobs, hooks and custom services are built in the Blueprint, through the project's MCP token or an administrator's session bound there, never in a customer's tenant. A customer receives them once, when it is created from the Blueprint. Releases are not available yet, so a change made in the Blueprint later reaches no customer that already exists: tell the developer so before changing anything a customer already holds.
+
+In the mode `customer-tenants` a form definition is a row: a form every customer needs is created in each customer.
+
 <!-- /buildpad-backend -->
 A ready-made `/forms` experience: a **visual form builder** plus a **runtime renderer** on top of the schema-driven [`CollectionForm`/`VForm`](../create-feature/references/vform-usage.instructions.md) runtime. An admin arranges a collection's fields into ordered sections, sets width / required / readonly / hidden, and authors conditional logic, then saves the result as a reusable, named **form definition**. Definitions are stored as items in an ordinary collection and merged onto the live schema at render time via `buildFieldsFromDefinition` — **the schema is never mutated**.
 

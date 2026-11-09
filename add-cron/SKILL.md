@@ -55,6 +55,10 @@ This module is the admin UI. What a job is, how its code runs, and how to create
 <!-- /buildpad-backend -->
 <!-- buildpad-backend: engine -->
 This module is the admin UI. What a job is, how its code runs, and how to create one through the Studio's Cron module or the Engine's API is [create-cron](../create-cron/SKILL.md). On an Engine project an administrator's agent can also manage cron jobs with the Engine's MCP tool `cron`.
+
+On an Engine project with Customer_Tenants collections, fields, relations, roles, policies, permissions, workflows, cron jobs, hooks and custom services are built in the Blueprint, through the project's MCP token or an administrator's session bound there, never in a customer's tenant. A customer receives them once, when it is created from the Blueprint. Releases are not available yet, so a change made in the Blueprint later reaches no customer that already exists: tell the developer so before changing anything a customer already holds.
+
+In the mode `customer-tenants` a customer created from the Blueprint receives its cron jobs inactive, whatever their status in the Blueprint. Until Releases are available, each customer's administrator switches a job on in their own customer.
 <!-- /buildpad-backend -->
 
 ## CRITICAL: Never Create These Manually

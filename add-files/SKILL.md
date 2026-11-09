@@ -69,6 +69,10 @@ Requires Node.js v24 LTS and pnpm v10+ (see [add-buildpad](../add-buildpad/SKILL
 On an Engine project the data API's address is the Engine_URL, which both `NEXT_PUBLIC_BUILDPAD_DAAS_URL` and `NEXT_PUBLIC_SUPABASE_URL` hold. The Studio's address is an administration interface: send no data call to it.
 
 **Leave the cross-origin settings as they are.** On an Engine project the data API accepts requests from any origin and never with cookies, as the project is provisioned. Change no cross-origin setting, and do not add the application's origin anywhere. The module's calls carry the user's access token as `Authorization: Bearer`, never a cookie, so nothing needs configuring before you mount it.
+
+On an Engine project with Customer_Tenants collections, fields, relations, roles, policies, permissions, workflows, cron jobs, hooks and custom services are built in the Blueprint, through the project's MCP token or an administrator's session bound there, never in a customer's tenant. A customer receives them once, when it is created from the Blueprint. Releases are not available yet, so a change made in the Blueprint later reaches no customer that already exists: tell the developer so before changing anything a customer already holds.
+
+In the mode `customer-tenants` folders are rows, per customer: no creation copies them. Each customer's folders are made in that customer, by its people or by the application with the session bound to it.
 <!-- /buildpad-backend -->
 
 ## Installation

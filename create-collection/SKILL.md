@@ -42,6 +42,8 @@ Generate a complete collection module with API routes, UI pages, database migrat
 <!-- /buildpad-backend -->
 <!-- buildpad-backend: engine -->
 Generate a complete collection module with its schema, API routes, UI pages, and tests.
+
+On an Engine project with Customer_Tenants collections, fields, relations, roles, policies, permissions, workflows, cron jobs, hooks and custom services are built in the Blueprint, through the project's MCP token or an administrator's session bound there, never in a customer's tenant. A customer receives them once, when it is created from the Blueprint. Releases are not available yet, so a change made in the Blueprint later reaches no customer that already exists: tell the developer so before changing anything a customer already holds.
 <!-- /buildpad-backend -->
 
 > **BEFORE generating ANY `.tsx` files** (list pages, form pages, components), you MUST `read_file` the Buildpad component reference at `.github/skills/buildpad-reference/SKILL.md`. This loads the full 40+ component catalog with import paths and usage patterns. Skipping this step leads to raw Mantine usage violations.

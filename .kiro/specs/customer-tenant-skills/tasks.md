@@ -570,7 +570,7 @@
   - Done when: FT holds for each folder.
   - _Requirements: 4.1, 4.2, 4.3_
   - Done 2026-11-10: TS-N0 out of `manage-scope/SKILL.md`; the URI rule in all eight spots; FT holds.
-- [ ] 10.5 Structure folders, S2 column
+- [x] 10.5 Structure folders, S2 column
   - TS-Cn goes in the 13 structure `SKILL.md` files at the per-folder plan's points, with these
     specifics:
     - **`create-rbac`:** 7.2 roles by id at I-P(61-71); the `scope_config` rule at I-P(117-149);
@@ -584,6 +584,7 @@
       Tools ("no tool reaches a customer").
   - Done when: FT holds for each folder; R15 finds TS-Cn in all 14 files.
   - _Requirements: 5.1, 5.2 (S2 half: no Release yet, said by TS-Cn), 5.4 (creation half), 5.5, 6.4_
+  - Done 2026-11-10: TS-Cn in all 13 structure `SKILL.md` files; FT holds.
 - [ ] 10.6 People and planning folders, S2 column
   - `add-users`: the §8 bullets next to TS-A.
   - `spec-driven-development`, `create-feature` at 39–45, and `idea-refine`: the 5.6 text.

@@ -184,6 +184,10 @@ requires exactly one target, requires that the caller can read it, rejects a dup
 (`reacted_by` + target + `emoji`), and stamps `reacted_by`, the access columns and `created_at`.
 A reaction on a draft is refused if the thing has drafts.
 
+<!-- buildpad-backend: engine -->
+On an Engine project with Customer_Tenants collections, fields, relations, roles, policies, permissions, workflows, cron jobs, hooks and custom services are built in the Blueprint, through the project's MCP token or an administrator's session bound there, never in a customer's tenant. A customer receives them once, when it is created from the Blueprint. Releases are not available yet, so a change made in the Blueprint later reaches no customer that already exists: tell the developer so before changing anything a customer already holds.
+
+<!-- /buildpad-backend -->
 ### 4. The components
 
 Build once under the app's shared components, and reuse them in every comment box:

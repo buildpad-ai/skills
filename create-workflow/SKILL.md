@@ -85,6 +85,8 @@ If the target collection already has a custom lifecycle field (e.g. `status: sel
    }
    ```
    Alternatively, give the column a default in the same update (`"schema": { "default_value": "todo" }`) so writes that omit the field still satisfy `NOT NULL`.
+
+On an Engine project with Customer_Tenants collections, fields, relations, roles, policies, permissions, workflows, cron jobs, hooks and custom services are built in the Blueprint, through the project's MCP token or an administrator's session bound there, never in a customer's tenant. A customer receives them once, when it is created from the Blueprint. Releases are not available yet, so a change made in the Blueprint later reaches no customer that already exists: tell the developer so before changing anything a customer already holds.
 <!-- /buildpad-backend -->
 
 2. **Migrate consumers off the old field.** Search the codebase for the old field name and replace with `workflow_state`. Common offenders: `archiveField="status"` / `archiveValue="cancelled"` props on `CollectionList`, custom badges keyed off `item.status`, filter UIs, and seed data. Leaving these in place silently breaks the new lifecycle.
