@@ -1,5 +1,9 @@
 # Design Document: Customer self-onboarding (skills repository part)
 
+> **Amended 2026-11-09, pending the user's decision: open decision [S-3](#s-3-open-a-built-in-sender-for-the-verification-mail)
+> (a built-in sender for the verification mail, and a demo mode for the bot check) is added. The
+> approved text is unchanged and stands until S-3 is settled.**
+>
 > **Status.** **Approved by the user on 9 November 2026 ("Approve as recommended"), with S-1 and S-2
 > settled as recommended; S-2 (b) amends criterion 1.2 (dated note there). tasks.md follows.**
 > Generated 2026-11-09. Phase 2 of a gated spec, written against the
@@ -141,6 +145,41 @@ paragraph that tells it what to build.
 **SETTLED (b)**, 2026-11-09, as recommended. R15 requires TS-O1 in the file, not in a given section, so (b) needs no rule
 change, and §4 keeps one meaning. This changes the place criterion 1.2 names, so it needs the user's
 approval as a requirements amendment. The criterion's other places stand.
+
+### S-3 (OPEN). A built-in sender for the verification mail
+
+**Added 2026-11-09 at the user's request ("Add the decision"), not settled.** It is the Platform
+design's D-5, which holds the options' full comparison: sender reputation, the from address,
+abuse, cost, and the limits already built. It needs an Engine entry under (b): gap 5 of the Engine
+gaps (tasks.md, Deferred). This section says what the skill would do under each option.
+
+**Today (K-4 (a), K-5 (a)).** Steps 5 and 6 of the order of work ask for a mail provider and a bot
+check, and stop without either. A demo therefore needs a provider account and a verified sending
+domain before anyone can sign up. Hosted Supabase's built-in sender, which mails the team's
+addresses only, a few messages an hour, is what the user compared this with.
+
+| | What the skill does |
+|---|---|
+| **(a) The app always brings its own provider** | As designed: steps 5 and 6 unchanged |
+| **(b) The Engine mails the code** | The Onboarding check also reads the delivery: a kit member beside `selfOnboarding` (say `"selfOnboardingMail": "demo" \| "engine" \| "app"`), or `project.self_onboarding_mail` from `get_project_detail`. With `demo` or `engine`, step 5 is skipped: no `lib/mail/send.ts`. The sign-up route then answers "Check your email" without sending, because the Engine answers no code. The verify page sits at the fixed path the Platform registers as `verify_url` (for example `/onboarding/verify`), and its code is read from the link the Engine sends. With `demo`, step 6 writes `verifyHuman` as a pass-through marked "demo only", and the page says "Demo: sign-up mail reaches this project's members only." With `app`, steps 5 and 6 are as today. R16 (or a rule beside it) refuses the pass-through outside `demo` |
+| **(c) The Platform supplies a default sender** | Step 5 writes `lib/mail/send.ts` against the Platform's mail endpoint with a new server variable for its credential, instead of asking. Step 6 is unchanged, because mail reaches anyone |
+
+**The bot check in demo.** Under (b)'s demo, mail reaches project members only and is capped, so a
+script can make unverified identities (purged after 7 days, bounded by entry 204's budgets) but
+cannot verify an outsider. Skipping the captcha there is safe; leaving the demo brings it back.
+
+**Recommendation: (b), with the skill skipping step 5 under `demo` and `engine` and step 6 under
+`demo` only.** It removes both questions for a demo, and keeps production's path as designed. It
+waits for the Engine entry and the Platform's signal member; until both ship, (a) stands and stage
+S4 is built as approved.
+
+**What changes here under (b), if settled.**
+- K-4 and K-5 gain dated amendment notes.
+- O1 gains the delivery member.
+- Steps 5 and 6 gain the branches above.
+- Sign-up (3.2) and Verify (3.3) gain the engine-delivery path.
+- R16 gains the pass-through check.
+- The dev run gains a demo case.
 
 ## Contracts used and names fixed here
 

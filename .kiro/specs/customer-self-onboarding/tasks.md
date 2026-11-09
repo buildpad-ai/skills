@@ -253,6 +253,9 @@
   3. without `X-Onboarding-Client-Address`, all of an app's sign-ups share one budget of 5 per
      15 minutes;
   4. `max_linked_tenants` counts self-service creations only (the Platform's D-2).
+  5. **Open, added 2026-11-09 (design S-3, the Platform's D-5):** the Engine mailing the
+     verification code itself (a BuildPad demo relay, members only and capped, or the project's own
+     relay). An Engine entry only if the user settles (b); no task here until then.
 
   Entry 204's own open item on password policy (no strength rule in any Engine door) also stands.
   The app keeps a floor of 8 characters on sign-up until then.
