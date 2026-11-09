@@ -350,6 +350,10 @@ rotates refresh tokens as Supabase does, and a refresh token used more than abou
 after it was rotated ends the whole session, so the browser and the connector would sign each
 other out. The Supabase client's default sign-out ends all of the user's sessions, the
 connector's included; tell the person to connect again afterwards.
+
+On an Engine project with Customer_Tenants the password sign-in names no tenant: the application's own server route sends it without `X-Tenant-Id`. When the session it answers is bound to no tenant, the same route lists the person's tenants with `GET /api/auth/tenants`, switches with `POST /api/auth/tenant`, and replaces the session's access and refresh tokens with the pair the switch answers. The application takes its current tenant from the session, never from the environment or from the request, and sends no tenant id on a request that carries a session.
+
+In the mode `customer-tenants` the consent step signs in without `X-Tenant-Id`; when the session is unbound it asks the person to choose a customer and switches before it stores the session, so one connection acts in one customer.
 <!-- /buildpad-backend -->
 
 **token**: for `authorization_code`, check that the code's client and redirect equal the request's,

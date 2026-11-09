@@ -40,6 +40,10 @@ something is not available, tell the developer so and stop: do not build a subst
 <!-- buildpad-backend: engine -->
 On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
+On an Engine project with Customer_Tenants the password sign-in names no tenant: the application's own server route sends it without `X-Tenant-Id`. When the session it answers is bound to no tenant, the same route lists the person's tenants with `GET /api/auth/tenants`, switches with `POST /api/auth/tenant`, and replaces the session's access and refresh tokens with the pair the switch answers. The application takes its current tenant from the session, never from the environment or from the request, and sends no tenant id on a request that carries a session.
+
+In the mode `customer-tenants` a switch of customer reloads the whole page, so `DaaSProvider`, any `ScopeProvider` and every client cache start in the new customer. No cache in the application, on the server or in the browser, is keyed without the current customer. The `authentication-proxy` skill gives the sign-in and switch routes.
+
 <!-- /buildpad-backend -->
 ## Buildpad-First Rule (MANDATORY)
 

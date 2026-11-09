@@ -548,7 +548,7 @@
   - Done when: FT holds for `add-multitenancy`, and `add-multitenancy/SKILL.md` no longer holds
     TS-N0.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 4.1, 4.2, 4.3, 5.1, 5.4 (creation half), 5.5, 5.6, 6.1, 6.2, 6.3, 6.4, 8.1, 8.2_
-- [ ] 10.3 Sign-in and session folders, S2 column
+- [x] 10.3 Sign-in and session folders, S2 column
   - `authentication-proxy` (both files), `create-api-route` (the "### In the mode
     `customer-tenants`" section after the Login route; the answers table in the forwarder section,
     lines 60–120), `create-project` (both files), `add-buildpad` (`SKILL.md` §CRITICAL and
@@ -557,6 +557,7 @@
     script sign-in at 180). Each gets TS-B and the specifics of the per-folder plan's S2 column.
   - Done when: FT holds for each folder; R15 finds TS-B in all 12 files.
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 8.2_
+  - Done 2026-11-10: TS-B in all 12 files; FT holds for the nine folders.
 - [ ] 10.4 Scope folders, S2 column (the URI rule 4.1, and 4.3)
   - `manage-scope`: `SKILL.md` at 797 (§6 bullets, linking `../add-multitenancy/SKILL.md`),
     `references/engine-scope-management.instructions.md` and
