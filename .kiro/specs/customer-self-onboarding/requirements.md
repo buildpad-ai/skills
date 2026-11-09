@@ -16,7 +16,7 @@
 > Decisions of this document are written **K-n**. Rows it needs from elsewhere are `TD-n`,
 > continuing `customer-tenant-skills`' numbering, in [Dependencies](#dependencies).
 >
-> Status: **requirements approved** by the user on 8 November 2026 ("Approve and design"); **design generated 2026-11-09, not approved** (open decisions S-1, S-2). Written 2026-11-08, before any change to a skill. Decisions K-1
+> Status: **requirements approved** by the user on 8 November 2026 ("Approve and design"); **design approved 2026-11-09** ("Approve as recommended"; S-1 and S-2 settled as recommended; criterion 1.2 amended by S-2 (b)). Written 2026-11-08, before any change to a skill. Decisions K-1
 > to K-10 were SETTLED by the user on 8 November 2026, each as recommended. The requirements were
 > approved the same day. design.md and tasks.md follow approval.
 >
@@ -143,6 +143,11 @@ how to build it, and on one where it is off, to be told who turns it on.
    verification and customer routes with `BUILDPAD_ONBOARDING_KEY`, read on the server only and
    never sent to a browser. Never put the host administrator's credential or a call to
    `/api/tenants` in the application."
+
+   > **Amended 2026-11-09 by design decision S-2 (b), approved by the user ("Approve as
+   > recommended"):** in the Mode_Guide, TS-O1 stands in a new §13 "Customers who sign themselves
+   > up" instead of §4's place of TS-N1; §4 loses TS-N1 and gains nothing, and §1 points to §13. The
+   > other three places stand. Criterion 1.4's line follows TS-O1 in §13.
 3. The Mode_Guide §3 "Never create a customer from code" shall gain "except through the
    `add-customer-onboarding` skill's route, with the person's own session".
 4. The line after TS-O1 in the Mode_Guide shall name who turns it on (the project Admin) and what
@@ -160,6 +165,12 @@ how to build it, and on one where it is off, to be told who turns it on.
    the flow needs Customer_Tenants and stop.
 2. It shall then read the Onboarding_Signal as K-3 settles; while it is off, it shall say TS-O1's
    "off" branch and stop.
+
+   > **Amended 2026-11-09 by design decision S-1 (a), approved by the user ("Approve as
+   > recommended"):** K-3 (a)'s `get_project_detail` step is left out, because the Tenancy check
+   > forbids a tool that returns project credentials. The order is `selfOnboarding` in
+   > `.buildpad/project.json`, else `.buildpad/onboarding-answer.json`, else ask the developer once
+   > and record the answer in that file.
 3. It shall then establish a Mail_Sender (K-4): find one in the app, or ask the developer which
    provider; with none, it shall say that verification mail needs one and stop.
 4. It shall establish a bot check (K-5) the same way.

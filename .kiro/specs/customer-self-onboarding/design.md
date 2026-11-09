@@ -1,6 +1,8 @@
 # Design Document: Customer self-onboarding (skills repository part)
 
-> **Status.** Generated 2026-11-09, **not approved**. Phase 2 of a gated spec, written against the
+> **Status.** **Approved by the user on 9 November 2026 ("Approve as recommended"), with S-1 and S-2
+> settled as recommended; S-2 (b) amends criterion 1.2 (dated note there). tasks.md follows.**
+> Generated 2026-11-09. Phase 2 of a gated spec, written against the
 > requirements the user approved on 8 November 2026 (`7bb864e`; Decisions K-1 to K-10 settled as
 > recommended). No skill folder, `CONTRIBUTING.md`, test or tool is changed by this document.
 > Requirement 3.11 (workspaces as scope nodes) waits for TD-17, so its branch is designed only as
@@ -99,7 +101,10 @@ available") retires, and TS-O1 takes its places.
   Mode_Guide §5.
 - TD-17 becomes met: the `scope` branch is designed then, in a spec of its own.
 
-## Open decisions
+## Decisions S-1 and S-2
+
+**Both SETTLED 2026-11-09 by the user, as recommended ("Approve as recommended"):** S-1 (a),
+S-2 (b). S-2 (b) amends requirements criterion 1.2.
 
 ### S-1. `get_project_detail` as a source of the Onboarding_Signal
 
@@ -116,7 +121,7 @@ them. Read literally, K-3 makes the agent call a tool its own skills forbid in t
 | (b) Keep K-3 as written | As (a), with `get_project_detail`'s `project.self_onboarding` before the question; the skill names only that member, and says to use nothing else of the answer |
 | (c) Read the tool only | No record file; ask each time the tool is unavailable |
 
-**Recommended: (a).** It keeps one rule for every mode question, and the question costs one answer
+**SETTLED (a)**, 2026-11-09, as recommended. It keeps one rule for every mode question, and the question costs one answer
 per repository. A kit assembled after the Platform's change always carries `selfOnboarding`, so the
 question arises only for an older kit, or a repository written by Fix_App. Under (b) the skill would
 be the first to call a credential-returning tool on a fact the kit already holds.
@@ -133,7 +138,7 @@ paragraph that tells it what to build.
 | (a) As written | TS-O1 in §4 where TS-N1 stood, followed by criterion 1.4's line |
 | **(b) A section of its own** | A new §13 "Customers who sign themselves up", holding TS-O1, 1.4's line and a pointer to the skill. §4 loses TS-N1 and gains nothing. §1 names §13. |
 
-**Recommended: (b).** R15 requires TS-O1 in the file, not in a given section, so (b) needs no rule
+**SETTLED (b)**, 2026-11-09, as recommended. R15 requires TS-O1 in the file, not in a given section, so (b) needs no rule
 change, and §4 keeps one meaning. This changes the place criterion 1.2 names, so it needs the user's
 approval as a requirements amendment. The criterion's other places stand.
 
