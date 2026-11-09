@@ -1,8 +1,11 @@
 # Design Document: Customer self-onboarding (skills repository part)
 
-> **Amended 2026-11-09, pending the user's decision: open decision [S-3](#s-3-open-a-built-in-sender-for-the-verification-mail)
-> (a built-in sender for the verification mail, and a demo mode for the bot check) is added. The
-> approved text is unchanged and stands until S-3 is settled.**
+> **Amended 2026-11-09: decision [S-3](#s-3-settled-b-a-built-in-sender-for-the-verification-mail)
+> (a built-in sender for the verification mail, and a demo mode for the bot check) was added, and
+> the user settled it as (b) the same day ("Choose (b)"): the Engine sends the code. The rest of the
+> approved text is unchanged. Until Engine entry 205 `onboarding-verification-mail` is released (its
+> requirements are drafted, not approved), (a) stands and stage S4 is built as approved. Group 10 of
+> tasks.md holds this repository's part, gated on that release.**
 >
 > **Status.** **Approved by the user on 9 November 2026 ("Approve as recommended"), with S-1 and S-2
 > settled as recommended; S-2 (b) amends criterion 1.2 (dated note there). tasks.md follows.**
@@ -146,9 +149,27 @@ paragraph that tells it what to build.
 change, and §4 keeps one meaning. This changes the place criterion 1.2 names, so it needs the user's
 approval as a requirements amendment. The criterion's other places stand.
 
-### S-3 (OPEN). A built-in sender for the verification mail
+### S-3 (SETTLED (b)). A built-in sender for the verification mail
 
-**Added 2026-11-09 at the user's request ("Add the decision"), not settled.** It is the Platform
+**Added 2026-11-09 at the user's request ("Add the decision"). SETTLED (b) by the user the same day
+("Choose (b)"): the Engine sends the code.** The Engine part is entry 205
+`onboarding-verification-mail` (requirements only, none approved); the Platform's is its D-5 (b) and
+its tasks.md group 13.
+
+**What (b) settles here** (the names follow entry 205's recommendations, and are revalidated when it
+is approved):
+- **Reading the delivery.** The Onboarding check reads the delivery from the kit
+  (`selfOnboardingMail`: `app`, `demo` or `relay`), or from `get_project_detail`
+  (`project.self_onboarding_mail`). A kit without the member is `app`.
+- **Under `demo` and `relay`**, step 5 (Mail_Sender) is skipped. The verify page sits at the
+  Platform's fixed verify path, and reads the code from the link the Engine sends.
+- **Under `demo`**, step 6 writes a pass-through `verifyHuman` marked "demo only", and the page says
+  that sign-up mail reaches the project's members only. R16, or a rule beside it, refuses the
+  pass-through outside `demo`.
+- **Under `app`, and for any project until entry 205 is released**, steps 5 and 6 are as approved.
+
+**Earlier text, kept as written.** The paragraphs below laid out the options, as written when S-3
+was open. It is the Platform
 design's D-5, which holds the options' full comparison: sender reputation, the from address,
 abuse, cost, and the limits already built. It needs an Engine entry under (b): gap 5 of the Engine
 gaps (tasks.md, Deferred). This section says what the skill would do under each option.

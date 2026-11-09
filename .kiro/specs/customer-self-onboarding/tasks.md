@@ -241,6 +241,23 @@
   - Done when committed in the release's pull request or the one after it.
   - _Requirements: 6.2_
 
+- [ ] 10. Engine-sent verification mail (S-3 (b)), **gated** on Engine entry 205 being released and
+  on the Platform's group 13 shipping the delivery member
+  - **Added 2026-11-09 when S-3 was settled (b). This group is an outline, not approved tasks:**
+    it is written in full and put to the user for approval once entry 205's design is approved.
+  - 10.1 Reconcile with entry 205 and the Platform's group 13: the delivery names, the verify path,
+    the link's shape, and what sign-up answers under `demo` and `relay`.
+  - 10.2 R16's tests first: the `demo only` pass-through is refused outside `demo`; in `demo`, no
+    `lib/mail/send.ts` is needed.
+  - 10.3 The Onboarding check reads the delivery (O1 and O2 gain the member), and the skill's
+    steps 5 and 6 gain the branches of S-3 (b).
+  - 10.4 Sign-up (3.2), resend and Verify (3.3): the engine-delivery path, where the answer carries
+    no code and the verify page reads the link's code. The page shows the demo sentence.
+  - 10.5 K-4 and K-5's dated amendment carried into the folder passages and the Mode_Guide. The dev
+    run gains a demo case, with no provider and no captcha, a member's address signed up, verified
+    and created.
+  - 10.6 Release (MINOR), after the Engine and Platform parts are live on dev.
+
 ## Deferred, not in this plan
 
 - **Requirement 3.11's `scope` branch beyond ES-17n:** waits for TD-17 (the Engine entry that
@@ -253,9 +270,9 @@
   3. without `X-Onboarding-Client-Address`, all of an app's sign-ups share one budget of 5 per
      15 minutes;
   4. `max_linked_tenants` counts self-service creations only (the Platform's D-2).
-  5. **Open, added 2026-11-09 (design S-3, the Platform's D-5):** the Engine mailing the
-     verification code itself (a BuildPad demo relay, members only and capped, or the project's own
-     relay). An Engine entry only if the user settles (b); no task here until then.
+  5. ~~The Engine mailing the verification code itself~~: **moved 2026-11-09** into Engine entry 205
+     `onboarding-verification-mail` (S-3 settled (b); requirements drafted, not approved). This
+     repository's part is group 10 below.
 
   Entry 204's own open item on password policy (no strength rule in any Engine door) also stands.
   The app keeps a floor of 8 characters on sign-up until then.

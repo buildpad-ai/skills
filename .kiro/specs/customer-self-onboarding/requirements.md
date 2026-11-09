@@ -100,6 +100,14 @@ settled option. The requirements were approved the same day.
 | K-9 | How it ships | **(a)** One MINOR release, stage S4, once TD-7 is met (TD-14, TD-15 and TD-16), after S2 (TD-1). **(b)** Ship the skill early, held behind the Gate | **SETTLED (a)** (8 November 2026, as recommended). A skill that directs routes the Engine does not serve fails on its first call; `customer-tenant-skills` ships each stage when its dependency is met |
 | K-10 | What a self-made Workspace is (same question as E-12 and P-10). The app wants Slack's "create your workspace" | **(a)** A customer (Customer_Tenant) only: the skill works in the mode `customer-tenants` alone. **(b)** A Workspace_Node only: a scope node in the project's one tenant, in the mode `scope`; the skill builds "create your workspace" on `POST /api/onboarding/workspaces` and the owner's member screen on the Engine's scoped administration (E Requirement 10), with `manage-scope`'s conventions for reading the Current_Scope. **(c)** Both, by the Tenancy_Mode: the same skill, one branch per mode | **SETTLED (c)**, 8 November 2026, as recommended and as the companions settle it: (b) for many small workspaces where shared tables are acceptable, (a) for customers who need hard isolation. The developer chooses by the mode, which the chooser in `add-multitenancy` already asks about; the chooser gains the scale-and-isolation guide. The `scope` branch cannot be worded as a Tenancy_Statement, whose opening is fixed to Customer_Tenants (`tenancy-statements.json` `opening`), so it needs a statement row of its own (ES-style), named in design. If the Engine defers its Requirement 10, the `scope` branch ships in a later stage and says until then that workspaces are not available |
 
+> **Amended 2026-11-09 (design S-3 settled (b), "Choose (b)").**
+> - **K-4:** once Engine entry 205 is released, a project whose delivery is `demo` or `relay` has
+>   the Engine send the code, and the skill builds no Mail_Sender.
+> - **K-5:** under `demo` (members only, capped) the bot check is a marked pass-through. Outside
+>   `demo` it stays required.
+>
+> Until entry 205 is released, K-4 (a) and K-5 (a) stand as settled.
+
 ## Boundary Context
 
 - **In scope:**
