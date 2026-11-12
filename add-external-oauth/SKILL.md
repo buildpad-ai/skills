@@ -202,6 +202,22 @@ only a relative `returnTo` path.
   `/auth/pending-access`, which tells the user that their account waits for access and that they
   sign in again once they have it. Do not let a role-less session into pages that the Engine will
   refuse.
+- **A starting role (Engine 0.1.0-dev.25, data service 2026.11.13 and later).** A tenant
+  administrator can name one role that the Engine itself gives to new XAppHub accounts whose verified
+  email is in listed domains, so their first session already holds it and the callback lets them in.
+  It is a setting of the Engine, not of the application: the application still writes no role, and
+  keeps the pending-access page for everyone else. Set it once, as the project's administrator,
+  through the MCP tool `external-sign-in` (`set_default_role` with `provider: "my-apps"`, `role`,
+  `domains`; `clear_default_role` to turn it off) or the route
+  `PUT /api/auth/external-sign-in/default-role` with `{provider, role, domains}` (`DELETE ...?provider=`
+  to clear). `GET /api/auth/external-sign-in` and the tool's `read` show it as each provider's
+  `default_role` and `default_role_domains`. Domains match exactly (`example.com` does not cover
+  `mail.example.com`), up to 20. The Engine refuses a role that gives administrator access or cannot
+  be given tenant-wide, and checks again at each sign-in. The role is given only when the account or
+  its profile in the tenant is created; existing accounts keep their roles. Use it only when the
+  developer asks for it, name a non-administrator role, and tell them to confirm with XAppHub's owner
+  that XAppHub checks an address's domain: the domain list is only as strong as that check.
+  Never write an application route or hook that assigns the role instead.
 - The Engine refuses some accounts: an account that holds a host role or administers the tenant,
   and an account that already exists with the same email but is not linked to this XAppHub
   identity. It also refuses a token it does not trust, or an email that XAppHub does not mark as
