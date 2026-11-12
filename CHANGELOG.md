@@ -14,6 +14,32 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
+## v9.3.0
+
+XAppHub sign-in can give new accounts a starting role. Install it with
+`npx skills add buildpad-ai/skills#v9.3.0`. Engine 0.1.0-dev.25 (data service 2026.11.13) lets a
+tenant administrator name one role that the Engine gives to new XAppHub accounts whose verified
+email is in listed domains, so their first session already holds it (Engine ledger entry 207,
+`external-sign-in-default-role`). It is a MINOR release: every changed text is in text for Engine
+projects only, no skill is added, removed or renamed, and the "Establish the backend first"
+procedure stays at version 1.
+
+ES-7 is reworded: a user's first XAppHub sign-in still creates an account with no role, unless a
+tenant administrator has named a starting role for the user's email domain. The application still
+writes no role.
+
+- **`add-external-oauth`:** in "Accounts and roles", the starting role: what it does, how to set and
+  clear it (MCP `external-sign-in` `set_default_role` / `clear_default_role`, or
+  `PUT`/`DELETE /api/auth/external-sign-in/default-role`), its limits, and that the application never
+  assigns the role itself.
+- **`add-users`**, **`create-tests`**, **`migrate-to-engine`**, **`agents`** (`test-engineer`): ES-7 reworded.
+- **Repository check:** the guard test's ES-7 text follows CONTRIBUTING.
+
+### Supabase projects
+
+Nothing a Supabase project's agent reads changes: every changed text is in text for Engine
+projects only.
+
 ## v9.2.0
 
 Customer_Tenants are now available on the Buildpad platform, and the skills say how to build for
