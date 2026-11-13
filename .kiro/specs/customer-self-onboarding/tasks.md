@@ -256,7 +256,8 @@
 
 - [ ] 10. Engine-sent verification mail (S-3 (b)), against Engine entry 205 and the Platform's
   group 13 as merged
-  - **Written in full 2026-11-14, awaiting approval** (it was an outline until both were merged).
+  - **Written in full 2026-11-14 and approved by the user the same day ("Approve tasks")** (it was
+    an outline until both were merged). Each task starts only once 10.1's gate holds.
     Built on the design's "S-3 (b) as built", with **S-4 settled (b) by the user on 2026-11-14**
     ("(b) as recommended"). The marks *(S-4 (b))* show what that decision adds.
   - **Where it lands.** If its gate (10.1) holds before S4's integration pull request, group 10
