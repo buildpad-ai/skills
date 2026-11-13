@@ -9,8 +9,10 @@
 >
 > **Amended again 2026-11-14, awaiting approval:** Engine entry 205 and the Platform's group 13 are
 > merged, so "S-3 (b) as built" (under S-3) reconciles this part with them, and adds **decision
-> S-4** (how the demo's skipped bot check stays in demo), with a recommendation. tasks.md group 10
-> is written in full on it. The approved text above and below is unchanged.
+> S-4** (how the demo's skipped bot check stays in demo). **The user settled S-4 as (b) on
+> 2026-11-14 ("(b) as recommended")**: a pass-through guarded at run time by
+> `BUILDPAD_SIGNUP_MAIL`. tasks.md group 10 is written in full on it and awaits approval. The
+> approved text above and below is unchanged.
 >
 > **Status.** **Approved by the user on 9 November 2026 ("Approve as recommended"), with S-1 and S-2
 > settled as recommended; S-2 (b) amends criterion 1.2 (dated note there). tasks.md follows.**
@@ -173,7 +175,7 @@ is approved):
   pass-through outside `demo`.
 - **Under `app`, and for any project until entry 205 is released**, steps 5 and 6 are as approved.
 
-#### S-3 (b) as built (added 2026-11-14, awaiting approval with S-4 and group 10)
+#### S-3 (b) as built (added 2026-11-14; group 10's tasks await approval)
 
 **Read 2026-11-14, nothing run:** `buildpad-daas-go` `origin/main` with entry 205 merged (PR #44,
 `2d58083f`); `buildpad-platform` `origin/main` with group 13 merged (PR #286, `4b6359c6`).
@@ -213,7 +215,12 @@ where both say `relay`):
   addresses.") and the demo cap's 429, told apart from the other 429s by the Engine's message
   prefix "This demo has sent", as the create route's 409s are told apart (Issue 5).
 
-#### S-4 (OPEN). How the demo's skipped bot check stays in demo
+#### S-4 (settled (b), 2026-11-14). How the demo's skipped bot check stays in demo
+
+**Settled by the user on 2026-11-14 ("(b) as recommended").** The pass-through is guarded at run
+time by `BUILDPAD_SIGNUP_MAIL`, which the Platform writes beside the key (a Platform task after its
+group 13, owned by the Platform's spec); R16 gains a code refusing an unguarded pass-through. The
+options are kept below as written.
 
 S-3 (b) settled "no captcha in demo". The skill would write `verifyHuman` as a pass-through under
 `demo`. But the delivery can change on the Platform after the app is built, and a pass-through left
