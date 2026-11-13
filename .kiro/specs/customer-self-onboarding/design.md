@@ -7,6 +7,11 @@
 > requirements are drafted, not approved), (a) stands and stage S4 is built as approved. Group 10 of
 > tasks.md holds this repository's part, gated on that release.**
 >
+> **Amended again 2026-11-14, awaiting approval:** Engine entry 205 and the Platform's group 13 are
+> merged, so "S-3 (b) as built" (under S-3) reconciles this part with them, and adds **decision
+> S-4** (how the demo's skipped bot check stays in demo), with a recommendation. tasks.md group 10
+> is written in full on it. The approved text above and below is unchanged.
+>
 > **Status.** **Approved by the user on 9 November 2026 ("Approve as recommended"), with S-1 and S-2
 > settled as recommended; S-2 (b) amends criterion 1.2 (dated note there). tasks.md follows.**
 > Generated 2026-11-09. Phase 2 of a gated spec, written against the
@@ -167,6 +172,63 @@ is approved):
   that sign-up mail reaches the project's members only. R16, or a rule beside it, refuses the
   pass-through outside `demo`.
 - **Under `app`, and for any project until entry 205 is released**, steps 5 and 6 are as approved.
+
+#### S-3 (b) as built (added 2026-11-14, awaiting approval with S-4 and group 10)
+
+**Read 2026-11-14, nothing run:** `buildpad-daas-go` `origin/main` with entry 205 merged (PR #44,
+`2d58083f`); `buildpad-platform` `origin/main` with group 13 merged (PR #286, `4b6359c6`).
+
+**What the two built** (the names above are confirmed, with one change: S-3's table said `engine`
+where both say `relay`):
+- **The delivery** is the Platform's choice per project: `app` (the default), `demo` or `relay`.
+  The kit states it as `selfOnboardingMail` in `.buildpad/project.json`, only while self-onboarding
+  is on or stopped and the Engine may send the mail; `get_project_detail` as
+  `project.self_onboarding_mail`. A kit without the member is `app`.
+- **Sign-up and resend in `demo` and `relay`** answer `{existing: false, mail: {sent}}` and never a
+  code. `existing: true` is unchanged. `sent: false` means the relay did not take the message; the
+  sign-up stands and resend may be tried.
+- **The link** is the Platform's `verify_url` plus `#code=<code>`. The Platform sets `verify_url` to
+  the app's address plus **`/verify-email`**: this skill's own verify page, unchanged.
+- **Demo's refusals:** 403 `RECIPIENT_NOT_ALLOWED` ("This demo sends sign-up mail to the project
+  team's addresses only.") for an address outside the project's members; 429 `REQUESTS_EXCEEDED`
+  with the message "This demo has sent as much sign-up mail as it may for now; try again later."
+  at the cap (20 an hour, 100 a day), refused before anything is written.
+- **The Platform offers `demo` and `relay` only for a key written to a deployed BuildPad app**, so
+  an app on another host is always `app`.
+
+**How the skill uses it:**
+- **The answer decides, not the build.** The sign-up and resend routes branch on the Engine's
+  answer: `verification` → the app mails the code (`app`); `mail` → the Engine mailed it. So an app
+  built for one delivery keeps working when the Platform's setting changes, with one exception: an
+  app built without a mail sender that meets `app` answers 503 "Sign-up mail is not set up for this
+  app." and logs `onboarding.mail_sender_missing`, telling the developer to rebuild with step 5.
+- **The delivery read at build** only decides what the skill writes: under `demo` and `relay`, no
+  `lib/mail/send.ts` (step 5 is skipped); under `demo` only, step 6 per S-4. The Onboarding check
+  reads it from the kit only, as S-1 (a) reads `selfOnboarding`; a kit without the member, or no
+  kit, builds `app` (both steps), which works under every delivery. It is never asked: a wrong
+  guess costs a mail sender the app does not use, never a broken sign-up.
+- **The pages:** under `demo`, the sign-up page adds "Demo: sign-up mail reaches this project's
+  members only." The verify page is unchanged in every delivery.
+- **The refusals table** gains `RECIPIENT_NOT_ALLOWED` ("This demo only signs up the project team's
+  addresses.") and the demo cap's 429, told apart from the other 429s by the Engine's message
+  prefix "This demo has sent", as the create route's 409s are told apart (Issue 5).
+
+#### S-4 (OPEN). How the demo's skipped bot check stays in demo
+
+S-3 (b) settled "no captcha in demo". The skill would write `verifyHuman` as a pass-through under
+`demo`. But the delivery can change on the Platform after the app is built, and a pass-through left
+in place under `relay` lets a script mail anyone through the project's own relay. A Repository_Check
+rule reads this repository's text, never an app, so it cannot see a project's delivery.
+
+| | How | Holds when the delivery changes | Costs |
+|---|---|---|---|
+| **(a) Keep the bot check always** | Step 6 as approved in every delivery; demo removes only the mail provider question | Nothing to hold: there is no pass-through | A demo still needs a captcha account (Turnstile is free and quick). Reverses S-3 (b)'s "no captcha in demo" |
+| **(b) A pass-through guarded at run time** | The Platform writes a second server variable, `BUILDPAD_SIGNUP_MAIL`, with the delivery whenever it writes the key or the delivery changes, and removes it on turn-off; the skill's `amplify.yml` step writes it into `.env.production` as it does the key. The pass-through returns true only while `BUILDPAD_SIGNUP_MAIL === "demo"`, and otherwise refuses sign-up with 503 "The human check is not set up for this app." R16 gains a code refusing a pass-through block without that guard | Yes, at the app's next deployment (the variable is read at build on Amplify, as the key is); until then the old build runs | A Platform change (write and remove one more variable beside the key: a task after group 13) and one more `amplify.yml` line |
+| **(c) A pass-through guarded by the skill's text only** | The pass-through is marked "demo only"; the skill's review step and the security checks tell the agent to replace it when the delivery is not `demo` | Only when an agent next runs the skill or a review | No runtime guard: a deployed app keeps skipping the check |
+
+**Recommended (b).** It keeps S-3 (b)'s "no captcha in demo" as the user settled it, and the
+pass-through cannot outlive the demo past one deployment. (a) is the safe fallback if the Platform
+change is not wanted. (c) leaves the gap S-4 exists to close.
 
 **Earlier text, kept as written.** The paragraphs below laid out the options, as written when S-3
 was open. It is the Platform

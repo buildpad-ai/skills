@@ -254,22 +254,101 @@
   - Done when committed in the release's pull request or the one after it.
   - _Requirements: 6.2_
 
-- [ ] 10. Engine-sent verification mail (S-3 (b)), **gated** on Engine entry 205 being released and
-  on the Platform's group 13 shipping the delivery member
-  - **Added 2026-11-09 when S-3 was settled (b). This group is an outline, not approved tasks:**
-    it is written in full and put to the user for approval once entry 205's design is approved.
-  - 10.1 Reconcile with entry 205 and the Platform's group 13: the delivery names, the verify path,
-    the link's shape, and what sign-up answers under `demo` and `relay`.
-  - 10.2 R16's tests first: the `demo only` pass-through is refused outside `demo`; in `demo`, no
-    `lib/mail/send.ts` is needed.
-  - 10.3 The Onboarding check reads the delivery (O1 and O2 gain the member), and the skill's
-    steps 5 and 6 gain the branches of S-3 (b).
-  - 10.4 Sign-up (3.2), resend and Verify (3.3): the engine-delivery path, where the answer carries
-    no code and the verify page reads the link's code. The page shows the demo sentence.
-  - 10.5 K-4 and K-5's dated amendment carried into the folder passages and the Mode_Guide. The dev
-    run gains a demo case, with no provider and no captcha, a member's address signed up, verified
-    and created.
-  - 10.6 Release (MINOR), after the Engine and Platform parts are live on dev.
+- [ ] 10. Engine-sent verification mail (S-3 (b)), against Engine entry 205 and the Platform's
+  group 13 as merged
+  - **Written in full 2026-11-14, awaiting approval** (it was an outline until both were merged).
+    Built on the design's "S-3 (b) as built", with **S-4 as recommended, (b)**. Under S-4 (a) the
+    tasks marked *(S-4 (b) only)* drop out, and step 6 is unchanged.
+  - **Where it lands.** If its gate (10.1) holds before S4's integration pull request, group 10
+    joins that pull request and S4's release. Otherwise it is a later pull request and a MINOR
+    release of its own (10.8).
+  - Same rules as groups 2 to 9: tests first (R16), T-1 to T-5, FT per folder.
+
+- [ ] 10.1 Gate: Engine-sent mail is live somewhere
+  - Each holds, recorded as a dated amendment of `requirements.md`'s Dependencies:
+    - Engine entry 205 released and in the Platform's Version_Catalog;
+    - the Platform's group 13 deployed, and `ENGINE_ONBOARDING_MAIL_MIN_VERSION` set, in at least
+      one environment (its 13.10);
+    - a kit downloaded there carries `selfOnboardingMail`;
+    - *(S-4 (b) only)* the Platform writes `BUILDPAD_SIGNUP_MAIL` beside the key (a Platform task
+      after group 13; this group names it, the Platform's spec owns it).
+  - Reconcile against the released build: the answer `{existing: false, mail: {sent}}`, the
+    link `verify_url#code=`, `/verify-email`, `RECIPIENT_NOT_ALLOWED` and its message, and the
+    demo cap's message prefix "This demo has sent". A difference amends design.md (dated) first.
+  - Done when the amendment is committed with the releases, commits and kit checked.
+  - **Blocked until** each holds.
+  - _Requirements: 6.1; Dependencies_
+
+- [ ] 10.2 R16: the guarded pass-through *(S-4 (b) only)*, tests first
+  - `onboarding.test.mjs` gains: a fenced block marked as the demo pass-through (its fixed comment
+    `// Demo only: no human check while the Engine sends the mail to the project's members.`)
+    without `process.env.BUILDPAD_SIGNUP_MAIL === "demo"` fails `onboarding-demo-unguarded`; with
+    it, passes; the code is named in the finding.
+  - `lib/onboarding-key.mjs` gains the code; `CONTRIBUTING.md`'s R16 row names it.
+  - Done when `node --test tools/repo-check/test/onboarding.test.mjs` passes and
+    `check.mjs --only R16` exits 0.
+  - _Requirements: 5.1_
+
+- [ ] 10.3 The Onboarding check reads the delivery (O1, O2)
+  - O1 gains the signal member `selfOnboardingMail` (`app`, `demo`, `relay`), read from
+    `.buildpad/project.json` only (S-1 (a)). A missing or unknown value is `app`. It is never
+    asked and never written to `.buildpad/onboarding-answer.json`.
+  - O2's text in `add-customer-onboarding/SKILL.md` gains one step after the answer `true`: "Read
+    `selfOnboardingMail` from `.buildpad/project.json`: `demo` or `relay` means the Engine mails the
+    code; anything else, or no field, means the app does."
+  - Done when FT holds for `add-customer-onboarding`.
+  - _Requirements: 2.2, 2.3_
+
+- [ ] 10.4 Steps 5, 6 and 8 branch on the delivery (`SKILL.md`)
+  - Step 5 (Mail_Sender): skipped under `demo` and `relay`, with the sentence "The Engine mails the
+    sign-up code for this project, so the app needs no mail provider for sign-up."
+  - Step 6 (bot check): under `demo`, *(S-4 (b))* write `lib/onboarding/human-check.ts` as the
+    guarded pass-through, with its fixed comment; under `relay` and `app`, as approved.
+  - Step 8 (`amplify.yml`): *(S-4 (b))* the Platform's second line, for `BUILDPAD_SIGNUP_MAIL`,
+    beside the key's.
+  - K-4 and K-5 gain their dated amendment notes in `requirements.md` (S-3 (b) and S-4).
+  - Done when FT holds for `add-customer-onboarding`, and `check.mjs --only R16` exits 0.
+  - _Requirements: 2.3, 2.4_
+
+- [ ] 10.5 The flow in the reference file
+  - `lib/onboarding/engine.ts`: `signUp` and `resend` answer either shape; `mapRefusal` gains
+    `RECIPIENT_NOT_ALLOWED` and the demo cap (by its message prefix, Issue 5).
+  - Sign-up and resend routes: branch on the answer, as the design's "The answer decides". With
+    `mail.sent: false`, the page shows "We could not send the email. Try again." and offers resend;
+    with `verification` and no mail sender, 503 and `onboarding.mail_sender_missing`.
+  - The sign-up page: under `demo`, the demo sentence.
+  - The verify page: unchanged; the reference file says the Platform links to it.
+  - The refusals table: the two new rows.
+  - *(S-4 (b))* `verifyHuman`'s guarded pass-through block, with the 503 refusal.
+  - Done when FT holds, R16 exits 0, and a read-through confirms every member against 10.1.
+  - _Requirements: 3.2 to 3.4, 3.8, 3.10_
+
+- [ ] 10.6 The folder passages
+  - `debugging-and-error-recovery`: rows for "a team member's address gets no demo mail" (the
+    member list, mirrored within a minute), "outsiders are refused" (`RECIPIENT_NOT_ALLOWED`, the
+    demo's rule), "too many attempts in a demo" (the cap) and "sign-up mail is not set up"
+    (`onboarding.mail_sender_missing`).
+  - `security-and-hardening` and `agents/security-auditor.md`: one check, that a demo pass-through
+    is the guarded one *(S-4 (b))*, or that no pass-through exists *(S-4 (a))*.
+  - The Mode_Guide §13: one paragraph on the three deliveries, and how to move a demo to
+    production (choose `app` or `relay` on the Platform, then redeploy).
+  - Done when FT holds for each folder.
+  - _Requirements: 4.1, 4.3_
+
+- [ ] 10.7 Whole-branch check and the dev run's demo case
+  - `node tools/repo-check/check.mjs` exits 0.
+  - The dev run gains: with `demo` on, an agent following the skill on a fresh kit writes no mail
+    sender and *(S-4 (b))* the guarded pass-through; a member signs up, receives the Engine's mail,
+    verifies on `/verify-email` and creates a company; an outsider is refused; switching the
+    Platform to `relay` and redeploying makes sign-up refuse until a captcha is added *(S-4 (b))*.
+  - Done when each outcome is recorded with its time.
+  - _Requirements: 3.1 to 3.10_
+
+- [ ] 10.8 Release
+  - With S4 (one CHANGELOG entry, the delivery named in it) if 10.1 held before S4's pull request;
+    otherwise a MINOR of its own, with its own CHANGELOG entry and change file.
+  - Done when the tag's CI passes and the release is published.
+  - _Requirements: 6.1_
 
 ## Deferred, not in this plan
 
@@ -284,8 +363,8 @@
      15 minutes;
   4. `max_linked_tenants` counts self-service creations only (the Platform's D-2).
   5. ~~The Engine mailing the verification code itself~~: **moved 2026-11-09** into Engine entry 205
-     `onboarding-verification-mail` (S-3 settled (b); requirements drafted, not approved). This
-     repository's part is group 10 below.
+     `onboarding-verification-mail`, merged 2026-11-09 (PR #44). This repository's part is
+     group 10.
 
   Entry 204's own open item on password policy (no strength rule in any Engine door) also stands.
   The app keeps a floor of 8 characters on sign-up until then.
