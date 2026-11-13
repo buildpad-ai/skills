@@ -64,6 +64,14 @@
   - Done when the amendment is committed and names each release, commit and kit checked. **If a
     contract row differs**, amend design.md (dated) and the task it changes before going on.
   - **Blocked until** all four hold.
+  - **Where they stand, 2026-11-14:**
+    - TD-1: met. S2 was released as v9.2.0 (its task 10.8 box on `main` is not ticked).
+    - TD-14: entry 204 merged (`buildpad-daas-go` PR #43, `da47c362`). Released, as far as can be
+      read here: v9.3.0 names Engine 0.1.0-dev.25 (data service `2026.11.13`), which carries
+      entry 207, merged after 204 and 205. Its contract rows are still to be reconciled.
+    - TD-15: not met. The Platform's self-onboarding is merged to `main` and `release/dev`, and
+      dev was deploying on 2026-11-14, but `ENGINE_SELF_ONBOARDING_MIN_VERSION` is set nowhere.
+    - TD-16: not met (follows TD-15).
   - _Requirements: 6.1; Dependencies_
 - [ ] 1.2 A-S1 on Amplify Hosting
   - On the Platform's dev app (or any Amplify Hosting Next.js app), log `X-Forwarded-For` on a
@@ -74,8 +82,8 @@
     the guide states the shared budget's cost (design Issue 3).
   - _Requirements: 3.1_
 
-- [ ] 2. Rule R16 (tests first)
-- [ ] 2.1 R16's tests
+- [x] 2. Rule R16 (tests first)
+- [x] 2.1 R16's tests
   - New `tools/repo-check/test/onboarding.test.mjs`, written before the rule, as the design's
     Testing Strategy lists:
     - the public name in prose fails, and in a fence fails;
@@ -86,13 +94,18 @@
     - each finding names R16, the path and the line.
   - Done when the tests run and fail for the missing rule.
   - _Requirements: 5.1_
-- [ ] 2.2 R16
+- [x] 2.2 R16
   - `tools/repo-check/lib/onboarding-key.mjs` (`onboardingKeyFindings(textFiles)`), using
     `lib/markdown.mjs` for fenced blocks. `check.mjs`: `RULES` gains `'R16'`, and the rule runs
     after R15. `CONTRIBUTING.md` "What the check runs" gains the R16 row (O5); its header says
     "R1 to R16".
   - Done when `node --test tools/repo-check/test/onboarding.test.mjs` passes and
     `node tools/repo-check/check.mjs --only R16` exits 0 on the branch.
+  - **Built 2026-11-14** on `feat/customer-self-onboarding-r16` (cut from `origin/main` `5bd3425`,
+    with the spec branch merged in), held for the S4 integration pull request as O6 says. The CLI
+    test that named R16 as unknown now names R17, and a CLI test for R16 is added. All 241
+    repo-check tests pass; the full check exits 0. `CONTRIBUTING.md` has no "R1 to R15" header to
+    change; the rule table gains R16's row.
   - _Requirements: 5.1_
 
 - [ ] 3. Register

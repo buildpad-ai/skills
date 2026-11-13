@@ -327,6 +327,7 @@ has no `converted/<folder>` file (rule R13).
 | R13 | On a tag push, a folder whose plan is not `UC` and that has no `converted/<folder>` |
 | R14 | A `SKILL.md` or persona whose front matter is not valid YAML, in the raw file or either view: `npx skills add` skips such a file without a word. Quote a value that holds `: ` or ` #`, or that starts with `[`, `{` or another YAML indicator |
 | R15 | A paragraph that holds the reserved opening and is not a Tenancy statement word for word (`ts-altered`); the opening or a Tenancy check sentinel outside Engine-only text (`ts-outside-engine`); a section whose Engine view holds an anchor without TS-A (`ts-a-missing`); a statement copied before its dependency is met or after it is retired (`ts-held-back`, `ts-retired`); a live statement missing from a file its `in` list names (`ts-required-missing`); a Tenancy check copy altered, missing or in another file (`tenancy-check-altered`, `tenancy-check-missing`, `tenancy-check-misplaced`) |
+| R16 | A file that names the onboarding key with the `NEXT_PUBLIC_` prefix (`onboarding-key-public`); a fenced block marked `'use client'` that reads the key or imports the module that sends it (`onboarding-key-client`) |
 
 `tools/repo-check/contract/backend-contract.json` and `cases.json` are shared with the Buildpad
 Platform, which runs its own tests against them. A change to either needs the same change on the
