@@ -257,8 +257,8 @@
 - [ ] 10. Engine-sent verification mail (S-3 (b)), against Engine entry 205 and the Platform's
   group 13 as merged
   - **Written in full 2026-11-14, awaiting approval** (it was an outline until both were merged).
-    Built on the design's "S-3 (b) as built", with **S-4 as recommended, (b)**. Under S-4 (a) the
-    tasks marked *(S-4 (b) only)* drop out, and step 6 is unchanged.
+    Built on the design's "S-3 (b) as built", with **S-4 settled (b) by the user on 2026-11-14**
+    ("(b) as recommended"). The marks *(S-4 (b))* show what that decision adds.
   - **Where it lands.** If its gate (10.1) holds before S4's integration pull request, group 10
     joins that pull request and S4's release. Otherwise it is a later pull request and a MINOR
     release of its own (10.8).
@@ -329,7 +329,7 @@
     demo's rule), "too many attempts in a demo" (the cap) and "sign-up mail is not set up"
     (`onboarding.mail_sender_missing`).
   - `security-and-hardening` and `agents/security-auditor.md`: one check, that a demo pass-through
-    is the guarded one *(S-4 (b))*, or that no pass-through exists *(S-4 (a))*.
+    is the guarded one *(S-4 (b))*.
   - The Mode_Guide §13: one paragraph on the three deliveries, and how to move a demo to
     production (choose `app` or `relay` on the Platform, then redeploy).
   - Done when FT holds for each folder.
