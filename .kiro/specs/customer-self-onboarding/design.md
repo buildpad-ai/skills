@@ -11,7 +11,7 @@
 > merged, so "S-3 (b) as built" (under S-3) reconciles this part with them, and adds **decision
 > S-4** (how the demo's skipped bot check stays in demo). **The user settled S-4 as (b) on
 > 2026-11-14 ("(b) as recommended")**: a pass-through guarded at run time by
-> `BUILDPAD_SIGNUP_MAIL`. tasks.md group 10 is written in full on it and awaits approval. The
+> `BUILDPAD_SIGNUP_MAIL`. tasks.md group 10 is written in full on it, approved by the user the same day. The
 > approved text above and below is unchanged.
 >
 > **Status.** **Approved by the user on 9 November 2026 ("Approve as recommended"), with S-1 and S-2
@@ -175,7 +175,7 @@ is approved):
   pass-through outside `demo`.
 - **Under `app`, and for any project until entry 205 is released**, steps 5 and 6 are as approved.
 
-#### S-3 (b) as built (added 2026-11-14; group 10's tasks await approval)
+#### S-3 (b) as built (added 2026-11-14; group 10's tasks approved the same day)
 
 **Read 2026-11-14, nothing run:** `buildpad-daas-go` `origin/main` with entry 205 merged (PR #44,
 `2d58083f`); `buildpad-platform` `origin/main` with group 13 merged (PR #286, `4b6359c6`).
