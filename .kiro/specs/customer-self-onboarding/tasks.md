@@ -260,6 +260,15 @@
     - a kit downloaded there carries `selfOnboardingMail`;
     - *(S-4 (b) only)* the Platform writes `BUILDPAD_SIGNUP_MAIL` beside the key (a Platform task
       after group 13; this group names it, the Platform's spec owns it).
+      **Holds as of 2026-11-14, as reported by the Platform's session (not yet checked here):** the
+      Platform's Requirement 11 and group 14 (PR #288 spec, PR #296 code, `main` `dc5d4bfb`); on dev
+      through PR #301 (`aws-dev` `release/dev` `09693b9f`); migration T6 on `sbase-dev` and
+      production, with the code reaching production at `main`'s next release. Dormant on dev
+      while the mail gate is unset. Contract: the value is exactly `app`, `demo` or `relay`. It is a
+      server-only variable on the Amplify app that holds the key, written in the same write as
+      `BUILDPAD_ONBOARDING_KEY`, and only while `ENGINE_ONBOARDING_MAIL_MIN_VERSION`'s gate is open.
+      A change of delivery rewrites it. Turning sign-up off, or revoking the key in that app, removes
+      both variables whether the gate is open or not.
   - Reconcile against the released build: the answer `{existing: false, mail: {sent}}`, the
     link `verify_url#code=`, `/verify-email`, `RECIPIENT_NOT_ALLOWED` and its message, and the
     demo cap's message prefix "This demo has sent". A difference amends design.md (dated) first.
@@ -292,8 +301,11 @@
     sign-up code for this project, so the app needs no mail provider for sign-up."
   - Step 6 (bot check): under `demo`, *(S-4 (b))* write `lib/onboarding/human-check.ts` as the
     guarded pass-through, with its fixed comment; under `relay` and `app`, as approved.
-  - Step 8 (`amplify.yml`): *(S-4 (b))* the Platform's second line, for `BUILDPAD_SIGNUP_MAIL`,
-    beside the key's.
+  - Step 8 (`amplify.yml`): *(S-4 (b))* a second line, for `BUILDPAD_SIGNUP_MAIL`, directly after
+    the key's, as the Platform's group 14 states it:
+    `[ -z "$BUILDPAD_SIGNUP_MAIL" ] || echo "BUILDPAD_SIGNUP_MAIL=$BUILDPAD_SIGNUP_MAIL" >> .env.production`,
+    with the comment "Self-onboarding: who sends the sign-up mail (app, demo or relay); the demo's
+    human check reads it. Server only; never NEXT_PUBLIC_."
   - K-4 and K-5 gain their dated amendment notes in `requirements.md` (S-3 (b) and S-4).
   - Done when FT holds for `add-customer-onboarding`, and `check.mjs --only R16` exits 0.
   - _Requirements: 2.3, 2.4_
