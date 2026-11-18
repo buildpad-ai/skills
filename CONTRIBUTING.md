@@ -141,7 +141,7 @@ because it opens with "On an Engine project".
 | ES-4 | Always | On an Engine project the data API serves no request without a session; only the sign-in, `GET /api/server/info` and the Engine's password routes (which ES-5 says not to use) are served without one. The requests that take their tenant from the header `X-Tenant-Id` are the password sign-in, XAppHub sign-in and anonymous reads of public files. A browser can send `X-Tenant-Id` to the Engine from another origin, without cookies or credentials: the Engine allows that header from any origin and allows no credentialed cross-origin request. Even so, the request that names the tenant is the sign-in made through the application's own server route, which sends `X-Tenant-Id` with the value of `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. A public file shown in a browser is loaded through a signed URL from `/api/files/signed-url`, not by an anonymous read. A request without a session that names no tenant is served from the Engine's host plane, not from the project. A request with a session takes its tenant from the session. |
 | ES-5 | Always | On an Engine project the Supabase client is kept for sign-in only. Password sign-in, session refresh, reading the signed-in user and sign-out work through it, and its default sign-out ends the user's sessions on every device. An account that holds no role in the project's tenant is refused at password sign-in. XAppHub sign-in also works through it while the project's XAppHub connector is connected: the application's server gives the ID token from XAppHub to `signInWithIdToken` with the provider `my-apps`, and ends the session of an account that holds no role yet (the `add-external-oauth` skill). Not available on an Engine project: sign-up; OAuth sign-in with any provider other than XAppHub; magic link and one-time code; password recovery; changing a password, an email or a profile through the Supabase client; the Supabase client's code exchange; and the Supabase administration API. The Platform's password-less handoff opens the Studio; it is not a way for an application to sign a user in. |
 | ES-6 | Always | On an Engine project multi-factor enrolment, challenge and verification are not served through the Supabase client. The Engine's own routes, each called with the user's session, are `POST /api/auth/mfa/enroll`, `GET /api/auth/mfa/factors`, `POST /api/auth/mfa/verify` and `POST /api/auth/mfa/unenroll`; a session that still needs its second factor is accepted elsewhere only after `POST /api/auth/mfa/verify`. |
-| ES-7 | Always | On an Engine project an administrator creates every user who signs in with a password, through the Engine's user API (`POST /api/users` with an administrator's session) or the Studio's Users module, and gives the user a role in the project's tenant (`POST /api/users/:id/roles` with `role_id`, or the Users module). A user's first XAppHub sign-in creates that user's account, which holds no role until an administrator gives it one in the same way. An administrator resets a user's password, in the Studio's Users module. |
+| ES-7 | Always | On an Engine project an administrator creates every user who signs in with a password, through the Engine's user API (`POST /api/users` with an administrator's session) or the Studio's Users module, and gives the user a role in the project's tenant (`POST /api/users/:id/roles` with `role_id`, or the Users module). A user's first XAppHub sign-in creates that user's account, which holds no role until an administrator gives it one in the same way, unless a tenant administrator has named a starting role for the user's email domain (`PUT /api/auth/external-sign-in/default-role`, the `add-external-oauth` skill). An administrator resets a user's password, in the Studio's Users module. |
 | ES-8 | Always | On an Engine project collections, fields, relations, roles, policies and permissions are created through the Engine's API (`/api/collections`, `/api/fields/:collection`, `/api/relations`, `/api/roles`, `/api/policies`, `/api/access`, `/api/permissions`) or its MCP tools `collections`, `fields`, `relations`, `roles`, `policies`, `access` and `permissions`. Access is roles, policies and permissions: a permission belongs to a policy, and a policy is attached to a role or a user. The MCP `collections` and `fields` tools keep a field's name, type and `meta` but not its `schema` block (default, not-null, length): set those through `POST /api/fields/:collection` with an administrator's session. |
 | ES-9 | Always | On an Engine project the project is one tenant. Every scope hierarchy begins below the project's tenant node: create no scope type without a parent and no scope item without a parent. Scope types, items and collection settings are managed through the MCP `scope` tool, or through `/api/scope/types`, `/api/scope/items` and `/api/scope/collection-config` with an administrator's session. The tool reads types, items and collection settings with the caller's grants; only an administrator may create, change or delete them through it, read a user's roles (`read_user_roles`), or assign and remove a role at a scope (`assign_user_role`, `remove_user_role`), and a delete is refused while the project's MCP deletes are off. If `tools/list` offers only `assign_user_role` and `create_config` for it, the project's Engine is older than 0.1.0-dev.19: use the routes for the rest. |
 | ES-10 | Always | On an Engine project stored code (hooks, cron jobs, custom services) runs in the Engine's runtime, which provides only what the table [Engine runtime](#engine-runtime-es-10) lists; for each interface it lacks, the table says what replaces it. |
@@ -176,6 +176,71 @@ What stored code (hooks, cron jobs, custom services) has on the Engine, from the
 | Update and delete hook payloads | `meta.keys` (array); `meta.key` only on create (§5) | Use `meta.keys` |
 | Throwing from a filter hook | `new HookError(message, status, code)` is in scope | Unchanged |
 | Filesystem extensions, `/api/ext/*` endpoints | None | Stored hooks, cron jobs, custom services |
+
+## Tenancy statements
+
+On an Engine project an application separates its customers in one of two modes. In the mode
+`scope` every customer shares the project's one tenant and is separated by scope nodes, as ES-9
+says; this is the default. In the mode `customer-tenants` each customer is a tenant of its own on
+the Engine, copied from the project's tenant (the Blueprint), and the Platform creates the
+customers. The texts below are worded once and copied verbatim, each as a paragraph of its own,
+into Engine-only text only: an `engine` passage, a file marked `engine`, or an `engine-only`
+folder. Unlike ES-1 to ES-16, a Tenancy statement never stands in shared text (R15
+`ts-outside-engine`).
+
+Each opens with "On an Engine project with Customer_Tenants". That opening is reserved: no other
+text in the checked set may contain it (R15 `ts-altered`), so mode-specific prose elsewhere says
+"In the mode `customer-tenants`". The machine copy is `tools/repo-check/tenancy-statements.json`;
+`test/docs.test.mjs` keeps it equal to this table, and its `met` list says which dependencies are
+met. A statement is live from its *When* start until its end; one that is not live is copied into
+no file (R15 `ts-held-back`, `ts-retired`), and a live one is in every file its `in` list names
+(`ts-required-missing`).
+
+| Id | When | Text |
+|---|---|---|
+| TS-A | Always (from S1) | On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written. |
+| TS-B | From S2 (TD-1 met) | On an Engine project with Customer_Tenants the password sign-in names no tenant: the application's own server route sends it without `X-Tenant-Id`. When the session it answers is bound to no tenant, the same route lists the person's tenants with `GET /api/auth/tenants`, switches with `POST /api/auth/tenant`, and replaces the session's access and refresh tokens with the pair the switch answers. The application takes its current tenant from the session, never from the environment or from the request, and sends no tenant id on a request that carries a session. |
+| TS-Cn | From S2 (TD-1 met) until S3 (TD-3 met) | On an Engine project with Customer_Tenants collections, fields, relations, roles, policies, permissions, workflows, cron jobs, hooks and custom services are built in the Blueprint, through the project's MCP token or an administrator's session bound there, never in a customer's tenant. A customer receives them once, when it is created from the Blueprint. Releases are not available yet, so a change made in the Blueprint later reaches no customer that already exists: tell the developer so before changing anything a customer already holds. |
+| TS-Cm | From S3 (replaces TS-Cn) | On an Engine project with Customer_Tenants collections, fields, relations, roles, policies, permissions, workflows, cron jobs, hooks and custom services are built in the Blueprint, through the project's MCP token or an administrator's session bound there, never in a customer's tenant. A customer receives a change only when a Platform member publishes a Release of the Blueprint and rolls it out from the Platform's Customers page; never change a customer's structure through its own schema routes. |
+| TS-N0 | Until TD-1 is met | On an Engine project with Customer_Tenants each customer would be a tenant of its own, which the Buildpad platform does not offer yet: no project can have Customer_Tenants until it does. Tell the developer so and stop. Build no substitute: no tenant column, no project made by hand for each customer, and no host credential in the application. Scopes inside the project's one tenant are available now, with the `manage-scope` skill. |
+| TS-N1 | Until TD-7 is met | On an Engine project with Customer_Tenants customers that sign themselves up are not available: only a Platform member creates a customer, on the Platform's Customers page, and no credential an application may hold can create one. Tell the developer so and stop: never put the host administrator's credential or a call to the Engine's tenant routes in the application. |
+| TS-N2 | Until TD-8 is met | On an Engine project with Customer_Tenants a public page of one customer is not available: a request without a session acts in the tenant `X-Tenant-Id` names, and nothing maps a host name to a customer yet. A page without a session reads the Blueprint only, through `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. Tell the developer so and stop: do not put a customer's tenant id in the application or let a visitor choose it. |
+| TS-N3 | Until TD-9 is met | On an Engine project with Customer_Tenants XAppHub sign-in is not available: its first sign-in would create the person's account in the Blueprint, outside every customer. Tell the developer so and stop: people sign in with a password, as the `add-multitenancy` skill's guide says. |
+| TS-N4 | Until TD-10 is met | On an Engine project with Customer_Tenants a worker acts in the Blueprint only, with the project's own worker token; a worker that acts in a customer's tenant is not available. Work that must run in every customer runs as stored code (cron jobs, hooks) built in the Blueprint, which each customer receives as it receives the structure. Tell the developer so and stop: never give a worker a customer's credential or a host credential. |
+| TS-N5 | Until TD-12 is met | On an Engine project with Customer_Tenants a backup or a restore of one customer is not available: a project backup holds every customer, and restoring it rolls every customer back. Tell the developer so and stop: build no export or restore of a customer's tenant in the application. |
+| TS-N6 | Until TD-13 is met | On an Engine project with Customer_Tenants opening the Studio in a customer's tenant is not available from the Platform yet: it opens the Studio in the Blueprint. Tell the developer so and stop. |
+| TS-N7 | Always | On an Engine project with Customer_Tenants moving an application built on scopes into Customer_Tenants is not available: nothing moves a customer's rows, people or files out of the project's tenant into a tenant of its own. Tell the developer so and stop. |
+
+### The Tenancy check
+
+The procedure that establishes the mode is worded once in `tools/repo-check/tenancy-check.md`,
+between its sentinels `<!-- tenancy-check:begin v1 -->` and `<!-- tenancy-check:end -->`, and
+copied byte for byte into exactly two files: `add-multitenancy/SKILL.md` (inside the chooser's
+Engine passage) and `add-multitenancy/references/engine-customer-tenants.instructions.md` (after
+its title). R15 reports an altered copy (`tenancy-check-altered`), a missing one
+(`tenancy-check-missing`) and one in any other file (`tenancy-check-misplaced`). Every other skill
+reaches the mode through TS-A, which names the two files itself.
+
+### Where TS-A goes
+
+A copy of ES-3, ES-4, ES-5, ES-7 or ES-9 is found by a fragment each copy keeps, verbatim or
+adapted:
+
+| ES | Anchor |
+|---|---|
+| ES-3 | `NEXT_PUBLIC_BUILDPAD_TENANT_ID=<the project's tenant id>` |
+| ES-4 | `The requests that take their tenant from the header` |
+| ES-5 | `An account that holds no role in the project's tenant` |
+| ES-7 | `gives the user a role in the project's tenant` |
+| ES-9 | `the project is one tenant` |
+
+Every section (from a `# ` or `## ` heading outside a fenced block to the next, or the text before
+the first) whose Engine view holds an anchor holds TS-A in its Engine view; one copy serves every
+anchor of the section (R15 `ts-a-missing`). Put it directly after the paragraph, list, blockquote
+or table that holds the anchor, inside the Engine passage that holds it, else in a new Engine
+passage directly after it. Every skill that holds a Tenancy statement also holds TS-A in its
+`SKILL.md`; where that file has no anchor, TS-A goes in a new Engine passage directly after the
+Gate.
 
 ## Convert a folder
 
@@ -261,6 +326,7 @@ has no `converted/<folder>` file (rule R13).
 | R12 | `backend-contract.json` or `cases.json` that no longer agree with their pinned copy (`test/contract.test.mjs`) |
 | R13 | On a tag push, a folder whose plan is not `UC` and that has no `converted/<folder>` |
 | R14 | A `SKILL.md` or persona whose front matter is not valid YAML, in the raw file or either view: `npx skills add` skips such a file without a word. Quote a value that holds `: ` or ` #`, or that starts with `[`, `{` or another YAML indicator |
+| R15 | A paragraph that holds the reserved opening and is not a Tenancy statement word for word (`ts-altered`); the opening or a Tenancy check sentinel outside Engine-only text (`ts-outside-engine`); a section whose Engine view holds an anchor without TS-A (`ts-a-missing`); a statement copied before its dependency is met or after it is retired (`ts-held-back`, `ts-retired`); a live statement missing from a file its `in` list names (`ts-required-missing`); a Tenancy check copy altered, missing or in another file (`tenancy-check-altered`, `tenancy-check-missing`, `tenancy-check-misplaced`) |
 
 `tools/repo-check/contract/backend-contract.json` and `cases.json` are shared with the Buildpad
 Platform, which runs its own tests against them. A change to either needs the same change on the

@@ -318,6 +318,8 @@ On an Engine project collections, fields, relations, roles, policies and permiss
 | --------------- | ----------------------------------------------------------------------------------- |
 | `system-prompt` | Load DaaS-specific AI context; not listed while the project's settings turn it off |
 
+In the mode `customer-tenants` the project's MCP token is bound to the Blueprint: no tool reaches a customer. Every tool in this file reads and builds in the Blueprint only.
+
 ### One Tool per Verb
 
 The Engine also serves an older set of tools that name the operation in the tool, not in an `action` argument: `daas_read_items`, `daas_create_item`, `daas_update_item`, `daas_delete_item` (listed only while deletes are allowed), `daas_list_collections`, `daas_get_schema`, `daas_create_collection` (administrators only), `daas_list_files`, `daas_list_workflows` and `daas_trigger_transition`. The same permissions apply.
@@ -1797,6 +1799,8 @@ On an Engine project an administrator manages hooks with the MCP tool `extension
 ## Tool: `scope` (Admin Only)
 
 On an Engine project the project is one tenant. Every scope hierarchy begins below the project's tenant node: create no scope type without a parent and no scope item without a parent. Scope types, items and collection settings are managed through the MCP `scope` tool, or through `/api/scope/types`, `/api/scope/items` and `/api/scope/collection-config` with an administrator's session. The tool reads types, items and collection settings with the caller's grants; only an administrator may create, change or delete them through it, read a user's roles (`read_user_roles`), or assign and remove a role at a scope (`assign_user_role`, `remove_user_role`), and a delete is refused while the project's MCP deletes are off. If `tools/list` offers only `assign_user_role` and `create_config` for it, the project's Engine is older than 0.1.0-dev.19: use the routes for the rest.
+
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
 On an Engine project the MCP `scope` tool serves the scope routes' actions. Each applies its route's checks, and a write refused there is refused here with the same reason.
 

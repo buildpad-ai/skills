@@ -66,6 +66,8 @@ On an Engine project the UI calls the Engine directly through the SDK — `DaaSP
 | `X-Resource-Uri` header | **Required on every request to a scoped collection** — from the browser through the SDK, and from every server route that forwards a call |
 
 > **Note:** A request to a scoped collection without the header is refused with 403 `MISSING_SCOPE` for any user who does not reach every scope. Always read `daas_resource_uri` from `document.cookie` (or from the request, in a server route) and send it as `X-Resource-Uri`.
+
+In the mode `customer-tenants` the scope root is the current customer's node: the `uri_path` of the `current` entry of `GET /api/auth/tenants`, never a configured id and never one built from `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. The `ScopeProvider`'s root and every `X-Resource-Uri` begin with it, and a stored `daas_resource_uri` that does not begin with it is not sent.
 <!-- /buildpad-backend -->
 
 ---

@@ -59,6 +59,7 @@ Security-first development practices for web applications. Treat every external 
 <!-- /buildpad-backend -->
 <!-- buildpad-backend: engine -->
 - **Query through the API, never with SQL** — the Engine refuses caller-supplied SQL; pass user input only as values of its API's `filter`, `sort` and `search` parameters
+- **In the mode `customer-tenants`, keep customers apart** — take no tenant id from user input except the one the switch route receives, which the Engine checks; hold no host credential or host session anywhere; let no request reach two customers with one token, and no server code hold two customers' sessions at once; key no cache in the application (server or browser) without the current customer, and reload the page on a switch
 <!-- /buildpad-backend -->
 - **Encode output** to prevent XSS (use framework auto-escaping, don't bypass it)
 - **Use HTTPS** for all external communication
@@ -152,6 +153,8 @@ NEXT_PUBLIC_BUILDPAD_DAAS_URL=...
 On an Engine project every data call carries the signed-in user's access token as `Authorization: Bearer <access token>`, from the application's own server route or from the SDK. The Engine accepts no cookie session on its data API. The token in the project's MCP configuration is accepted only on the MCP endpoint `/api/mcp`: never send it, or any other administrator token, to the data API.
 
 On an Engine project the Supabase client is kept for sign-in only. Password sign-in, session refresh, reading the signed-in user and sign-out work through it, and its default sign-out ends the user's sessions on every device. An account that holds no role in the project's tenant is refused at password sign-in. XAppHub sign-in also works through it while the project's XAppHub connector is connected: the application's server gives the ID token from XAppHub to `signInWithIdToken` with the provider `my-apps`, and ends the session of an account that holds no role yet (the `add-external-oauth` skill). Not available on an Engine project: sign-up; OAuth sign-in with any provider other than XAppHub; magic link and one-time code; password recovery; changing a password, an email or a profile through the Supabase client; the Supabase client's code exchange; and the Supabase administration API. The Platform's password-less handoff opens the Studio; it is not a way for an application to sign a user in.
+
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
 ### Environment Variables
 
@@ -262,6 +265,7 @@ export async function POST(req: NextRequest) {
 <!-- /buildpad-backend -->
 <!-- buildpad-backend: engine -->
 - A call to the Engine sent with cookies, or any change to the Engine's cross-origin setting
+- In the mode `customer-tenants`: a tenant id taken from user input anywhere but the switch route; a host credential or host session anywhere; one token reaching two customers, or server code holding two customers' sessions at once; a cache in the application keyed without the current customer, or a switch that does not reload the page
 <!-- /buildpad-backend -->
 - No rate limiting on authentication endpoints
 - Stack traces or internal errors exposed to users

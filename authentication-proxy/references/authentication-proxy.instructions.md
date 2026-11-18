@@ -6,6 +6,37 @@ applyTo: "**/*.{ts,tsx}"
 
 # Authentication & Proxy Pattern Instructions
 
+<!-- backend-gate:begin v1 -->
+**Establish the backend first.** A Buildpad project's backend is either the Buildpad Engine or
+Supabase, and some parts of this file hold for one of them only. Before you act on anything in
+this file, find the backend with these steps, in order, and stop at the first step that answers:
+
+1. Read `.buildpad/project.json` at the project root. If it is JSON and its field `backend` is
+   `"engine"` or `"supabase"`, that is the backend. If `.buildpad/backend-answer.json` names the
+   other backend, tell the developer the two files disagree, and follow `.buildpad/project.json`.
+2. Otherwise read `.buildpad/backend-answer.json` in the same way; if its `backend` is
+   `"engine"` or `"supabase"`, that is the backend.
+3. If a folder named `supabase` at the project root holds a file named `config.toml`, or holds a
+   folder named `migrations` that holds a file whose name ends in `.sql`, the backend is Supabase.
+4. Otherwise ask the developer once: "Is this project's backend the Buildpad Engine or
+   Supabase?" Write the answer to `.buildpad/backend-answer.json` as
+   `{"buildpadBackendAnswer": 1, "backend": "engine"}` or
+   `{"buildpadBackendAnswer": 1, "backend": "supabase"}`, and ask the developer to commit that
+   file. Do not add it to `.gitignore`. Never write `.buildpad/project.json`.
+
+To find the backend, do not open an environment file (`.env`, `.env.*`) or an MCP configuration
+file, and do not call a tool that returns project credentials.
+
+Then follow only the parts for that backend. A part starts at a line that holds only a comment
+whose text is `buildpad` + `-backend: engine` or `buildpad` + `-backend: supabase`, and ends at the
+next line that holds only a comment whose text is `/buildpad` + `-backend`. A comment that merely
+mentions a backend is not a part. A file whose first line, after any front matter, holds only a
+comment whose text is `buildpad` + `-backend-file: engine` (or `supabase`) holds for that backend
+only, and so does every file in a folder named `engine-only` or `supabase-only`. Skip the other
+backend's parts and copy no code from them; everything else holds for both. On an Engine project, when this file says that
+something is not available, tell the developer so and stop: do not build a substitute.
+<!-- backend-gate:end -->
+
 ## 🔴 CRITICAL: All Auth Must Go Through Server-Side Proxy
 
 Generated DaaS applications use a **two-tier architecture**. The browser MUST NOT call
@@ -56,6 +87,21 @@ The Buildpad CLI installs these proxy routes automatically with `--all` or `--wi
 
 On an Engine project the Supabase client is kept for sign-in only. Password sign-in, session refresh, reading the signed-in user and sign-out work through it, and its default sign-out ends the user's sessions on every device. An account that holds no role in the project's tenant is refused at password sign-in. XAppHub sign-in also works through it while the project's XAppHub connector is connected: the application's server gives the ID token from XAppHub to `signInWithIdToken` with the provider `my-apps`, and ends the session of an account that holds no role yet (the `add-external-oauth` skill). Not available on an Engine project: sign-up; OAuth sign-in with any provider other than XAppHub; magic link and one-time code; password recovery; changing a password, an email or a profile through the Supabase client; the Supabase client's code exchange; and the Supabase administration API. The Platform's password-less handoff opens the Studio; it is not a way for an application to sign a user in.
 
+<!-- buildpad-backend: engine -->
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
+
+On an Engine project with Customer_Tenants the password sign-in names no tenant: the application's own server route sends it without `X-Tenant-Id`. When the session it answers is bound to no tenant, the same route lists the person's tenants with `GET /api/auth/tenants`, switches with `POST /api/auth/tenant`, and replaces the session's access and refresh tokens with the pair the switch answers. The application takes its current tenant from the session, never from the environment or from the request, and sends no tenant id on a request that carries a session.
+
+In the mode `customer-tenants` the application holds these four auth routes in place of the CLI's login route (the `create-api-route` skill writes them, and the [`add-multitenancy`](../../add-multitenancy/SKILL.md) skill's guide `engine-customer-tenants` gives the chooser and the switch):
+
+| App route | Engine call | Answer to the browser |
+|---|---|---|
+| `POST /api/auth/login` | Supabase client `signInWithPassword` against the Engine_URL **with no `X-Tenant-Id` header**; then `settleTenant` | `{data: {tenant}}`, `{data: {choose: [...]}}`, or 403 with "Your account does not belong to any customer of this application" |
+| `GET /api/auth/tenants` | `GET <Engine_URL>/api/auth/tenants`, `Authorization: Bearer <access token>` | the entries of `kind: "tenant"`, each with `blueprint: id === NEXT_PUBLIC_BUILDPAD_TENANT_ID` |
+| `POST /api/auth/tenant` | `POST <Engine_URL>/api/auth/tenant`, body `{"tenant": "<id>"}`, `Authorization: Bearer <access token>`; then `supabase.auth.setSession` with the answered pair | `{data: {tenant}}`; the browser then reloads the page (`window.location.assign("/")`) |
+| `DELETE /api/auth/tenants/[id]` | `DELETE <Engine_URL>/api/auth/tenants/:id` (decline an invitation not yet entered) | 204, or the Engine's 409 or 404 |
+
+<!-- /buildpad-backend -->
 ## ❌ WRONG: Direct Supabase Auth from Browser
 
 ```tsx
@@ -309,6 +355,14 @@ NEXT_PUBLIC_BUILDPAD_DAAS_URL=http://localhost:3000
 
 On an Engine project the environment is: `NEXT_PUBLIC_SUPABASE_URL=<Engine_URL>`, `NEXT_PUBLIC_BUILDPAD_DAAS_URL=<Engine_URL>`, `NEXT_PUBLIC_SUPABASE_ANON_KEY=buildpad-engine-public-anon-key` (a fixed value that is not a secret; the Engine does not read it, the Supabase client needs one), and `NEXT_PUBLIC_BUILDPAD_TENANT_ID=<the project's tenant id>`. There is no service-role key on an Engine project: add none.
 
+<!-- buildpad-backend: engine -->
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
+
+In the mode `customer-tenants`, `NEXT_PUBLIC_BUILDPAD_TENANT_ID` stays the Blueprint's id, the project's own tenant. It labels the application's own tenant in the customer chooser and names the tenant of a request without a session. It never names the current customer, and no customer's tenant id goes into the environment.
+
+On an Engine project with Customer_Tenants a public page of one customer is not available: a request without a session acts in the tenant `X-Tenant-Id` names, and nothing maps a host name to a customer yet. A page without a session reads the Blueprint only, through `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. Tell the developer so and stop: do not put a customer's tenant id in the application or let a visitor choose it.
+
+<!-- /buildpad-backend -->
 ```env
 # Frontend app (.env.local), on an Engine project
 NEXT_PUBLIC_SUPABASE_URL=<Engine_URL>

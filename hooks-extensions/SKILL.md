@@ -37,6 +37,10 @@ backend's parts and copy no code from them; everything else holds for both. On a
 something is not available, tell the developer so and stop: do not build a substitute.
 <!-- backend-gate:end -->
 
+<!-- buildpad-backend: engine -->
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
+
+<!-- /buildpad-backend -->
 <!-- buildpad-backend: supabase -->
 ## Runtime Extensions
 
@@ -260,6 +264,8 @@ Instead of hooks for timestamps/user tracking, use special fields:
 ## Runtime Extensions
 
 On an Engine project runtime extensions (hooks) are JavaScript stored in the Engine (`daas_extensions`) and run by the Engine on item events. They replace custom backend logic in Next.js API routes.
+
+On an Engine project with Customer_Tenants collections, fields, relations, roles, policies, permissions, workflows, cron jobs, hooks and custom services are built in the Blueprint, through the project's MCP token or an administrator's session bound there, never in a customer's tenant. A customer receives them once, when it is created from the Blueprint. Releases are not available yet, so a change made in the Blueprint later reaches no customer that already exists: tell the developer so before changing anything a customer already holds.
 
 On an Engine project stored code (hooks, cron jobs, custom services) runs in the Engine's runtime, which provides only what the table [Engine runtime](#engine-runtime) lists; for each interface it lacks, the table says what replaces it.
 

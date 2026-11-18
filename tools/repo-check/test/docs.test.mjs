@@ -53,3 +53,19 @@ test('CONTRIBUTING.md documents every topic of task 3.2', () => {
   assert.ok(c.includes('node --test "tools/repo-check/test/*.test.mjs"'));
   assert.ok(c.includes('node tools/repo-check/check.mjs'));
 });
+
+test('CONTRIBUTING.md registers every Tenancy_Statement as tenancy-statements.json words it (customer-tenant-skills 2.3)', () => {
+  const c = read('CONTRIBUTING.md');
+  const data = JSON.parse(read('tools/repo-check/tenancy-statements.json'));
+  assert.match(c, /^## Tenancy statements$/m);
+  for (const s of data.statements) {
+    const row = c.split('\n').find((l) => l.startsWith(`| ${s.id} |`));
+    assert.ok(row, `${s.id} row`);
+    const text = row.split(' | ').slice(2).join(' | ').replace(/ \|$/, '');
+    assert.equal(text, s.text, `${s.id} text`);
+  }
+  assert.ok(c.includes('tools/repo-check/tenancy-check.md'));
+  assert.ok(c.includes(data.opening));
+  for (const a of data.anchors) assert.ok(c.includes(a.text), a.es);
+  assert.match(c, /^\| R15 \|/m);
+});

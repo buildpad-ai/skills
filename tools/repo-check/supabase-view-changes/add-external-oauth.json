@@ -27,6 +27,6 @@
     "path": "add-external-oauth/SKILL.md",
     "kind": "text",
     "reason": "Step 0 and Step 3 say that the XAppHub connector registers only the Amplify default domain's and localhost's /api/auth/callback, so a custom domain or a microapp or zone callback is added in XAppHub by hand.",
-    "release": "unreleased"
+    "release": "v9.0.0"
   }
 ]

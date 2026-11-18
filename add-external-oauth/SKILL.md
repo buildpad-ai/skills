@@ -47,6 +47,10 @@ Supabase client's `signInWithIdToken`. The Engine checks the token and answers w
 session. Sign-in with any other provider (Azure AD, Google, Okta, Auth0 or another OIDC provider)
 is not available on an Engine project: tell the developer so and stop.
 
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
+
+On an Engine project with Customer_Tenants XAppHub sign-in is not available: its first sign-in would create the person's account in the Blueprint, outside every customer. Tell the developer so and stop: people sign in with a password, as the `add-multitenancy` skill's guide says.
+
 On an Engine project these are not available, and XAppHub sign-in uses none of them: a service-role
 key, the Supabase administration API, a session made from a magic link or a one-time code, and a
 role assignment that the application writes. The Platform's password-less handoff is for opening
@@ -198,6 +202,22 @@ only a relative `returnTo` path.
   `/auth/pending-access`, which tells the user that their account waits for access and that they
   sign in again once they have it. Do not let a role-less session into pages that the Engine will
   refuse.
+- **A starting role (Engine 0.1.0-dev.25, data service 2026.11.13 and later).** A tenant
+  administrator can name one role that the Engine itself gives to new XAppHub accounts whose verified
+  email is in listed domains, so their first session already holds it and the callback lets them in.
+  It is a setting of the Engine, not of the application: the application still writes no role, and
+  keeps the pending-access page for everyone else. Set it once, as the project's administrator,
+  through the MCP tool `external-sign-in` (`set_default_role` with `provider: "my-apps"`, `role`,
+  `domains`; `clear_default_role` to turn it off) or the route
+  `PUT /api/auth/external-sign-in/default-role` with `{provider, role, domains}` (`DELETE ...?provider=`
+  to clear). `GET /api/auth/external-sign-in` and the tool's `read` show it as each provider's
+  `default_role` and `default_role_domains`. Domains match exactly (`example.com` does not cover
+  `mail.example.com`), up to 20. The Engine refuses a role that gives administrator access or cannot
+  be given tenant-wide, and checks again at each sign-in. The role is given only when the account or
+  its profile in the tenant is created; existing accounts keep their roles. Use it only when the
+  developer asks for it, name a non-administrator role, and tell them to confirm with XAppHub's owner
+  that XAppHub checks an address's domain: the domain list is only as strong as that check.
+  Never write an application route or hook that assigns the role instead.
 - The Engine refuses some accounts: an account that holds a host role or administers the tenant,
   and an account that already exists with the same email but is not linked to this XAppHub
   identity. It also refuses a token it does not trust, or an email that XAppHub does not mark as

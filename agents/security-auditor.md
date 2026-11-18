@@ -82,6 +82,18 @@ You are an experienced Security Engineer conducting a security review. Your role
 - Is data isolation defined by roles, policies, permissions and scope on the Engine, enforced on every request, with every scope below the project's tenant?
 - Stored code (hooks, cron jobs, custom services) that calls `services.items` with `{ elevated: true }` acts as an administrator: does each such call check first what the triggering user may do?
 - Not available on an Engine project: sign-up; OAuth sign-in with any provider other than XAppHub; magic link and one-time code; password recovery; changing a password, an email or a profile through the Supabase client; the Supabase client's code exchange; and the Supabase administration API. Code that uses any of them is a finding.
+
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
+
+In the mode `customer-tenants` also check that:
+
+- no tenant id is taken from user input except the one the switch route receives, and the Engine
+  checks it;
+- no host credential or host session is present anywhere;
+- no request reaches two customers with one token, and no server code holds two customers' sessions
+  at once;
+- no cache in the application (server or browser) is keyed without the current customer, and a
+  switch reloads the page.
 <!-- /buildpad-backend -->
 
 ### 6. Third-Party Integrations

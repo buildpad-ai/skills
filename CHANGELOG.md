@@ -14,12 +14,185 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
-## Unreleased
+## v9.3.0
 
-Lessons from moving a SaaS project (a main app and a Multi-Zones microapp) to the Engine and
-connecting its app's own MCP server to Amazon Quick. It is a MAJOR release, because two files that
-a Supabase project's agent reads change (see **Supabase projects** below). No skill is added,
-removed or renamed, and the "Establish the backend first" procedure stays at version 1.
+XAppHub sign-in can give new accounts a starting role. Install it with
+`npx skills add buildpad-ai/skills#v9.3.0`. Engine 0.1.0-dev.25 (data service 2026.11.13) lets a
+tenant administrator name one role that the Engine gives to new XAppHub accounts whose verified
+email is in listed domains, so their first session already holds it (Engine ledger entry 207,
+`external-sign-in-default-role`). It is a MINOR release: every changed text is in text for Engine
+projects only, no skill is added, removed or renamed, and the "Establish the backend first"
+procedure stays at version 1.
+
+ES-7 is reworded: a user's first XAppHub sign-in still creates an account with no role, unless a
+tenant administrator has named a starting role for the user's email domain. The application still
+writes no role.
+
+- **`add-external-oauth`:** in "Accounts and roles", the starting role: what it does, how to set and
+  clear it (MCP `external-sign-in` `set_default_role` / `clear_default_role`, or
+  `PUT`/`DELETE /api/auth/external-sign-in/default-role`), its limits, and that the application never
+  assigns the role itself.
+- **`add-users`**, **`create-tests`**, **`migrate-to-engine`**, **`agents`** (`test-engineer`): ES-7 reworded.
+- **Repository check:** the guard test's ES-7 text follows CONTRIBUTING.
+
+### Supabase projects
+
+Nothing a Supabase project's agent reads changes: every changed text is in text for Engine
+projects only.
+
+## v9.2.0
+
+Customer_Tenants are now available on the Buildpad platform, and the skills say how to build for
+them. Install it with `npx skills add buildpad-ai/skills#v9.2.0`. This is the second stage of
+`customer-tenant-skills`, opened when the Platform switched Customer_Tenants on in production
+(9 November 2026). In the mode `customer-tenants` an application signs people in without naming a
+tenant, lets them choose their customer, and takes the current customer from the session; structure
+is built in the Blueprint and reaches each customer when it is created. Releases, which carry later
+changes to existing customers, are not available yet. It is a MINOR release: every new text stands
+in text for Engine projects only, no skill is added, removed or renamed, and the "Establish the
+backend first" procedure stays at version 1.
+
+TS-N0 ("Customer_Tenants are not offered yet") is retired. TS-B (sign-in, switch and current
+customer) and TS-Cn (structure is built in the Blueprint; no Releases yet) are copied into the files
+`tools/repo-check/tenancy-statements.json` names.
+
+- **`add-multitenancy`:** the chooser no longer stops at "not offered yet". The guide `engine-customer-tenants` gains its S2 sections: signing in and the current customer (the four app routes, `lib/auth/tenants.ts` with `listTenants`, `switchTenant` and `settleTenant`, the chooser, switch and current-customer rules, and the Engine's answers with what the app shows), scopes inside a customer, structure built in the Blueprint (roles by id with the four seeded ids, cron jobs arriving inactive), people, planning, what to check when something goes wrong, and review checks.
+- **`manage-scope`:** scopes live inside each customer: the URI rule, scope types looked up by name, no root type or first-level node; in its Engine scope reference and scope client reference too.
+- **`authentication-proxy`:** TS-B and the four auth routes of the guide, in the skill and its reference; `NEXT_PUBLIC_BUILDPAD_TENANT_ID` stays the Blueprint's id.
+- **`create-api-route`:** in its Engine routes reference, a section for the mode `customer-tenants` with TS-B, the login route without `X-Tenant-Id`, `lib/auth/tenants.ts`, the tenants, switch and decline routes, and the answers the forwarder passes back.
+- **`create-project`:** TS-B in the Critical Rules, and the Blueprint's tenant id, in the skill and its environment reference.
+- **`add-buildpad`:** TS-B, and the CLI's generated sign-in route replaced in this mode; `DaaSProvider` starts in the new customer after a switch.
+- **`buildpad-reference`:** TS-B and the reload after a switch.
+- **`add-microapp`:** TS-B; every app reads the current customer from the session, and only the main app offers the switch.
+- **`add-mcp-server`:** TS-B; the consent step signs in without `X-Tenant-Id` and switches before storing the session.
+- **`create-collection`:** TS-Cn, and the URI rule in Scope and its standard fields reference.
+- **`create-rbac`:** TS-Cn, roles named by id, the `scope_config` rule, and people screens acting in the current customer.
+- **`create-workflow`**, **`hooks-extensions`**, **`create-service`**, **`add-comments`:** TS-Cn.
+- **`add-cron`**, **`create-cron`:** TS-Cn, and cron jobs arrive inactive in a new customer.
+- **`add-i18n`:** TS-Cn; `languages` rows are data; the URI rule in its content translations reference.
+- **`add-files`:** TS-Cn; folders are rows, per customer.
+- **`create-form-builder`:** TS-Cn; a form definition is a row; the URI rule in its reference.
+- **`grant-module-access`:** TS-Cn; module access keys belong to the structure.
+- **`daas-platform`:** TS-Cn in the Backend-First Rule; the Blueprint's tenant id; TS-B in its data API reference; the URI rule in its built-in features reference; no MCP tool reaches a customer.
+- **`add-users`:** people in the current customer, existing accounts attached as invitations, and the Platform's own accounts left alone.
+- **`spec-driven-development`**, **`create-feature`**, **`idea-refine`:** a plan says what is per customer and what is shared through the Blueprint; `create-feature`'s `ScopeProvider` root is the current customer's node.
+- **`create-tests`:** a script that signs in as a customer's person sends no `X-Tenant-Id` and switches.
+- **`debugging-and-error-recovery`:** five rows for the mode `customer-tenants` in the decision tree.
+- **`security-and-hardening`**, **`references`** (`security-checklist.md`), **`agents`** (`security-auditor`, `test-engineer`): the review checks for the mode `customer-tenants`.
+- **Repository check:** `tenancy-statements.json` marks TD-1 met, so R15 retires TS-N0 and requires TS-B and TS-Cn.
+
+### Supabase projects
+
+Nothing a Supabase project's agent reads changes: every new text is in text for Engine projects
+only, and no file gains the "Establish the backend first" procedure.
+
+## v9.1.0
+
+Skills now know that an Engine project's customers may each be a tenant of their own
+(Customer_Tenants), which the Buildpad platform does not offer yet. Install it with
+`npx skills add buildpad-ai/skills#v9.1.0`. This is the first stage of `customer-tenant-skills`:
+every skill that names the project's tenant first establishes the tenancy mode, from the field
+`tenancy` of `.buildpad/project.json` or the developer's recorded answer, and says that
+Customer_Tenants are not available yet instead of building a substitute (no tenant column, no
+project made by hand per customer, no host credential in the application). It is a MINOR release:
+every new text stands in text for Engine projects only, no skill is added, removed or renamed, and
+the "Establish the backend first" procedure stays at version 1. The procedure is added to 12
+existing files (see **Supabase projects** below).
+
+Twelve Tenancy statements (TS-A, TS-B, TS-Cn, TS-Cm, TS-N0 to TS-N7) are worded once in
+`CONTRIBUTING.md` and `tools/repo-check/tenancy-statements.json`; this release copies TS-A and
+TS-N0 to TS-N7. TS-A ("On an Engine project with Customer_Tenants each customer of the application
+is a tenant of its own …") stands next to every copy of ES-3, ES-4, ES-5, ES-7 and ES-9.
+
+- **`add-multitenancy`:** the Gate, and a chooser between scopes, Customer_Tenants and a project per customer, with the limits of each and the Tenancy check; a new guide `references/engine-customer-tenants.instructions.md` (Engine projects only) with the mode's status, what it is, what never to do, what is not available and how workers and tests behave. Its reference gains TS-A.
+- **`manage-scope`:** TS-A next to ES-9 and in Steps; TS-N0 (Customer_Tenants are not offered yet: use scopes); TS-A in its Engine scope reference.
+- **`authentication-proxy`:** the Gate, and TS-A next to ES-4 and ES-5 in the skill and its reference.
+- **`create-api-route`:** TS-A after the Gate; TS-A and TS-N2 (no public page per customer) in its Engine routes reference.
+- **`create-project`:** TS-A after the Critical Rules and the environment, in the skill and its environment reference.
+- **`add-buildpad`:** TS-A after the Gate.
+- **`buildpad-reference`:** the Gate and TS-A.
+- **`add-microapp`:** TS-A next to ES-3 and ES-4 in the skill, its app URLs reference and its deployment topology reference.
+- **`add-mcp-server`:** TS-A after the Gate.
+- **`create-collection`:** TS-A in Standard Field Groups and Scope, and in its standard fields reference.
+- **`create-rbac`:** TS-A after the Gate.
+- **`create-workflow`:** TS-A after the Gate.
+- **`add-cron`:** TS-A after the Gate.
+- **`create-cron`:** TS-A after the Gate.
+- **`hooks-extensions`:** TS-A after the Gate.
+- **`create-service`:** TS-A after the Gate.
+- **`add-i18n`:** TS-A in Step 7 and in its content translations reference.
+- **`add-comments`:** the Gate and TS-A.
+- **`add-files`:** TS-A after the Gate.
+- **`create-form-builder`:** the Gate and TS-A in the skill; the Gate and TS-A in Multi-Tenancy / Scopes of its reference.
+- **`grant-module-access`:** TS-A after the Gate.
+- **`daas-platform`:** TS-A in Environment Variables, and in its built-in features, data API and MCP tools references.
+- **`add-users`:** the Gate; TS-A and TS-N1 (customers that sign themselves up are not available) in The Data Layer.
+- **`spec-driven-development`:** the Gate and TS-A in DaaS-Specific Considerations.
+- **`create-feature`:** the Gate and TS-A in Planning Process and Scope-Aware Context Pattern.
+- **`idea-refine`:** the Gate; TS-A and a pointer to `add-multitenancy` in DaaS Platform Check.
+- **`worker-messaging`:** TS-A after the Gate; TS-N4 (a worker acts in the Blueprint only) after ES-14n.
+- **`create-tests`:** TS-A in Authentication Setup, and how tests treat Customer_Tenants: they sign in to the Blueprint, a customer's path needs a customer made for testing, and a test never creates, suspends or deletes a customer.
+- **`agents`:** `test-engineer`: TS-A and the same test text; `security-auditor`: TS-A in DaaS-Specific.
+- **`debugging-and-error-recovery`:** TS-A after the Gate.
+- **`security-and-hardening`:** TS-A in DaaS-Specific Security.
+- **`references`:** `security-checklist.md`: TS-A in Authentication.
+- **`add-external-oauth`:** TS-A and TS-N3 (XAppHub sign-in is not available with Customer_Tenants) in On an Engine project.
+- **`migrate-to-engine`:** TS-A and TS-N7 (moving an app built on scopes into Customer_Tenants is not available), TS-A in Part B and in its app code reference.
+- **Repository check:** a new rule R15 checks that every Tenancy statement is copied word for word,
+  only into text for Engine projects, only while it is live, and next to every ES anchor; and that
+  the Tenancy check (`tools/repo-check/tenancy-check.md`) is copied byte for byte into exactly its
+  two files. Nine rows of `skill-map.json` move from reworded to backend-gated (BP), and the same
+  rows of `backend-aware-skills`' Skill map are amended.
+
+### Supabase projects
+
+Nothing a Supabase project's agent follows changes. The "Establish the backend first" procedure is
+added at the top of 12 files of 9 skills, which now hold text for Engine projects:
+
+- `add-multitenancy/SKILL.md`
+- `add-multitenancy/references/multitenancy.instructions.md`
+- `authentication-proxy/SKILL.md`
+- `authentication-proxy/references/authentication-proxy.instructions.md`
+- `create-form-builder/SKILL.md`
+- `create-form-builder/references/form-builder.instructions.md`
+- `add-comments/SKILL.md`
+- `add-users/SKILL.md`
+- `buildpad-reference/SKILL.md`
+- `create-feature/SKILL.md`
+- `idea-refine/SKILL.md`
+- `spec-driven-development/SKILL.md`
+
+The repository check removes the procedure before it compares a Supabase view with `v1.0.0`, and
+every other new text is stripped from a Supabase project's kit, so no `supabase-view-changes`
+entry is written.
+
+Read through by Claude (agent) on 7 November 2026, on the integration branch
+`feat/customer-tenant-skills-s1`: the Engine view of each of the 34 folders, and the Supabase view
+against `origin/main` (Gate hunks only).
+
+## v9.0.0
+
+One skill is added, `add-comments`. Install it with `npx skills add buildpad-ai/skills#v9.0.0`.
+This release also has lessons from moving a SaaS project (a main app and a Multi-Zones microapp)
+to the Engine and connecting its app's own MCP server to Amazon Quick, and OAuth sign-in for the
+hosted connectors of `add-mcp-server`. It is a MAJOR release, because two existing files that a
+Supabase project's agent reads change (see **Supabase projects** below). No skill is removed or
+renamed, and the "Establish the backend first" procedure stays at version 1.
+
+- **New skill `add-comments`:** the standard comment (discussion) field of a Buildpad app, or an
+  existing one brought up to the standard: social @mentions, pasted and uploaded images with a
+  viewer, replies at any depth, an emoji picker, one-click reactions and email notifications for
+  mentions and replies. It covers the data model (a self-referencing parent and thread root, a
+  photos column, a reactions table), the server hooks that stamp and validate every comment, one
+  shared editor component, the recursive thread list, silent refetching, and a proof with
+  throwaway users.
+- **Stored code's allowed hosts and keys** (`create-cron`, `create-service` and its Custom
+  services and Stripe references, `hooks-extensions` and its Engine services reference,
+  `daas-platform`'s built-in features, `add-microapp`'s cross-service communication and
+  `migrate-to-engine`): on an Engine project, a host for `services.fetch`
+  (`EXTENSION_ALLOWED_DOMAINS`) and a key for `services.env` are set by the user in the
+  project's **Environment Variables** (the Engine list) on the Buildpad platform and applied, not
+  asked of an operator. Engine text only.
 
 - **`migrate-to-engine`, Part B step 6** and its App code reference: what the app scan does not
   catch. Scope items get new ids and each `uri_path` is nested under the project's own scope item
@@ -32,11 +205,17 @@ removed or renamed, and the "Establish the backend first" procedure stays at ver
   custom domain, or a callback in a microapp or zone, is added in XAppHub by hand; XAppHub refuses
   any other redirect URI. Said in the Engine part's Step 1 and Troubleshooting, and in Step 0 and
   Step 3.
-- **`add-mcp-server`, hosted connectors:** a new subsection for claude.ai, ChatGPT and Amazon Quick,
-  which need OAuth with Dynamic Client Registration: the redirect URIs to allow, Amazon Quick's
-  Enterprise subscription and manual Sync, a session of the connector's own made at consent (on an
-  Engine project the server cannot make one any other way), never sharing the browser's session
-  (refresh-token rotation ends both), and that the default sign-out disconnects connectors.
+- **`add-mcp-server`, step 6, hosted connectors:** a new step for claude.ai, ChatGPT and Amazon
+  Quick, which sign in with OAuth 2.1 (PKCE S256) and Dynamic Client Registration. The app is a
+  stateless authorization server: its discovery documents, register, authorize, consent and token
+  endpoints, each with the checks it makes. Redirect URLs are an exact-match allow-list in
+  `MCP_ALLOWED_REDIRECT_URIS`, checked at register and again at authorize; `MCP_RESOURCE_URL` and
+  `MCP_OAUTH_SECRET` are set with `amplify_set_env_vars` and written to `.env.production`. The
+  connection gets a data API session of its own at consent, carried encrypted in the app's MCP
+  tokens and refreshed at the token endpoint; on a Supabase project it is made with the service
+  key (its only use, outside the tools), on an Engine project with a second sign-in on the consent
+  page. Also Amazon Quick's Enterprise subscription and manual Sync, never sharing the browser's
+  session (refresh-token rotation ends both), the default sign-out, and test steps.
 
 - New skill `add-notifications`: installs the Buildpad UI Notifications module
   (`@buildpad/ui-notifications`, CLI target `notifications`) instead of a hand-built bell. One
@@ -56,14 +235,22 @@ removed or renamed, and the "Establish the backend first" procedure stays at ver
 
 ### Supabase projects
 
+This file is new:
+
+- `add-comments/SKILL.md` (new-file): the standard comment field with social mentions, pasted
+  images, replies at any depth, an emoji picker, reactions and notifications.
+
 These files change, each with its reason:
 
 - `add-external-oauth/SKILL.md` (text): Step 0 and Step 3 say that the XAppHub connector registers
   only the Amplify default domain's and localhost's `/api/auth/callback`, so a custom domain or a
   microapp or zone callback is added in XAppHub by hand.
-- `add-mcp-server/SKILL.md` (text): a new subsection covers hosted connectors (claude.ai, ChatGPT,
-  Amazon Quick): OAuth with Dynamic Client Registration, the redirect URIs to allow, a session of
-  the connector's own made at consent, and why the browser's session cannot be shared.
+- `add-mcp-server/SKILL.md` (text): a new step 6 lets hosted connectors (claude.ai, ChatGPT,
+  Amazon Quick) sign in with OAuth: the endpoints and their checks, the redirect URLs as an
+  exact-match allow-list in an Amplify variable, and a data API session of the connection's own,
+  made at consent with `SUPABASE_SERVICE_ROLE_KEY` (`generateLink` + `verifyOtp`, outside the
+  tools) and carried encrypted in the MCP tokens. Rules 1 and 2, the CORS note, the description,
+  the tests and the checklist say the same.
 
 ## v8.0.0
 

@@ -48,6 +48,16 @@ const FIXTURE = {
     '| [skill-a](skill-a) | A |', '| [skill-b](skill-b) | B |', '| [tpl-skill](tpl-skill) | T |', '| [uc-skill](uc-skill) | U |',
   ),
   'tools/repo-check/skill-map.json': `[\n${MAP.map((r) => `  ${JSON.stringify(r)}`).join(',\n')}\n]\n`,
+  // R15's data, minimal: statements with empty `in` lists and no file that carries the check.
+  'tools/repo-check/tenancy-statements.json': JSON.stringify({
+    opening: 'On an Engine project with Customer_Tenants',
+    dependencies: { 'TD-1': 'one' },
+    met: [],
+    anchors: [{ es: 'ES-9', text: 'the project is one tenant' }],
+    tenancyCheck: { file: 'tools/repo-check/tenancy-check.md', in: [] },
+    statements: [{ id: 'TS-A', requires: [], until: [], text: 'On an Engine project with Customer_Tenants alpha.', in: [] }],
+  }, null, 2),
+  'tools/repo-check/tenancy-check.md': L('<!-- tenancy-check:begin v1 -->', 'Check.', '<!-- tenancy-check:end -->'),
 };
 const converted = (...folders) => Object.fromEntries(folders.map((f) => [`tools/repo-check/converted/${f}`, '']));
 
@@ -229,4 +239,25 @@ test('R12: the contract test and every shared case, exit 0; one changed expectat
   const r = run(copy, ['--only', 'R12'], { check });
   assert.equal(r.code, 1, r.stdout + r.stderr);
   assert.match(r.stdout, /^R12 tools\/repo-check\/test\/contract\.test\.mjs:\d+ contract-test-failed .*rpc positive/m);
+});
+
+test('R15: accepted by --only, R16 is not; an altered statement fails with file and line', () => {
+  const root = makeRepo(FIXTURE);
+  assert.equal(run(root, ['--only', 'R15']).code, 0);
+  assert.equal(run(root, ['--only', 'R16']).code, 2);
+  change(root, { 'skill-a/SKILL.md': L(...FM('skill-a'), '', '# A', '', ENG, 'On an Engine project with Customer_Tenants alphA.', END) });
+  const r = run(root, ['--only', 'R15']);
+  assert.equal(r.code, 1, r.stdout + r.stderr);
+  assert.deepEqual(findingLines(r.stdout).map((l) => l.split(' ').slice(0, 3).join(' ')), ['R15 skill-a/SKILL.md:9 ts-altered']);
+});
+
+test('R15: a missing or non-JSON data file exits 2 and names it', () => {
+  const root = makeRepo(FIXTURE);
+  change(root, { 'tools/repo-check/tenancy-statements.json': null });
+  const r = run(root, ['--only', 'R15']);
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /tenancy-statements\.json/);
+  change(root, { 'tools/repo-check/tenancy-statements.json': '{ not json' });
+  assert.equal(run(root, ['--only', 'R15']).code, 2);
+  assert.equal(run(root, ['--only', 'R2']).code, 0);
 });

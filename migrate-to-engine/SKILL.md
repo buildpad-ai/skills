@@ -61,6 +61,10 @@ files and the records. Two things are left, and this skill does both:
 - **Part A, automation:** each hook, cron job or custom service the Engine could not run as it was.
 - **Part B, app code:** every place where the app still talks to Supabase.
 
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
+
+On an Engine project with Customer_Tenants moving an application built on scopes into Customer_Tenants is not available: nothing moves a customer's rows, people or files out of the project's tenant into a tenant of its own. Tell the developer so and stop.
+
 Removing what the Engine lacks is the work of this skill. Where a step below says a feature is not
 available on an Engine project, remove its code, tell the developer what you removed and what takes
 its place, build no substitute, and go on with the next step.
@@ -197,7 +201,7 @@ On an Engine project the data API's address is the Engine_URL, which both `NEXT_
   with the service-role key. Do administrator tasks in the Studio, or in a server route that
   forwards a signed-in administrator's own access token. Static tokens on user records are not
   accepted by the data API: give their holders a signed-in session instead.
-  On an Engine project an administrator creates every user who signs in with a password, through the Engine's user API (`POST /api/users` with an administrator's session) or the Studio's Users module, and gives the user a role in the project's tenant (`POST /api/users/:id/roles` with `role_id`, or the Users module). A user's first XAppHub sign-in creates that user's account, which holds no role until an administrator gives it one in the same way. An administrator resets a user's password, in the Studio's Users module.
+  On an Engine project an administrator creates every user who signs in with a password, through the Engine's user API (`POST /api/users` with an administrator's session) or the Studio's Users module, and gives the user a role in the project's tenant (`POST /api/users/:id/roles` with `role_id`, or the Users module). A user's first XAppHub sign-in creates that user's account, which holds no role until an administrator gives it one in the same way, unless a tenant administrator has named a starting role for the user's email domain (`PUT /api/auth/external-sign-in/default-role`, the `add-external-oauth` skill). An administrator resets a user's password, in the Studio's Users module.
   For admin pages in the app, see [add-users](../add-users/SKILL.md).
   On an Engine project some files the Buildpad CLI generates cannot be used yet: `lib/supabase/admin.ts`, the OAuth callback and provider routes of the `external-oauth` module, the server-side enforcer and session modules, and `lib/module-access/enforce.ts`. Do not call them; check module access by forwarding the user's token to `GET <Engine_URL>/api/permissions/me` and reading `isAdmin` and `moduleAccess`. For XAppHub sign-in the CLI installs the `external-oauth-engine` module in place of `external-oauth`; its routes are used as the `add-external-oauth` skill says.
 - [ ] **5. Files** (`storage`, `storage-url`). Replace Supabase Storage (calls on
@@ -237,6 +241,8 @@ On an Engine project the data API's address is the Engine_URL, which both `NEXT_
   and the tests, and fix what fails. Sign in as a moved user with their old password, and read and
   write a record of each collection the app uses. Report to the developer what changed, what was
   removed, and what is left for cut-over.
+
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
 ## Permission rules that change meaning
 

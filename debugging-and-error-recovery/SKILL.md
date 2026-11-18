@@ -36,6 +36,10 @@ backend's parts and copy no code from them; everything else holds for both. On a
 something is not available, tell the developer so and stop: do not build a substitute.
 <!-- backend-gate:end -->
 
+<!-- buildpad-backend: engine -->
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
+
+<!-- /buildpad-backend -->
 ## Overview
 
 Systematic debugging with structured triage. When something breaks, stop adding features, preserve evidence, and follow a structured process to find and fix the root cause. Guessing wastes time.
@@ -187,7 +191,13 @@ Problem → Root Cause → Fix
 ├── Collection data empty → Missing read permission → Check the role's policies and permissions
 ├── Hook or cron job fails with ReferenceError → Stored code used fetch, process or require, which the Engine's runtime does not have → Use services.fetch, and services.env for settings
 ├── Stored code refused with 501 RUNTIME_SUPABASE_UNAVAILABLE → It asked for the Supabase service, which the Engine refuses → Use services.items(collection)
-└── Form fields missing → Missing field permissions → Check the permission's field list
+├── Form fields missing → Missing field permissions → Check the permission's field list
+└── In the mode customer-tenants:
+    ├── 403 FORBIDDEN "This token is not bound to a tenant" → An unbound session that was never switched → Switch (settleTenant) before any data call
+    ├── Signs in but shows nothing → The profile is not yet entered, or the session is bound to the Blueprint → Switch to the customer; the chooser does it
+    ├── 401 TENANT_SUSPENDED → A Platform member suspended the customer → Nothing in the app; the member resumes it
+    ├── 503 SERVICE_UNAVAILABLE → The customer is not serving for a moment (an Engine upgrade migrating it), or the session store → Retry after a few seconds
+    └── A field in the Blueprint and not in a customer → Made after the customer was created, and Releases are not available yet → Ask the Platform member; the change reaches only customers created after it
 ```
 
 The Engine's log is at `GET <Engine_URL>/api/logs`, for an administrator or a user whose role grants the `system:logs` module key.

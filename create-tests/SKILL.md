@@ -156,7 +156,11 @@ pnpm tsx scripts/setup-field-permission-tests.ts  # Field permission users
 
 Tests use Playwright's storage state for reusable auth across different user types. On an Engine project `tests/setup-test-users.ts` creates the test roles and users through the Engine's API with the test administrator's session, and `auth.setup.ts` signs each test user in through the application's login page and saves its storage state.
 
-On an Engine project an administrator creates every user who signs in with a password, through the Engine's user API (`POST /api/users` with an administrator's session) or the Studio's Users module, and gives the user a role in the project's tenant (`POST /api/users/:id/roles` with `role_id`, or the Users module). A user's first XAppHub sign-in creates that user's account, which holds no role until an administrator gives it one in the same way. An administrator resets a user's password, in the Studio's Users module.
+On an Engine project an administrator creates every user who signs in with a password, through the Engine's user API (`POST /api/users` with an administrator's session) or the Studio's Users module, and gives the user a role in the project's tenant (`POST /api/users/:id/roles` with `role_id`, or the Users module). A user's first XAppHub sign-in creates that user's account, which holds no role until an administrator gives it one in the same way, unless a tenant administrator has named a starting role for the user's email domain (`PUT /api/auth/external-sign-in/default-role`, the `add-external-oauth` skill). An administrator resets a user's password, in the Studio's Users module.
+
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
+
+In the mode `customer-tenants` tests sign in to the Blueprint, as ES-12 says. A test of a customer's path needs a customer made for testing on the Platform's Customers page; the pipeline holds that customer's test administrator's email and password as secrets, beside the test administrator's. A test never creates, suspends or deletes a customer.
 
 On an Engine project tests create their users and roles as an administrator does (above), sign in with each user's email and password, and use the Engine environment of **Required env vars**. The only secrets a pipeline needs are the test administrator's email and password; it needs no Supabase secret.
 
@@ -183,6 +187,10 @@ A setup script or an API test runs in Node, not in a browser, so it signs in dir
 
 - password sign-in through the Supabase client, created against the Engine_URL with the global header `X-Tenant-Id`;
 - `POST <Engine_URL>/api/auth/login` with the header `X-Tenant-Id` and the body `{ "email": "...", "password": "...", "tenant": "<the tenant id>" }`. The body's `tenant` names the tenant the session acts in. The answer is `{ "data": { "access_token": "...", "refresh_token": "...", "expires": <Unix time> } }`.
+
+On an Engine project with Customer_Tenants the password sign-in names no tenant: the application's own server route sends it without `X-Tenant-Id`. When the session it answers is bound to no tenant, the same route lists the person's tenants with `GET /api/auth/tenants`, switches with `POST /api/auth/tenant`, and replaces the session's access and refresh tokens with the pair the switch answers. The application takes its current tenant from the session, never from the environment or from the request, and sends no tenant id on a request that carries a session.
+
+In the mode `customer-tenants` a script that signs in as a customer's person sends no `X-Tenant-Id` and switches: it lists the person's tenants with `GET <Engine_URL>/api/auth/tenants`, switches with `POST <Engine_URL>/api/auth/tenant` and the body `{ "tenant": "<the customer's tenant id>" }`, and sends the access token the switch answers from then on. A script that signs in to the Blueprint, as the test users above do, keeps the header.
 
 Send the access token as `Authorization: Bearer <access token>`. It expires after one hour unless the Engine's operator set another lifetime; sign in again then.
 

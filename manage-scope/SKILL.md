@@ -796,6 +796,27 @@ The Buildpad Engine's **scope system** is the standard way to separate data insi
 
 On an Engine project the project is one tenant. Every scope hierarchy begins below the project's tenant node: create no scope type without a parent and no scope item without a parent. Scope types, items and collection settings are managed through the MCP `scope` tool, or through `/api/scope/types`, `/api/scope/items` and `/api/scope/collection-config` with an administrator's session. The tool reads types, items and collection settings with the caller's grants; only an administrator may create, change or delete them through it, read a user's roles (`read_user_roles`), or assign and remove a role at a scope (`assign_user_role`, `remove_user_role`), and a delete is refused while the project's MCP deletes are off. If `tools/list` offers only `assign_user_role` and `create_config` for it, the project's Engine is older than 0.1.0-dev.19: use the routes for the rest.
 
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
+
+In the mode `customer-tenants`, scopes live inside each customer:
+
+- Every scope URI begins with the current customer's node: the `uri_path` of the `current` entry of
+  `GET /api/auth/tenants`, never the Blueprint's and never one built from
+  `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. A `ScopeProvider`'s root is that node.
+- A scope type's id differs in every customer (a creation copies the Blueprint's scope types under
+  new ids): look scope types up by name in the current customer. Roles are the opposite: a role
+  made in the Blueprint keeps its id in every customer.
+- A creation copies the Blueprint's scope types as they are at that moment, so a scope type made in
+  the Blueprint reaches every customer created after it, and no customer created before it. The
+  application's setup screen for a customer's administrator therefore creates a scope type it needs
+  when it finds it missing, beneath their own tenant node.
+- A customer's administrator may create scope types and nodes beneath their own tenant node. Direct
+  no root type and no first-level node: a first-level node is a tenant, which only the host creates.
+- A role's `scope_config` made in the Blueprint may name the Blueprint's node and its own scope
+  types: a creation rewrites them to the new customer's node and same-named types.
+
+The [`add-multitenancy`](../add-multitenancy/SKILL.md) skill's guide `engine-customer-tenants` gives the rest of the mode: signing in, the current customer and the switch.
+
 > **MCP or API:** each route below has a `scope` MCP tool action that applies the same checks (`create_type`, `create_item`, `update_config`, `assign_user_role` and the rest; the [daas-platform skill](../daas-platform/SKILL.md) points to the full list), so the agent can do the setup through the project's MCP configuration. To call the routes instead, or when the project's Engine is older than 0.1.0-dev.19 and the tool offers only `assign_user_role` and `create_config`, sign in as an administrator and send that session's access token as `Authorization: Bearer`. The token in the project's MCP configuration is accepted only on the MCP endpoint: never send it to these routes.
 
 ---
@@ -1090,6 +1111,8 @@ To restrict a policy to users operating within a given scope and its descendants
 ### Step 6: Frontend — Scope Selection & API Integration
 
 On an Engine project the data API serves no request without a session; only the sign-in, `GET /api/server/info` and the Engine's password routes are served without one (an application must not use them: on an Engine project an administrator resets a user's password). The requests that take their tenant from the header `X-Tenant-Id` are the password sign-in, XAppHub sign-in and anonymous reads of public files. A browser can send `X-Tenant-Id` to the Engine from another origin, without cookies or credentials: the Engine allows that header from any origin and allows no credentialed cross-origin request. Even so, the request that names the tenant is the sign-in made through the application's own server route, which sends `X-Tenant-Id` with the value of `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. A public file shown in a browser is loaded through a signed URL from `/api/files/signed-url`, not by an anonymous read. A request without a session that names no tenant is served from the Engine's host plane, not from the project. A request with a session takes its tenant from the session.
+
+On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
 Inside the project, the active scope travels in the `X-Resource-Uri` header. The app keeps the selection in its own `daas_resource_uri` cookie; that cookie is never sent to the Engine, so every data call adds the header — the SDK's calls and every server route that forwards a call. See [Client-Side Scope Integration](references/scope-client.instructions.md) for full patterns.
 
