@@ -134,7 +134,7 @@ Next.js App Router, server only, each with the session cookies of `@supabase/ssr
 
 | App route | Engine call | Answer to the browser |
 |---|---|---|
-| `POST /api/auth/login` | Supabase client `signInWithPassword` against the Engine_URL **with no `X-Tenant-Id` header**; then `settleTenant` | `{data: {tenant}}`, `{data: {choose: [...]}}`, or 403 with "Your account does not belong to any customer of this application" |
+| `POST /api/auth/login` | Supabase client `signInWithPassword` against the Engine_URL **with no `X-Tenant-Id` header**; then `settleTenant` | `{data: {tenant}}`, `{data: {choose: [...]}}`, or 403 with "Your account does not belong to any customer of this application"; with Self-onboarding on, also `{data: {create: true}}` and 403 `{error: "EMAIL_NOT_CONFIRMED"}` (5.5) |
 | `GET /api/auth/tenants` | `GET <Engine_URL>/api/auth/tenants`, `Authorization: Bearer <access token>` | the entries of `kind: "tenant"`, each with `blueprint: id === NEXT_PUBLIC_BUILDPAD_TENANT_ID` |
 | `POST /api/auth/tenant` | `POST <Engine_URL>/api/auth/tenant`, body `{"tenant": "<id>"}`, `Authorization: Bearer <access token>`; then `supabase.auth.setSession` with the answered pair | `{data: {tenant}}`; the browser then reloads the page (`window.location.assign("/")`) |
 | `DELETE /api/auth/tenants/[id]` | `DELETE <Engine_URL>/api/auth/tenants/:id` (decline an invitation not yet entered) | 204, or the Engine's 409 or 404 |
@@ -150,6 +150,9 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const ENGINE = process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL!; // the Engine_URL
+// true only once the add-customer-onboarding skill builds sign-up (5.5); never read from the
+// environment or the request.
+const SELF_ONBOARDING = false;
 
 type ServerClient = SupabaseClient; // the @supabase/ssr server client of the request
 
@@ -190,7 +193,8 @@ export async function settleTenant(supabase: ServerClient, accessToken: string) 
   const tenants = await listTenants(accessToken);
   const current = tenants.find((t) => t.current);
   if (current) return { tenant: current };                        // bound to a customer already
-  if (tenants.length === 0) {                                     // belongs to no customer
+  if (tenants.length === 0) {                                     // belongs to no customer yet
+    if (SELF_ONBOARDING) return { create: true as const };        // add-customer-onboarding
     await supabase.auth.signOut();
     return { error: "NO_CUSTOMER" as const };
   }
@@ -206,15 +210,20 @@ export async function settleTenant(supabase: ServerClient, accessToken: string) 
 ### 5.3 Rules
 
 - **A session bound to no customer.** A session with no `current` entry of `kind: "tenant"` is used
-  for nothing but the four routes above. One bound to the host (a person with a host role is bound
-  there at sign-in) is treated the same way, and its access token is sent to no data route.
+  for nothing but the four routes above, and, with Self-onboarding on, a fifth: the app's
+  `POST /api/onboarding/customers`, which sends its access token to the Engine's
+  `POST /api/onboarding/customers` only (5.5). One bound to the host (a person with a host role is
+  bound there at sign-in) is treated the same way, and its access token is sent to no data route.
 - **The chooser** lists each tenant's `name`. It marks the one whose `id` equals
   `NEXT_PUBLIC_BUILDPAD_TENANT_ID` as the application's own tenant (only its developers hold it). It
   shows `accepted: false` entries as invitations with "Join" (the switch, which enters it) and
   "Decline". It shows an entry whose `state` is not `ready` (`provisioning`, `suspended`,
   `migrating`, `failed`) as unavailable, with the cause from the table in 5.4; a `ready` entry may
   still answer 503 at the switch, which the app shows the same way. It may preselect the last
-  choice, kept in the browser as a preference only.
+  choice, kept in the browser as a preference only. With Self-onboarding on, it also shows a
+  "Create another company" link to `/create-company`, always: the app cannot read the project's
+  `per_identity` (how many companies one person may create), and the create route's 409 at that
+  limit explains itself.
 - **The switch** runs only in the app's server route, with the current session. After `setSession`
   the old access token is never sent again. Do not sign the old pair out: the Supabase client's
   default sign-out ends every session of the person, the new one included. The browser reloads the
@@ -245,6 +254,23 @@ The forwarder of the `create-api-route` skill maps them. Only the 503 is retried
 | 403 `TENANT_SUSPENDED` from the switch | The chosen customer is suspended | As 401 `TENANT_SUSPENDED`, staying on the chooser | No |
 | 403 `FORBIDDEN` from the switch | The person holds no place in that tenant | "You are not a member of that customer." | No |
 | 401 `USER_SUSPENDED` from the switch | The person's account is not active | "Your account is not active. Ask your administrator." Then sign out | No |
+
+### 5.5 With Self-onboarding on
+
+In the mode `customer-tenants` with Self-onboarding on (section 13), the `add-customer-onboarding`
+skill changes the sign-in above in two places, and in nothing else:
+
+1. **An unverified sign-in.** For a person who signed up and has not confirmed their address,
+   `signInWithPassword` answers the GoTrue error code `email_not_confirmed`. The login route maps it
+   to 403 `{error: "EMAIL_NOT_CONFIRMED"}`. The page says "Confirm your email first." and offers to
+   send the confirmation again, through the app's resend route.
+2. **An empty tenant list.** The skill sets `SELF_ONBOARDING` to `true` in `lib/auth/tenants.ts`.
+   `settleTenant` then keeps the unbound session and answers `{create: true}` instead of signing out
+   with `NO_CUSTOMER`, and the login route sends the browser to `/create-company`. Without the flow
+   the constant stays `false`, and `NO_CUSTOMER` stands.
+
+The person creates their company on `/create-company` with that unbound session, through the fifth
+route of 5.3; the route then switches into the new customer as 5.1's switch does.
 
 ## 6. Scopes inside a customer
 
@@ -339,6 +365,21 @@ Signs in but shows nothing
 A field in the Blueprint and not in a customer
   → made after the customer was created, and Releases are not available yet
   → ask the Platform member; the change reaches only customers created after it
+Signs up but no email arrives (Self-onboarding)
+  → the app's Mail_Sender failed, or the mail provider's domain is not verified
+  → the mail provider's logs
+Every sign-up answers 401 TOKEN_INVALID (Self-onboarding)
+  → BUILDPAD_ONBOARDING_KEY is missing, revoked, or not in .env.production
+  → the Customers page's key list (last use) and the amplify.yml line
+Sign-ups answer 429 after five (Self-onboarding)
+  → no X-Onboarding-Client-Address, so all sign-ups share one bucket
+  → send the address
+Creating a company answers 503 (Self-onboarding)
+  → the template-copy lock
+  → retry with the same id
+Creating a company answers 409 before creating anything (Self-onboarding)
+  → no published Release
+  → the Platform's Releases panel
 ```
 
 ## 12. Review checks
@@ -351,6 +392,12 @@ In the mode `customer-tenants`:
   at once;
 - no cache in the application (server or browser) is keyed without the current customer, and a
   switch reloads the page.
+
+With Self-onboarding on (section 13), also:
+- `BUILDPAD_ONBOARDING_KEY` is read only in one server-only module, never with a `NEXT_PUBLIC_`
+  prefix and never in a client component;
+- the sign-up route checks the bot-check token before it calls the Engine;
+- the sign-up page shows the same text for a new and an existing address.
 
 Scopes inside the project's one tenant are set up with the [`manage-scope`](../../manage-scope/SKILL.md) skill.
 
