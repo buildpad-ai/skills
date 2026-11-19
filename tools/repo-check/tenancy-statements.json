@@ -83,7 +83,8 @@
         "agents/test-engineer.md",
         "agents/security-auditor.md",
         "references/security-checklist.md",
-        "add-multitenancy/references/engine-customer-tenants.instructions.md"
+        "add-multitenancy/references/engine-customer-tenants.instructions.md",
+        "add-customer-onboarding/SKILL.md"
       ]
     },
     {

@@ -203,7 +203,7 @@ Problem → Root Cause → Fix
         ├── Every sign-up answers 401 TOKEN_INVALID → BUILDPAD_ONBOARDING_KEY is missing, revoked, or not written into .env.production → Check the key list (last use) on the Platform's Customers page, and the amplify.yml line
         ├── Sign-ups answer 429 after five in 15 minutes → No X-Onboarding-Client-Address, so every sign-up shares one bucket → Send the client's IP address in that header
         ├── Creating a company answers 503 → The template-copy lock → Retry with the same id
-        └── Creating a company answers 409 "This project has no published release yet" → No published Release → Publish one from the Platform's Releases panel
+        └── Creating a company answers 409 "This project has no published release yet" → The Blueprint has no published Release → Ask the Platform member who turned Self-onboarding on: turning it on publishes the first Release
 ```
 
 The Engine's log is at `GET <Engine_URL>/api/logs`, for an administrator or a user whose role grants the `system:logs` module key.

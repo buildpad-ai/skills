@@ -378,8 +378,8 @@ Creating a company answers 503 (Self-onboarding)
   → the template-copy lock
   → retry with the same id
 Creating a company answers 409 before creating anything (Self-onboarding)
-  → no published Release
-  → the Platform's Releases panel
+  → the Blueprint has no published Release
+  → ask the Platform member who turned Self-onboarding on: turning it on publishes the first Release
 ```
 
 ## 12. Review checks
