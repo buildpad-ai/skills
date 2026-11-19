@@ -14,6 +14,54 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
+## v10.0.0
+
+Two skills are added, `add-notifications` and `atomic-writes`. Install it with
+`npx skills add buildpad-ai/skills#v10.0.0`. It is a MAJOR release, because two existing files that
+a Supabase project's agent reads change (see **Supabase projects** below). No skill is removed or
+renamed, and the "Establish the backend first" procedure stays at version 1.
+
+- **New skill `add-notifications`:** installs the Buildpad UI Notifications module
+  (`@buildpad/ui-notifications`, CLI target `notifications`) instead of a hand-built bell. One
+  standard `notifications` collection (recipient by user id, or by email for people without an
+  account, who get the digest only), read and update of `read_at` only where `recipient =
+  $CURRENT_USER`, and a `recipient` clause on every request because administrators bypass that rule.
+  The shared provider, the header bell and the `/notifications` inbox (tabs filtered on the server,
+  keyset paging, `?filter=`/`?id=` in the URL through `nextUrlState`, keyboard, one pane on phones),
+  with slots to preview the record, act on it and reply in place with the ui-comments `Composer`.
+  The `notifications` service and hooks make the rows (no self-notice, a unique `dedupe_key`,
+  replies merged into one unread row), and a daily digest emails what is still unread. It covers
+  moving an app that has its own bell (Chisel `feedback_notifications`, XCRM `crm_notifications`)
+  onto the standard. True for both kinds of project; no backend-specific step.
+- **`add-comments`:** step 6 and Related skills point to `add-notifications` for the in-app bell and
+  inbox.
+- **`buildpad-reference`:** the Opt-in Modules table gains a Notifications row.
+- **New skill `atomic-writes`:** preventing race conditions and overbooking on an Engine project
+  (data service 2026.11.01, Engine 0.1.0-dev.28): a conditional single-item PATCH (`condition`,
+  `409 CONDITION_NOT_MET`) with `_inc`/`_dec` for stock, seat, quota and counter claims; optimistic
+  locking with a `version` field; and filter hooks that run `services.transaction` with
+  `readOne(id, { lock: 'update' })` when several rows change together, with its options, error codes
+  and the gotchas found in real use. Its references give Next.js route handlers and a concurrency
+  verification recipe. On a Supabase project it says the feature is not available and stops.
+- **`hooks-extensions`**, **`create-service`:** point to `atomic-writes` from their Engine text.
+
+### Supabase projects
+
+These files are new:
+
+- `add-notifications/SKILL.md` (new-file): the standard in-app notifications with a bell, an inbox
+  with inline reply, recipient-only permissions, the notify service and hooks, and a daily digest.
+- `atomic-writes/SKILL.md` (new-file): on a Supabase project it says that conditional updates and
+  transactions are Buildpad Engine features that are not available, and stops.
+
+These files change, each with its reason:
+
+- `add-comments/SKILL.md` (text): step 6 and Related skills point to `add-notifications` for an
+  in-app bell and inbox, whose `notify` service the same events go through.
+- `buildpad-reference/SKILL.md` (text): the Opt-in Modules table gains a row for the Notifications
+  module (`@buildpad/ui-notifications`, CLI target `notifications`) and its skill
+  `add-notifications`.
+
 ## v9.3.0
 
 XAppHub sign-in can give new accounts a starting role. Install it with
@@ -216,6 +264,22 @@ renamed, and the "Establish the backend first" procedure stays at version 1.
   key (its only use, outside the tools), on an Engine project with a second sign-in on the consent
   page. Also Amazon Quick's Enterprise subscription and manual Sync, never sharing the browser's
   session (refresh-token rotation ends both), the default sign-out, and test steps.
+
+- New skill `add-notifications`: installs the Buildpad UI Notifications module
+  (`@buildpad/ui-notifications`, CLI target `notifications`) instead of a hand-built bell. One
+  standard `notifications` collection (recipient by user id, or by email for people without an
+  account, who get the digest only), read and update of `read_at` only where `recipient =
+  $CURRENT_USER`, and a `recipient` clause on every request because administrators bypass that rule.
+  The shared provider, the header bell and the `/notifications` inbox (tabs filtered on the server,
+  keyset paging, `?filter=`/`?id=` in the URL through `nextUrlState`, keyboard, one pane on phones),
+  with slots to preview the record, act on it and reply in place with the ui-comments `Composer`.
+  The `notifications` service and hooks make the rows (no self-notice, a unique `dedupe_key`,
+  replies merged into one unread row), and a daily digest emails what is still unread. It covers
+  moving an app that has its own bell (Chisel `feedback_notifications`, XCRM `crm_notifications`)
+  onto the standard. True for both kinds of project; no backend-specific step.
+- `add-comments/SKILL.md` (text): step 6 and Related skills point to `add-notifications` for the
+  in-app bell and inbox.
+- `buildpad-reference/SKILL.md` (text): a Notifications row in the modules table.
 
 ### Supabase projects
 

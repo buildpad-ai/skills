@@ -232,6 +232,9 @@ throw out of the hook:
   is itself a reply, "your update" (or the app's word) when it is the top one.
 - Give the email a link that opens the page on that comment.
 
+For an in-app bell and inbox as well as email, follow [add-notifications](../add-notifications/SKILL.md):
+the same events go through its `notify` service instead of sending mail directly.
+
 ### 7. Prove it
 
 Run the built app on a free port and drive it with Playwright as two throwaway users (an owner and
@@ -272,4 +275,5 @@ rows from a filtered list you have not checked, because some tools ignore the fi
 [create-component](../create-component/SKILL.md) (check the catalogue before you build a component),
 [hooks-extensions](../hooks-extensions/SKILL.md) (the stored-code rules), [create-service](../create-service/SKILL.md)
 (the notification service), [add-files](../add-files/SKILL.md) (the upload hook the Image button uses),
-[create-tests](../create-tests/SKILL.md) (Playwright setup).
+[create-tests](../create-tests/SKILL.md) (Playwright setup), [add-notifications](../add-notifications/SKILL.md)
+(the in-app bell and inbox for mentions and replies).

@@ -22,5 +22,11 @@
     "kind": "text",
     "reason": "The Opt-in Modules table gains a row for the AI Chat module (@buildpad/ui-chat, CLI targets ai-chat-routes and ai-chat-proxy-routes) and its skill add-ai-chat.",
     "release": "v7.0.0"
+  },
+  {
+    "path": "buildpad-reference/SKILL.md",
+    "kind": "text",
+    "reason": "The Opt-in Modules table gains a row for the Notifications module (@buildpad/ui-notifications, CLI target notifications) and its skill add-notifications.",
+    "release": "v10.0.0"
   }
 ]

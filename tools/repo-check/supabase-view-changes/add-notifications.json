@@ -1,0 +1,8 @@
+[
+  {
+    "path": "add-notifications/SKILL.md",
+    "kind": "new-file",
+    "reason": "New skill add-notifications: the standard in-app notifications with a bell, an inbox with inline reply, recipient-only permissions, the notify service and hooks, and a daily digest.",
+    "release": "v10.0.0"
+  }
+]

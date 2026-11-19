@@ -23,17 +23,17 @@ Starters downloaded from the Platform carry only their project's text: the other
 
 ```bash
 # Install skills from a release (interactive picker)
-npx skills add buildpad-ai/skills#v9.3.0
+npx skills add buildpad-ai/skills#v10.0.0
 
 # Install everything from a release
-npx skills add buildpad-ai/skills#v9.3.0 --all
+npx skills add buildpad-ai/skills#v10.0.0 --all
 
 # Install a single skill from a release
-npx skills add buildpad-ai/skills#v9.3.0@create-project
-npx skills add https://github.com/buildpad-ai/skills/tree/v9.3.0/create-project
+npx skills add buildpad-ai/skills#v10.0.0@create-project
+npx skills add https://github.com/buildpad-ai/skills/tree/v10.0.0/create-project
 ```
 
-The [skills CLI](https://github.com/vercel-labs/skills) detects your agents and writes each skill to the right location (`.claude/skills/`, `.kiro/skills/`, `.agents/skills/`, …). A tag never moves, so installing `#v9.3.0` always gives the same files. Replace `v9.3.0` with any tag from the [releases](https://github.com/buildpad-ai/skills/releases).
+The [skills CLI](https://github.com/vercel-labs/skills) detects your agents and writes each skill to the right location (`.claude/skills/`, `.kiro/skills/`, `.agents/skills/`, …). A tag never moves, so installing `#v10.0.0` always gives the same files. Replace `v10.0.0` with any tag from the [releases](https://github.com/buildpad-ai/skills/releases).
 
 ## Stay on the skills as they were before Engine support
 
@@ -137,6 +137,7 @@ The core methodology: every feature is specified as `requirements.md` (EARS) →
 | [add-mobile-app](add-mobile-app) | Wrap the web app as iOS/Android with Capacitor (server-URL mode), plus when to use platform-managed mobile builds / Expo mobile microapps; SSO, push, geofencing, emulator gotchas |
 | [add-mcp-server](add-mcp-server) | Expose the app's own data and actions as an MCP server: one stateless `/api/mcp` route whose tools forward the caller's own token to the data API |
 | [add-comments](add-comments) | The standard comment field: social @mentions, images (paste from the clipboard), replies at any depth, an emoji picker, one-click reactions, mention and reply emails; with the hooks, the shared editor, the thread list and how to prove it |
+| [add-notifications](add-notifications) | The standard in-app notifications: a header bell with an unread badge, a /notifications inbox with inline reply, deep links, mark read, a daily email digest; with the standard collection, recipient-only permissions, the notify service and hooks, migrating an existing bell, and how to prove it |
 | [worker-messaging](worker-messaging) | Offload long-running work to a Buildpad runtime worker over RabbitMQ (topic-exchange job convention; Next.js producer + worker consumer/chaining; connection via Platform MCP) |
 | [migrate-to-engine](migrate-to-engine) | Engine projects only: finish moving a project from Supabase to the Buildpad Engine — rewrite the hooks, cron jobs and custom services the Engine could not run, and port the app's code (environment, sign-in, data calls, files, administrator code, access rules); on a Supabase project it explains the move and stops |
 
@@ -151,6 +152,7 @@ The core methodology: every feature is specified as `requirements.md` (EARS) →
 | [relational-permissions](relational-permissions) | Permissions on junction/child collections for nested relational writes |
 | [grant-module-access](grant-module-access) | Application-level capability flags via Module-Level Access Keys |
 | [hooks-extensions](hooks-extensions) | DaaS runtime extensions: filter hooks, action hooks, utilities API |
+| [atomic-writes](atomic-writes) | Engine projects only: prevent race conditions and overbooking with conditional updates (`_inc`/`_dec`), optimistic locking and transactional filter hooks; on a Supabase project it says the feature is not available and stops |
 | [amplify-env-vars](amplify-env-vars) | Manage AWS Amplify environment variables via Buildpad MCP tools |
 
 ### Engineering practices
