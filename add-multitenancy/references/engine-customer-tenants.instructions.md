@@ -69,6 +69,8 @@ scopes inside a customer (section 6), structure built in the Blueprint (section 
 (section 8). Not available yet: Releases. A change made in the Blueprint therefore reaches only the
 customers created after it (section 7.1).
 
+Customers that sign themselves up: available while the project's Self-onboarding is on (section 13).
+
 What the mode does not offer is listed in section 4.
 
 ## 2. What the mode is
@@ -85,14 +87,12 @@ Customers page.
 
 Never put the Engine's host administrator credential, a session bound to the Engine's host, or a
 call to `/api/tenants` into an application, a worker, a test or a tool call of yours. Never create a
-customer from code. Never take a tenant id from user input, except the one the application's
-tenant switch receives, which the Engine checks.
+customer from code, except through the `add-customer-onboarding` skill's route, with the person's
+own session. Never take a tenant id from user input, except the one the application's tenant switch
+receives, which the Engine checks; the id a person's own creation chose, which the Engine accepts
+only for that person's own retry, is not such an input.
 
 ## 4. Not available
-
-On an Engine project with Customer_Tenants customers that sign themselves up are not available: only a Platform member creates a customer, on the Platform's Customers page, and no credential an application may hold can create one. Tell the developer so and stop: never put the host administrator's credential or a call to the Engine's tenant routes in the application.
-
-Who could offer it later: the Buildpad platform, through an API an application's server may call to create a customer, which no plan includes yet.
 
 On an Engine project with Customer_Tenants a public page of one customer is not available: a request without a session acts in the tenant `X-Tenant-Id` names, and nothing maps a host name to a customer yet. A page without a session reads the Blueprint only, through `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. Tell the developer so and stop: do not put a customer's tenant id in the application or let a visitor choose it.
 
@@ -353,3 +353,11 @@ In the mode `customer-tenants`:
   switch reloads the page.
 
 Scopes inside the project's one tenant are set up with the [`manage-scope`](../../manage-scope/SKILL.md) skill.
+
+## 13. Customers who sign themselves up
+
+On an Engine project with Customer_Tenants customers sign themselves up only while the project's Self_Onboarding is on, which `selfOnboarding` in `.buildpad/project.json` says. While it is off, tell the developer that a project Admin turns it on from the Platform's Customers page, and stop. While it is on, build it with the `add-customer-onboarding` skill: the application's own server routes call the Engine's sign-up, verification and customer routes with `BUILDPAD_ONBOARDING_KEY`, read on the server only and never sent to a browser. Never put the host administrator's credential or a call to `/api/tenants` in the application.
+
+Who turns it on: a project Admin, from the Platform's Customers page, once a host administrator has turned on the premium flag Customer self-onboarding for the project.
+
+Build it with the [`add-customer-onboarding`](../../add-customer-onboarding/SKILL.md) skill.
