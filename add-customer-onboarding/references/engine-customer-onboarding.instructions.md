@@ -762,7 +762,7 @@ answers `{create: true}`:
 
 ```ts
 // lib/auth/tenants.ts — the constant, set to true by add-customer-onboarding.
-const SELF_ONBOARDING = true;
+export const SELF_ONBOARDING = true;
 ```
 
 ```ts
@@ -818,8 +818,8 @@ for a signed-out request, and the routes check what they need.
   answers `503 {retry: true, id}`.
 - **On 201 or 200** it runs `switchTenant(token, created.id)`, then `supabase.auth.setSession` with
   the answered pair, and answers `{tenant: {id, name}}`.
-- **On 409 at the person's limit** it first lists the person's tenants. When one has the requested
-  `id`, a same-id request raced the first (the Engine counts the limit before it sees its own
+- **On 409 at the person's limit** it first lists the person's tenants, up to three times a second
+  apart (the first request may still be committing). When one has the requested `id`, a same-id request raced the first (the Engine counts the limit before it sees its own
   creation in flight), so the route switches into it and answers as on 200. Otherwise the 409
   stands.
 - **The form on `503 {retry: true}`** says "Creating your company is taking longer than usual…" It
@@ -922,7 +922,12 @@ export async function POST(request: NextRequest) {
     // still copying) is refused at the person's limit although its company exists. Land in it.
     const token = session?.access_token;
     if (isKind(e, "per_identity") && token) {
-      const mine = (await listTenants(token).catch(() => [])).find((t) => t.id === id);
+      // The first request may not have committed yet: look up to three times, a second apart.
+      let mine;
+      for (let look = 0; look < 3 && !mine; look++) {
+        if (look > 0) await wait(1000);
+        mine = (await listTenants(token).catch(() => [])).find((t) => t.id === id);
+      }
       if (mine) {
         const pair = await switchTenant(token, mine.id).catch(() => null);
         if (pair) {

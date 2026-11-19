@@ -206,7 +206,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 const ENGINE = process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL!; // the Engine_URL
 // true only once the add-customer-onboarding skill builds sign-up; never read from the
 // environment or the request.
-const SELF_ONBOARDING = false;
+export const SELF_ONBOARDING = false;
 
 type ServerClient = SupabaseClient; // the @supabase/ssr server client of the request
 

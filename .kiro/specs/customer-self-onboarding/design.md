@@ -977,6 +977,18 @@ project's Amplify app. The Platform's record is `buildpad-platform` `bec8acac`.
   - The routes take only `application/json` (finding 22's cross-site form).
   - `SKILL.md`'s step 1 is named, and its repeated paragraph is shortened.
 
+**Re-check, 12:36 UTC** (Platform 12.2, `buildpad-platform` `7be47e3d`). The test app took §5.6's
+middleware and §9's 409 branch verbatim (app `f33af76`), and was redeployed:
+- after sign-in answered `{create: true}`, `/create-company` and `/choose-customer` answered 200;
+- an unbound session got 403 `NO_CURRENT_CUSTOMER` on a data path;
+- two double submits with one id each answered 201 then 200, with no 409 and one customer each;
+- a later sign-in landed in the company.
+
+Three text notes from it were applied the same day:
+- the 409 branch looks up to three times, a second apart;
+- the chooser's empty case is given as code, with `SELF_ONBOARDING` exported;
+- the middleware's comment says which errors mean "signed out".
+
 **Not changed, with the reason:**
 - The kit's `CLAUDE.md` (K1–K3) and the CLI (K4, its forwarder) are the Platform's and
   `buildpad-ui`'s, and are recorded for them. `create-project`'s sign-in lines in this repository

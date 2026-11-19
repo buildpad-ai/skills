@@ -161,7 +161,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 const ENGINE = process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL!; // the Engine_URL
 // true only once the add-customer-onboarding skill builds sign-up (5.5); never read from the
 // environment or the request.
-const SELF_ONBOARDING = false;
+export const SELF_ONBOARDING = false;
 
 type ServerClient = SupabaseClient; // the @supabase/ssr server client of the request
 
@@ -227,8 +227,16 @@ export async function settleTenant(supabase: ServerClient, accessToken: string) 
   person with a host role is bound there at sign-in) is treated the same way, and its access token
   is sent to no data route.
 - **The chooser** is the page `/choose-customer`. With no tenant to list, it sends the browser to
-  `/create-company` when Self-onboarding is on (5.5), and signs out otherwise. It lists each
-  tenant's `name`. It marks the one whose `id` equals
+  `/create-company` when Self-onboarding is on (5.5), and signs out otherwise:
+
+  ```tsx
+  // app/(auth)/choose-customer/page.tsx — a server component, before it renders the list.
+  const tenants = await listTenants(session.access_token);
+  if (tenants.length === 0) redirect(SELF_ONBOARDING ? "/create-company" : "/logout"); // next/navigation
+  ```
+
+  Export `SELF_ONBOARDING` from `lib/auth/tenants.ts` for this. `/logout` is the page or route that
+  calls the logout route. It lists each tenant's `name`. It marks the one whose `id` equals
   `NEXT_PUBLIC_BUILDPAD_TENANT_ID` as the application's own tenant (only its developers hold it). It
   shows `accepted: false` entries as invitations with "Join" (the switch, which enters it) and
   "Decline". It shows an entry whose `state` is not `ready` (`provisioning`, `suspended`,
@@ -332,9 +340,10 @@ yet, as signed out, and loops them back to sign-in. Replace the part after `getU
 ```ts
   const { data: { user }, error } = await supabase.auth.getUser();
 
-  // A session bound to no customer: GoTrue refuses it with 403 (a missing or expired one is 401).
-  // getSession reads the cookie, already refreshed by getUser; the Engine checks the token on
-  // every route this lets through.
+  // A session bound to no customer: the Engine's GoTrue refuses it with 403 FORBIDDEN "This token
+  // is not bound to a tenant". A missing or expired session is 401, or no error at all with no
+  // user: both mean signed out. getSession reads the cookie, already refreshed by getUser; the
+  // Engine checks the token on every route this lets through.
   let unbound = false;
   if (!user && error?.status === 403) {
     const { data: { session } } = await supabase.auth.getSession();
