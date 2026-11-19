@@ -112,8 +112,8 @@
     change; the rule table gains R16's row.
   - _Requirements: 5.1_
 
-- [ ] 3. Register
-- [ ] 3.1 TS-O1 and `met`
+- [x] 3. Register
+- [x] 3.1 TS-O1 and `met`
   - `tools/repo-check/tenancy-statements.json`: TS-O1 with `requires: ["TD-7"]`, `until: []`, its
     text (O3) and its `in` (O3's four files); `dependencies["TD-7"]` restated as the design says;
     `met` gains `"TD-7"`.
@@ -127,14 +127,14 @@
     passes. `check.mjs --only R15` then lists exactly TS-N1's three files and TS-O1's four files,
     which tasks 4 to 6 clear.
   - _Requirements: 1.1, 1.2, 1.5, 5.2_
-- [ ] 3.2 ES-17n
+- [x] 3.2 ES-17n
   - `CONTRIBUTING.md` "Engine statements": the ES-17n row after ES-16 (O4).
   - `guard.test.mjs` gains TS-O1 and ES-17n: no §C20 pattern and no marker token.
   - Done when `node --test tools/repo-check/test/guard.test.mjs` passes.
   - _Requirements: 2.1, 3.11 (until TD-17)_
 
-- [ ] 4. The Mode_Guide (`add-multitenancy/references/engine-customer-tenants.instructions.md`)
-- [ ] 4.1 §1, §3, §4 and §13
+- [x] 4. The Mode_Guide (`add-multitenancy/references/engine-customer-tenants.instructions.md`)
+- [x] 4.1 §1, §3, §4 and §13
   - §1 Status: the sentence pointing to §13.
   - §3 Never: the two exceptions. "Never create a customer from code, except through the
     `add-customer-onboarding` skill's route, with the person's own session" (1.3), and the
@@ -144,7 +144,7 @@
     `SKILL.md` (S-2 (b), criterion 1.2 as amended).
   - Done when FT holds for `add-multitenancy`, and R15 lists nothing for this file.
   - _Requirements: 1.2 to 1.4_
-- [ ] 4.2 §5 sign-in, §11 debugging, §12 review (S2's sections)
+- [x] 4.2 §5 sign-in, §11 debugging, §12 review (S2's sections)
   - §5:
     - the login route's `email_not_confirmed` → 403 `EMAIL_NOT_CONFIRMED` mapping, with resend;
     - `settleTenant`'s empty-list branch with `SELF_ONBOARDING`, exactly as the design's block;
@@ -155,8 +155,8 @@
   - Done when FT holds for `add-multitenancy`.
   - _Requirements: 3.5, 4.1, 4.3_
 
-- [ ] 5. The new skill `add-customer-onboarding`
-- [ ] 5.1 `SKILL.md`
+- [x] 5. The new skill `add-customer-onboarding`
+- [x] 5.1 `SKILL.md`
   - Front matter as the design's Folder section. Then:
     - the Gate (byte copy of `tools/repo-check/gate.md`);
     - the Supabase stop;
@@ -168,7 +168,7 @@
   - Done when FT holds for `add-customer-onboarding` (R5 and R14 for its front matter; R15 lists
     nothing for it).
   - _Requirements: 1.2, 2.1 to 2.6, 3.8, 3.11_
-- [ ] 5.2 `references/engine-customer-onboarding.instructions.md`
+- [x] 5.2 `references/engine-customer-onboarding.instructions.md`
   - `<!-- buildpad-backend-file: engine -->`, the Gate, then the flow as the design writes it:
     - the files table;
     - `lib/onboarding/engine.ts` (the block of "The module that holds the key", with `mapRefusal`'s
@@ -186,7 +186,7 @@
     module), and a read-through confirms every Engine path and member against task 1.1's
     reconciliation.
   - _Requirements: 3.1 to 3.10_
-- [ ] 5.3 Folder registration
+- [x] 5.3 Folder registration
   - `tools/repo-check/skill-map.json`: the design's row. The same row goes in
     `.kiro/specs/backend-aware-skills/requirements.md`'s Skill map, with its Counts line updated.
   - `tools/repo-check/converted/add-customer-onboarding`.
@@ -197,40 +197,43 @@
     passes and `check.mjs --only R4,R7,R11,R13` exits 0.
   - _Requirements: 6.1_
 
-- [ ] 6. TS-O1 in the chooser and `add-users`
-- [ ] 6.1 `add-multitenancy/SKILL.md`
+- [x] 6. TS-O1 in the chooser and `add-users`
+- [x] 6.1 `add-multitenancy/SKILL.md`
   - TS-N1 (`:109`) replaced by TS-O1.
   - The "never create a customer from code" sentence (`:102-104`) gains the 1.3 exception.
   - After the limits paragraph (`:92-94`): the scale-and-isolation guide (K-10), then ES-17n.
   - The Tenancy check copy is untouched (R15 `tenancy-check-altered`).
   - Done when FT holds for `add-multitenancy`.
   - _Requirements: 1.2, 1.3, 3.11_
-- [ ] 6.2 `add-users/SKILL.md`
+- [x] 6.2 `add-users/SKILL.md`
   - TS-N1 (`:178`) replaced by TS-O1, then the 4.2 sentence.
   - Done when FT holds for `add-users`.
   - _Requirements: 1.2, 4.2_
-- [ ] 6.3 `manage-scope/SKILL.md`
+- [x] 6.3 `manage-scope/SKILL.md`
   - ES-17n after the TS-A that follows ES-9's copy (`:797-799`).
   - Done when FT holds for `manage-scope`.
   - _Requirements: 3.11 (until TD-17)_
 
-- [ ] 7. The skills that speak of sign-up
-- [ ] 7.1 `authentication-proxy` (both files)
+- [x] 7. The skills that speak of sign-up
+- [x] 7.1 `authentication-proxy` (both files)
   - After each ES-5 copy (`SKILL.md:67`, `references/authentication-proxy.instructions.md:88`): the
     K-8 sentence naming `add-customer-onboarding`, in the mode `customer-tenants` only.
   - Done when FT holds for `authentication-proxy`.
   - _Requirements: 4.2_
-- [ ] 7.2 `security-and-hardening`, `references/security-checklist.md`, `agents/security-auditor.md`
+- [x] 7.2 `security-and-hardening`, `references/security-checklist.md`, `agents/security-auditor.md`
   - The exception at `security-and-hardening/SKILL.md:83` and `:223`, and at
     `agents/security-auditor.md:84`. The three checks in the checklist places the design names (the
     S2 places in the checklist and the auditor).
   - Done when FT holds for each of the three.
   - _Requirements: 4.1_
-- [ ] 7.3 `debugging-and-error-recovery`
+- [x] 7.3 `debugging-and-error-recovery`
   - The five rows in the Engine tree (S2's place). `buildpad-debug` is unchanged (design Issue 2).
   - Done when FT holds for `debugging-and-error-recovery`.
   - _Requirements: 4.3_
 
+  - Tasks 3 to 7 done 2026-11-19 on `feat/customer-self-onboarding-s4` (`85e57bd`..`f9917d8`, review
+    fixes in the next commit); `check.mjs` exits 0 without `--tag`. `clientAddress` waits on 1.2
+    (marked `A-S1 pending` in the reference file).
 - [ ] 8. Whole-branch check
 - [ ] 8.1 The check and the read-through
   - `node tools/repo-check/check.mjs` exits 0 on the integration branch (every rule, R15 and R16
