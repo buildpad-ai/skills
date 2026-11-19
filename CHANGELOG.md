@@ -47,7 +47,14 @@ is not available.
   (ES-17n). The guide `engine-customer-tenants` gains:
   - §5.5, sign-in with Self-onboarding on: a person with no customer is offered to create one, and
     an unverified sign-in answers `EMAIL_NOT_CONFIRMED`;
-  - §13, with TS-O1;
+  - §5.6, the middleware and the shared server client: the CLI's middleware read a session bound to
+    no customer as signed out (the Engine answers it with 403 at `GET /auth/v1/user`), so a person
+    who had just signed in looped back to sign-in, and `lib/supabase/server.ts` sends no
+    `X-Tenant-Id` in this mode;
+  - in §5, `settleTenant` runs only in the login route: the layout redirects to `/choose-customer`.
+    §5 now points to `create-api-route` for the routes' code, and gives the current customer's code;
+  - §13, with TS-O1. With Self-onboarding on, new customers are created from Release 1, so a later
+    change in the Blueprint reaches no customer until a later Release (§1, §7.1, §10);
   - its tree and review checks for the flow.
 - **`add-users`:** TS-O1 replaces TS-N1; inviting further people into a customer stays here.
 - **`manage-scope`:** ES-17n.
@@ -58,8 +65,20 @@ is not available.
   - the key is read only on the server, never with a `NEXT_PUBLIC_` prefix;
   - the bot check runs before the Engine call;
   - new and existing addresses get the same text.
-- **`debugging-and-error-recovery`:** five rows for the flow: no mail, 401 on every sign-up, 429
-  after five, 503 on create, and 409 with no published Release.
+- **`create-api-route`:** in the mode `customer-tenants`, `settleTenant` gains the `SELF_ONBOARDING`
+  switch the guide's copy has, and runs only in the login route.
+- **`create-project`:** with Self-onboarding on, sign-up is available through
+  `add-customer-onboarding`, and the sign-in route sends no `X-Tenant-Id` in the mode
+  `customer-tenants`.
+- **`debugging-and-error-recovery`:** eight rows for the flow:
+  - no mail;
+  - a sign-in loop;
+  - "Sign-up is not available right now.", with the log event that names its cause;
+  - a bot check that always fails;
+  - a Blueprint change that reaches no new customer;
+  - 429 after five;
+  - 503 on create;
+  - 409 with no published Release.
 - **Repository check:** rule R16 fails a file that names the onboarding key with the `NEXT_PUBLIC_`
   prefix, and a `'use client'` block that reads the key or imports the module that sends it. TS-O1
   and ES-17n are registered; `met` gains `TD-7`.

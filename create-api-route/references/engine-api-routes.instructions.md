@@ -196,7 +196,7 @@ On an Engine project with Customer_Tenants the password sign-in names no tenant:
 
 The Buildpad CLI's generated sign-in route and the SDK do not know this mode yet: the generated login route sends `X-Tenant-Id` and has no switch. In the mode `customer-tenants`, replace the login route with the one below and add the three routes after it; a later release of the skills names the SDK's functions instead.
 
-`lib/auth/tenants.ts` holds the Engine calls the four routes share. Run `settleTenant` after every sign-in, and in the layout when a signed-in request finds no current customer (a refresh of a session bound to no tenant stays bound to none):
+`lib/auth/tenants.ts` holds the Engine calls the four routes share. Run `settleTenant` after every sign-in, in the login route only: a layout or page cannot set the session cookies, so it sends a signed-in request with no current customer to the chooser's page instead (the `add-multitenancy` skill's guide `engine-customer-tenants`, sections 5.3 and 5.6, which also change `lib/supabase/server.ts` and `lib/supabase/middleware.ts`):
 
 ```typescript
 // lib/auth/tenants.ts — server only. In the mode customer-tenants.
@@ -204,6 +204,9 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const ENGINE = process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL!; // the Engine_URL
+// true only once the add-customer-onboarding skill builds sign-up; never read from the
+// environment or the request.
+const SELF_ONBOARDING = false;
 
 type ServerClient = SupabaseClient; // the @supabase/ssr server client of the request
 
@@ -244,7 +247,8 @@ export async function settleTenant(supabase: ServerClient, accessToken: string) 
   const tenants = await listTenants(accessToken);
   const current = tenants.find((t) => t.current);
   if (current) return { tenant: current };                        // bound to a customer already
-  if (tenants.length === 0) {                                     // belongs to no customer
+  if (tenants.length === 0) {                                     // belongs to no customer yet
+    if (SELF_ONBOARDING) return { create: true as const };        // add-customer-onboarding
     await supabase.auth.signOut();
     return { error: "NO_CUSTOMER" as const };
   }

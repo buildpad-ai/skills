@@ -923,6 +923,72 @@ S3's if that comes first.
    entry is not the client, correct `clientAddress` and the guide before release. (Done 2026-11-19,
    task 1.2: the last entry was not the client; corrected.)
 
+### Dev run, 2026-11-19 (task 8.2; amended the same day)
+
+Run on dev with the Platform's 12.2, on the project "Self-onboarding Dev Run" (`cab4bc22`, Engine
+`2026.11.01`). A coding agent followed the skill on a fresh kit (CLI 3.8.0, Next 16), with SMTP mail
+to a throwaway inbox and Cloudflare Turnstile's published test keys, and the app was deployed to the
+project's Amplify app. The Platform's record is `buildpad-platform` `bec8acac`.
+
+| Step | Outcome |
+|---|---|
+| 1 | Pass (task 1.1): the kit carries `selfOnboarding: true` |
+| 2 | Pass: the skill's code compiled unchanged under strict TypeScript, with 22 findings |
+| 3 | Pass: the key showed a last use from the deployed app |
+| 4 | Pass through the app's routes; **fail in a browser** (L1): a new person looped back to sign-in |
+| 5 | Pass: the same answer, and "You already have an account" mail |
+| 6 | Pass: "Confirm your email first." |
+| 7 | Pass on "no company twice": six people, each sending two creations with the same id at once. No 503 was seen (six copies took about 8 s). Five of six second requests answered 409 at the person's limit (L2) |
+| 8 | Done (task 1.2): `CloudFront-Viewer-Address` |
+
+**Amendments made from it** (the reference file, the guide `engine-customer-tenants`, `SKILL.md`,
+`create-api-route`, `create-project`, `debugging-and-error-recovery`):
+- **L1.** The Engine's `GET /auth/v1/user` refuses a session bound to no tenant with 403, and the
+  CLI's middleware read that as signed out. The guide gains 5.6: the middleware tells 403 (unbound)
+  from 401, lets the unbound session reach only the chooser, `/create-company`, `/api/auth/` and
+  the create route, and answers 403 on every other `/api/` path. `/sign-up` and `/verify-email`
+  become public. The new code was type-checked inside the CLI's own middleware.
+- **L2.** The Engine checks a same-id retry before the template-copy lock, and counts the person's
+  limit after it, so a request that races the first is refused at the limit. The create route now
+  lists the person's tenants on that 409 and lands in the one with its id. An Engine change (the
+  retry check under the lock) would remove the race: recorded for a later Engine entry.
+- **Releases (finding 14).** A Template with a published Release is copied as its latest Release
+  (Engine `scope_template.go`). So once sign-up is on, a change in the Blueprint reaches no customer,
+  new or existing, until a later Release, and the Platform offers later Releases only once
+  `ENGINE_TENANT_RELEASES_MIN_VERSION` is set. TS-Cn stands as written; the guide (§1, §7.1, §10,
+  §11, §13), the skill's step 9 and the debugging tree state the exception for Self-onboarding.
+- **Sign-in (findings 1–3, 13, 15–18).** The guide points to `create-api-route` for the routes'
+  code, and `create-api-route`'s `settleTenant` gains `SELF_ONBOARDING`, as the guide's copy has.
+  `lib/supabase/server.ts` sends no `X-Tenant-Id`, and `settleTenant` runs only in the login route:
+  the layout redirects to `/choose-customer`. The guide also gives `currentCustomer`, the sign-in
+  page's handling and its "Create an account" link. The forwarder passes answers back unchanged.
+- **Answer shapes (finding 16).** There are two shapes, one per family of routes: the sign-in
+  routes keep `{errors: [{message, extensions: {code}}]}` (`EMAIL_NOT_CONFIRMED` included), and the
+  onboarding routes keep `{error: {kind, message}}`. Each page reads its own route's shape.
+- **The flow's text (findings 4–12, 19–21, L3).**
+  - The bot check: a `HumanCheck` example, remounted after each refused submit, and the secret's
+    absence logged.
+  - Mail: SMTP named beside API keys. Links use `HOST_ORIGIN`, as `lib/origin.ts` reads it, and no
+    mail is built without it. The app's name appears in the mail.
+  - The page paths sit under the locale root, and `replaceState` keeps the path.
+  - A table of every variable, with its `amplify.yml` line and the `$` escape; one sentence on
+    `BUILDPAD_SIGNUP_MAIL`.
+  - The kit's form components are required.
+  - The routes take only `application/json` (finding 22's cross-site form).
+  - `SKILL.md`'s step 1 is named, and its repeated paragraph is shortened.
+
+**Not changed, with the reason:**
+- The kit's `CLAUDE.md` (K1–K3) and the CLI (K4, its forwarder) are the Platform's and
+  `buildpad-ui`'s, and are recorded for them. `create-project`'s sign-in lines in this repository
+  are fixed (K1, K3).
+- "ES-3, ES-4 …" undefined in a kit (finding 21) is TS-A's wording in every folder, so it is not
+  this stage's.
+- The checklist's "Login has rate limiting" (finding 22) is general, and the Engine owns sign-in
+  limits.
+- K5 is a project choice, and the guide's rule that a test never creates a customer stands.
+- Step 7's 503 was not reached from one address (5 sign-ups per 15 minutes). Its retry path is
+  unchanged, and its race is covered by L2's fix.
+
 ## Design choices
 
 - **A record file of its own** (O1), not a member of `tenancy-answer.json`: the Tenancy check

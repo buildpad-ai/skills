@@ -250,12 +250,16 @@
     word for word in its three places.
   - Done when both are recorded in the pull request with reader, date and commit.
   - _Requirements: 1.1 to 5.2_
-- [ ] 8.2 Dev run
+- [x] 8.2 Dev run
   - With the Platform's dev run (its task 12.2): steps 1 to 8 of the design's dev run, with an
     agent following the skill on a fresh Next.js kit.
   - Done when each step's outcome is recorded. A finding amends design.md (dated) and the text task
     it changes before task 9.
   - _Requirements: 3.1 to 3.10_
+  - Done 2026-11-19: outcomes and amendments in design.md "Dev run, 2026-11-19". Two live defects
+    were fixed in the text: L1, the middleware loop; and L2, the same-id race. 22 build findings were
+    handled, and the reasons are recorded for those left unchanged. The new and changed code was
+    type-checked (`tsc --strict`).
 
 - [ ] 9. Release S4 (MINOR)
 - [ ] 9.1 Release

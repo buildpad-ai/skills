@@ -58,7 +58,16 @@ The guide is for the Next.js App Router with `@supabase/ssr` session cookies, as
 | `components/HumanCheck.tsx` (`'use client'`) | page | the bot-check vendor's widget (step 6), or the app's own |
 | `app/(auth)/verify-email/page.tsx` + `VerifyEmail.tsx` (`'use client'`) | page | verify, and a new link |
 | `app/(auth)/create-company/page.tsx` + `CreateCompanyForm.tsx` (`'use client'`) | page | create your company |
-| `lib/auth/tenants.ts`, `app/api/auth/login/route.ts` (step 4's) | changed | sign-in (section 8) |
+| `lib/auth/tenants.ts`, `app/api/auth/login/route.ts`, the sign-in page (step 4's) | changed | sign-in (section 8) |
+| `lib/supabase/middleware.ts` (step 4's) | changed | the unbound session and the public pages (section 8) |
+
+- **Paths.** The paths here are without a locale. In an app with a locale root (the CLI's scaffold
+  has `app/[lang]/`), put the pages under it (`app/[lang]/(auth)/sign-up/…`); routes stay under
+  `app/api/`. Links in mail and `window.location.assign` use the path without a locale: the
+  middleware redirects it to the person's locale, and the `#code=` fragment survives that redirect.
+- **Forms.** The pages below use plain `<input>`, `<label>` and `<button>` only to keep the logic
+  visible. Build them with the app's own form components (the kit's Buildpad UI inputs and buttons,
+  as its `CLAUDE.md` requires), keeping the same state and handlers.
 
 No client component imports anything under `lib/onboarding/`. The routes answer each refusal with
 the sentence the page shows, so a client component needs nothing from the server's modules. Never
@@ -229,7 +238,13 @@ import "server-only";
 /** True when the vendor confirms the token the page's widget gave. Never throws. */
 export async function verifyHuman(token: string, address: string | null): Promise<boolean> {
   // Example for Cloudflare Turnstile; another vendor has its own verify endpoint.
-  const form = new URLSearchParams({ secret: process.env.TURNSTILE_SECRET_KEY ?? "", response: token });
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) {
+    // Without the secret every check fails: say so in the log, not only "Please complete the check."
+    console.error(JSON.stringify({ event: "onboarding.human_check_not_configured" }));
+    return false;
+  }
+  const form = new URLSearchParams({ secret, response: token });
   if (address) form.set("remoteip", address);
   try {
     const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
@@ -250,11 +265,57 @@ export type Mail = { to: string; subject: string; text: string; html: string };
 
 /** Sends one message; throws when the provider does not take it. */
 export async function sendMail(mail: Mail): Promise<void> {
-  // The provider's SDK or HTTP call, with its key from a server variable the developer names.
+  // The provider's SDK or HTTP call (or SMTP), with its credentials from server variables the
+  // developer names: an API key, or the SMTP host, port, user and password.
 }
 ```
 
 The widget's public site key may carry `NEXT_PUBLIC_`; the secret never does.
+
+A bot-check token is good for one check only. After any refused submit, the form drops its token
+and mounts the widget again (section 6), or every retry answers "Please complete the check."
+
+```tsx
+'use client';
+// components/HumanCheck.tsx — Cloudflare Turnstile as the example. Remount it (a new React key) to reset.
+import Script from "next/script";
+import { useEffect, useRef } from "react";
+
+type Turnstile = {
+  render: (el: HTMLElement, options: Record<string, unknown>) => string;
+  remove: (id: string) => void;
+};
+
+export default function HumanCheck({ onToken }: { onToken: (token: string) => void }) {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let id: string | undefined;
+    const mount = () => {
+      const turnstile = (window as unknown as { turnstile?: Turnstile }).turnstile;
+      if (!turnstile || !box.current) return false;
+      id = turnstile.render(box.current, {
+        sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+        callback: onToken,
+        "expired-callback": () => onToken(""),
+        "error-callback": () => onToken(""),
+      });
+      return true;
+    };
+    let timer: ReturnType<typeof setInterval> | undefined;
+    if (!mount()) timer = setInterval(() => { if (mount()) clearInterval(timer); }, 200);
+    return () => {
+      clearInterval(timer);
+      if (id) (window as unknown as { turnstile?: Turnstile }).turnstile?.remove(id);
+    };
+  }, [onToken]);
+  return (
+    <>
+      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" strategy="afterInteractive" />
+      <div ref={box} />
+    </>
+  );
+}
+```
 
 ## 5. Messages and mail
 
@@ -264,7 +325,8 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { OnboardingError, type OnboardingErrorKind } from "@/lib/onboarding/engine";
 
-const APP_NAME = "<the app's name>"; // as the app's pages show it
+// The app's name as people see it: ask the developer (step 10). The mail uses it too.
+export const APP_NAME = "<the app's name>";
 
 export const SAY = {
   checkEmail: (address: string) => `Check your email. We sent a message to ${address}.`,
@@ -296,6 +358,13 @@ const REFUSAL: Record<OnboardingErrorKind, string> = {
   unavailable: "Something went wrong. Try again.",
 };
 
+/** The JSON body, or null. Only application/json: a cross-site form cannot send it. */
+export async function readJson(request: Request): Promise<unknown> {
+  const type = request.headers.get("content-type") ?? "";
+  if (!type.toLowerCase().startsWith("application/json")) return null;
+  return request.json().catch(() => null);
+}
+
 /** The route's answer to a refusal: the page's sentence, and a log line for the developer. */
 export function refusalResponse(e: unknown): NextResponse {
   const err = e instanceof OnboardingError ? e : new OnboardingError("unavailable", 502);
@@ -317,18 +386,28 @@ export function refusalResponse(e: unknown): NextResponse {
 // lib/onboarding/mail.ts — server only. The three messages, built with the app's configured URL.
 import "server-only";
 import { sendMail } from "@/lib/mail/send";
+import { APP_NAME } from "@/lib/onboarding/messages";
 
-// The kit's app URL, never the request's Host: a forged host cannot point the mail elsewhere.
-const APP_URL = process.env.NEXT_PUBLIC_MICROAPP_URL_MAIN!;
+// The app's public origin as lib/origin.ts reads it, never the request's Host: a forged host
+// cannot point the mail elsewhere. Unset, no mail is built (the route answers "We could not send
+// the email") rather than a link to "undefined/verify-email".
+function appUrl(): string {
+  const configured = process.env.HOST_ORIGIN ?? process.env.NEXT_PUBLIC_HOST_ORIGIN;
+  if (!configured) {
+    console.error(JSON.stringify({ event: "onboarding.origin_not_configured" }));
+    throw new Error("HOST_ORIGIN is not set");
+  }
+  return new URL(configured).origin;
+}
 
 // The code travels in the fragment, so it reaches no server log and no Referer.
-const verifyLink = (code: string) => `${APP_URL}/verify-email#code=${encodeURIComponent(code)}`;
+const verifyLink = (code: string) => `${appUrl()}/verify-email#code=${encodeURIComponent(code)}`;
 
 export async function mailConfirm(to: string, code: string) {
   const link = verifyLink(code);
   await sendMail({
-    to, subject: "Confirm your email",
-    text: `Open this link to confirm your email address: ${link}\nIt expires in 24 hours.`,
+    to, subject: `Confirm your email for ${APP_NAME}`,
+    text: `Open this link to confirm your email address for ${APP_NAME}: ${link}\nIt expires in 24 hours.`,
     html: `<p><a href="${link}">Confirm your email address</a>.</p><p>The link expires in 24 hours.</p>`,
   });
 }
@@ -336,23 +415,25 @@ export async function mailConfirm(to: string, code: string) {
 export async function mailNewLink(to: string, code: string) {
   const link = verifyLink(code);
   await sendMail({
-    to, subject: "Your new confirmation link",
+    to, subject: `Your new confirmation link for ${APP_NAME}`,
     text: `Here is a new link to confirm your email address: ${link}\nIt expires in 24 hours. Earlier links no longer work.`,
     html: `<p><a href="${link}">Confirm your email address</a>.</p><p>The link expires in 24 hours. Earlier links no longer work.</p>`,
   });
 }
 
 export async function mailExisting(to: string) {
-  const link = `${APP_URL}/login`;
+  const link = `${appUrl()}/login`;
   await sendMail({
-    to, subject: "You already have an account",
-    text: `Someone tried to sign up with this address, which already has an account. Sign in: ${link}`,
-    html: `<p>Someone tried to sign up with this address, which already has an account.</p><p><a href="${link}">Sign in</a>.</p>`,
+    to, subject: `You already have an account at ${APP_NAME}`,
+    text: `Someone tried to sign up at ${APP_NAME} with this address, which already has an account. Sign in: ${link}`,
+    html: `<p>Someone tried to sign up at ${APP_NAME} with this address, which already has an account.</p><p><a href="${link}">Sign in</a>.</p>`,
   });
 }
 ```
 
-`NEXT_PUBLIC_MICROAPP_URL_MAIN` holds the app's address without a trailing slash, as the kit sets it.
+`HOST_ORIGIN` (or `NEXT_PUBLIC_HOST_ORIGIN`, which `lib/origin.ts` also reads) holds the app's
+public origin, for example `https://app.example.com`. Nothing sets it for you: section 10 lists it
+with the other variables.
 
 ## 6. Sign-up
 
@@ -374,15 +455,15 @@ import { signUp } from "@/lib/onboarding/engine";
 import { clientAddress } from "@/lib/onboarding/client-address";
 import { verifyHuman } from "@/lib/onboarding/human-check";
 import { mailConfirm, mailExisting } from "@/lib/onboarding/mail";
-import { SAY, refusalResponse } from "@/lib/onboarding/messages";
+import { SAY, readJson, refusalResponse } from "@/lib/onboarding/messages";
 
 const bad = (message: string) =>
   NextResponse.json({ error: { kind: "invalid_request", message } }, { status: 400 });
 
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null);
+  const body = (await readJson(request)) as Record<string, unknown> | null;
   const keys = body && typeof body === "object" ? Object.keys(body).sort().join(",") : "";
-  if (keys !== "email,humanToken,password"
+  if (!body || keys !== "email,humanToken,password"
     || ![body.email, body.password, body.humanToken].every((v) => typeof v === "string")) {
     return bad(SAY.fillIn);
   }
@@ -441,6 +522,7 @@ export default function SignUpForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [humanToken, setHumanToken] = useState("");
+  const [checkKey, setCheckKey] = useState(0); // a new key remounts the widget: tokens are single-use
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -456,8 +538,13 @@ export default function SignUpForm() {
     }).catch(() => null);
     const body = r ? await r.json().catch(() => ({})) : {};
     setBusy(false);
-    if (r?.ok) setSentTo(email);
-    else setError(body?.error?.message ?? "Something went wrong. Try again.");
+    if (r?.ok) {
+      setSentTo(email);
+      return;
+    }
+    setError(body?.error?.message ?? "Something went wrong. Try again.");
+    setHumanToken("");          // the token was spent on this submit
+    setCheckKey((k) => k + 1);  // a fresh check for the next one
   }
 
   if (sentTo) {
@@ -468,7 +555,7 @@ export default function SignUpForm() {
     <form onSubmit={submit}>
       <label>Email <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></label>
       <label>Password <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} /></label>
-      <HumanCheck onToken={setHumanToken} />
+      <HumanCheck key={checkKey} onToken={setHumanToken} />
       {error && <p role="alert">{error}</p>}
       <button type="submit" disabled={busy || !humanToken}>Sign up</button>
       <p>Already have an account? <Link href="/login">Sign in</Link></p>
@@ -477,13 +564,14 @@ export default function SignUpForm() {
 }
 ```
 
-`HumanCheck` renders the vendor's widget with its public site key and calls `onToken` with the
-token. Use the app's existing one when step 6 found it.
+`HumanCheck` (section 4) renders the vendor's widget with its public site key and calls `onToken`
+with the token. Use the app's existing one when step 6 found it, with the same reset.
 
 ## 7. Verify, and a new link
 
-- **The page** reads `location.hash` once, then calls `history.replaceState(null, "", "/verify-email")`,
-  so the code leaves the address bar. It posts `{code}` to `/api/onboarding/verify`. Its
+- **The page** reads `location.hash` once, then calls
+  `history.replaceState(null, "", location.pathname)`, so the code leaves the address bar and the
+  locale stays. It posts `{code}` to `/api/onboarding/verify`. Its
   `metadata` sets `referrer: "no-referrer"`.
 - **On 200** the page says "Your email is confirmed. Sign in to create your company." and links to
   the sign-in page.
@@ -497,10 +585,10 @@ token. Use the app's existing one when step 6 found it.
 import { type NextRequest, NextResponse } from "next/server";
 import { verify } from "@/lib/onboarding/engine";
 import { clientAddress } from "@/lib/onboarding/client-address";
-import { SAY, refusalResponse } from "@/lib/onboarding/messages";
+import { SAY, readJson, refusalResponse } from "@/lib/onboarding/messages";
 
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null);
+  const body = (await readJson(request)) as Record<string, unknown> | null;
   if (!body || typeof body !== "object" || Object.keys(body).join(",") !== "code" || typeof body.code !== "string") {
     return NextResponse.json({ error: { kind: "invalid_request", message: SAY.fillIn } }, { status: 400 });
   }
@@ -519,10 +607,10 @@ import { type NextRequest, NextResponse } from "next/server";
 import { resend } from "@/lib/onboarding/engine";
 import { clientAddress } from "@/lib/onboarding/client-address";
 import { mailExisting, mailNewLink } from "@/lib/onboarding/mail";
-import { SAY, refusalResponse } from "@/lib/onboarding/messages";
+import { SAY, readJson, refusalResponse } from "@/lib/onboarding/messages";
 
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null);
+  const body = (await readJson(request)) as Record<string, unknown> | null;
   if (!body || typeof body !== "object" || Object.keys(body).join(",") !== "email" || typeof body.email !== "string") {
     return NextResponse.json({ error: { kind: "invalid_request", message: SAY.fillIn } }, { status: 400 });
   }
@@ -587,7 +675,7 @@ export default function VerifyEmail() {
     if (read.current) return; // read the fragment once, also under React's development double run
     read.current = true;
     const code = new URLSearchParams(window.location.hash.slice(1)).get("code");
-    window.history.replaceState(null, "", "/verify-email"); // the code leaves the address bar
+    window.history.replaceState(null, "", window.location.pathname); // the code leaves the address bar
     if (!code) {
       setState({ step: "resend", message: null });
       return;
@@ -627,25 +715,46 @@ export default function VerifyEmail() {
 }
 ```
 
-## 8. Sign-in: two changes to step 4's code
+## 8. Sign-in: four changes to step 4's code
 
-The login route and `settleTenant` stay as the `add-multitenancy` skill's guide
-`engine-customer-tenants` (section 5) writes them, with two changes.
+The login route, `settleTenant` and the middleware stay as the `add-multitenancy` skill's guide
+`engine-customer-tenants` (section 5) writes them, with four changes.
 
 **An unverified sign-in.** `signInWithPassword` answers the GoTrue error code
-`email_not_confirmed`. The login route maps it to 403 `{error: "EMAIL_NOT_CONFIRMED"}`, before its
-other refusals:
+`email_not_confirmed`. The login route maps it to 403, in the shape of its other answers, before
+its other refusals:
 
 ```ts
   // app/api/auth/login/route.ts — after signInWithPassword (add-customer-onboarding)
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error?.code === "email_not_confirmed") {
-    return NextResponse.json({ error: "EMAIL_NOT_CONFIRMED" }, { status: 403 });
+    return NextResponse.json(
+      { errors: [{ message: "Confirm your email first.", extensions: { code: "EMAIL_NOT_CONFIRMED" } }] },
+      { status: 403 },
+    );
   }
 ```
 
-The sign-in page then says "Confirm your email first." and links to `/verify-email`, which offers a
-new link.
+**The sign-in page.** It sends the browser where the login route's answer says, shows the
+unverified message with a link to `/verify-email` (which offers a new link), and always offers
+sign-up:
+
+```tsx
+  // The sign-in form's handling of POST /api/auth/login (add-customer-onboarding)
+  const body = await r.json().catch(() => ({}));
+  if (r.ok) {
+    const d = body?.data ?? {};
+    window.location.assign(d.create ? "/create-company" : d.choose ? "/choose-customer" : "/");
+    return;
+  }
+  const first = body?.errors?.[0];
+  setUnverified(first?.extensions?.code === "EMAIL_NOT_CONFIRMED");
+  setError(first?.message ?? "Something went wrong. Try again.");
+
+  // Under the form:
+  {unverified && <p><Link href="/verify-email">Send a new confirmation link</Link></p>}
+  <p>New here? <Link href="/sign-up">Create an account</Link></p>
+```
 
 **An empty tenant list.** In an app that has this flow, `settleTenant`'s branch for
 `tenants.length === 0` no longer signs out with `NO_CUSTOMER`. It keeps the unbound session and
@@ -666,8 +775,9 @@ const SELF_ONBOARDING = true;
 
 - `SELF_ONBOARDING` is a constant in code. Never read it from the environment or the request.
 - The login route answers `{data: {create: true}}` as it answers any other settled result, and the
-  sign-in page sends the browser to `/create-company` (`window.location.assign`). The layout does
-  the same when `settleTenant` answers `{create: true}` for a signed-in request.
+  sign-in page sends the browser to `/create-company` (`window.location.assign`). The layout never
+  runs `settleTenant`: with no current customer it redirects to `/choose-customer`, which sends a
+  person with no tenant to `/create-company`.
 - An app without this flow keeps the `NO_CUSTOMER` answer.
 - **The chooser** (several tenants) gains a "Create another company" link to `/create-company`. The
   app cannot read the project's limit of companies per person, so the link is always shown, and the
@@ -676,6 +786,21 @@ const SELF_ONBOARDING = true;
   routes of section 5 of the guide `engine-customer-tenants` and a fifth,
   `/api/onboarding/customers`, which sends its access token to the Engine's
   `POST /api/onboarding/customers` only.
+
+**The middleware.** Change `lib/supabase/middleware.ts` as section 5.6 of the guide says, then
+fill in its three Self-onboarding lists:
+
+```ts
+  const publicRoutes = ['/login', '/signup', '/auth', '/api/auth', '/sign-up', '/verify-email'];
+  // ...
+    const unboundPages = ['/choose-customer', '/create-company'];
+    const unboundApi = ['/api/auth/', '/api/onboarding/customers'];
+```
+
+Without it, a person who has just signed in with `{create: true}` is read as signed out, because
+the Engine refuses the unbound session at `GET /auth/v1/user`, and loops back to sign-in.
+`/api/onboarding/` needs no entry in `publicRoutes`: the middleware lets every `/api/` path through
+for a signed-out request, and the routes check what they need.
 
 ## 9. Create your company
 
@@ -693,6 +818,10 @@ const SELF_ONBOARDING = true;
   answers `503 {retry: true, id}`.
 - **On 201 or 200** it runs `switchTenant(token, created.id)`, then `supabase.auth.setSession` with
   the answered pair, and answers `{tenant: {id, name}}`.
+- **On 409 at the person's limit** it first lists the person's tenants. When one has the requested
+  `id`, a same-id request raced the first (the Engine counts the limit before it sees its own
+  creation in flight), so the route switches into it and answers as on 200. Otherwise the 409
+  stands.
 - **The form on `503 {retry: true}`** says "Creating your company is taking longer than usual…" It
   posts again with the same `id` after 5 seconds, then after 10 seconds. After three tries in all it
   shows "We are busy creating other companies. Try again in a minute." and keeps the id and the
@@ -736,15 +865,15 @@ export default async function CreateCompanyPage() {
 import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createCustomer, OnboardingError } from "@/lib/onboarding/engine";
-import { switchTenant } from "@/lib/auth/tenants";
-import { SAY, refusalResponse } from "@/lib/onboarding/messages";
+import { listTenants, switchTenant } from "@/lib/auth/tenants";
+import { SAY, readJson, refusalResponse } from "@/lib/onboarding/messages";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const isKind = (e: unknown, kind: string) => e instanceof OnboardingError && e.kind === kind;
 
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null);
+  const body = (await readJson(request)) as Record<string, string> | null;
   const shaped = body && typeof body === "object"
     && Object.keys(body).sort().join(",") === "id,name"
     && typeof body.name === "string" && typeof body.id === "string";
@@ -789,6 +918,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ tenant: { id: tenant.id, name: tenant.name } }, { status: created.status });
   } catch (e) {
     if (isKind(e, "busy")) return NextResponse.json({ retry: true, id }, { status: 503 });
+    // A same-id request that raced the first (a double click, or the form's retry while the first is
+    // still copying) is refused at the person's limit although its company exists. Land in it.
+    const token = session?.access_token;
+    if (isKind(e, "per_identity") && token) {
+      const mine = (await listTenants(token).catch(() => [])).find((t) => t.id === id);
+      if (mine) {
+        const pair = await switchTenant(token, mine.id).catch(() => null);
+        if (pair) {
+          await supabase.auth.setSession({ access_token: pair.access_token, refresh_token: pair.refresh_token });
+          return NextResponse.json({ tenant: { id: mine.id, name: mine.name } }, { status: 200 });
+        }
+      }
+    }
     return refusalResponse(e);
   }
 }
@@ -894,7 +1036,23 @@ export default function CreateCompanyForm() {
 }
 ```
 
-## 10. `amplify.yml`
+## 10. `amplify.yml` and the variables
+
+The flow reads these variables. Set each in the app's hosting (the [`amplify-env-vars`](../../amplify-env-vars/SKILL.md)
+skill for Amplify Hosting) before the deployment that uses it:
+
+| Variable | Server only | Who sets it | Unset |
+|---|---|---|---|
+| `BUILDPAD_ONBOARDING_KEY` | yes | the Platform, when sign-up is turned on | "Sign-up is not available right now.", `onboarding.not_configured` |
+| the mail provider's credentials (an API key, or SMTP host, port, user and password) | yes | the developer | "We could not send the email.", `onboarding.mail_failed` |
+| `TURNSTILE_SECRET_KEY` (or the vendor's secret) | yes | the developer | every check fails, `onboarding.human_check_not_configured` |
+| `HOST_ORIGIN` | yes | the developer | no mail is sent, `onboarding.origin_not_configured` |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (or the vendor's site key) | no: read in the browser, built into the bundle | the developer | the widget does not render |
+
+On Amplify Hosting a server-only variable reaches the running app only through `.env.production`,
+so each one needs a line like the key's. A `NEXT_PUBLIC_` variable is read at build time, so it only
+needs to be set on the Amplify app before the build. Next.js expands `$` in `.env` files: a secret
+that contains `$` is written there with each `$` escaped as `\$`.
 
 Step 8 of the skill adds the Platform's line before the build command, when the build commands lack
 `BUILDPAD_ONBOARDING_KEY`:
@@ -904,12 +1062,25 @@ Step 8 of the skill adds the Platform's line before the build command, when the 
         - '[ -z "$BUILDPAD_ONBOARDING_KEY" ] || echo "BUILDPAD_ONBOARDING_KEY=$BUILDPAD_ONBOARDING_KEY" >> .env.production'
 ```
 
+Then one line of the same form for each other server-only variable of the table, for example:
+
+```yaml
+        - '[ -z "$TURNSTILE_SECRET_KEY" ] || echo "TURNSTILE_SECRET_KEY=$TURNSTILE_SECRET_KEY" >> .env.production'
+        - '[ -z "$HOST_ORIGIN" ] || echo "HOST_ORIGIN=$HOST_ORIGIN" >> .env.production'
+```
+
 The app reads the key only after the next deployment. A key that is missing at run time answers
 "Sign-up is not available right now." and logs `onboarding.not_configured`.
 
+A kit's `amplify.yml` may also carry a line for `BUILDPAD_SIGNUP_MAIL`. It belongs to mail that the
+Engine sends, which this flow does not use: leave the line as it is.
+
 ## 11. Refusals
 
-Each route answers a refusal as `{error: {kind, message}}`, where `message` is the sentence of the
-[skill's Refusals table](../SKILL.md#refusals) and never the Engine's own. The pages show `message`
+Each onboarding route answers a refusal as `{error: {kind, message}}`, where `message` is the
+sentence of the [skill's Refusals table](../SKILL.md#refusals) and never the Engine's own. The sign-in
+routes of step 4 keep the shape of the app's other routes, `{errors: [{message, extensions: {code}}]}`,
+and so does the login route's `EMAIL_NOT_CONFIRMED` (section 8). Each page reads the shape of the
+route it calls. The pages show `message`
 as it is. Keep `onboarding.key_invalid`, `onboarding.engine_too_old`, `onboarding.no_release` and
 `onboarding.not_configured` in the app's logs for the developer.

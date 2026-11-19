@@ -36,9 +36,13 @@ backend's parts and copy no code from them; everything else holds for both. On a
 something is not available, tell the developer so and stop: do not build a substitute.
 <!-- backend-gate:end -->
 
-**Step 1, on a Supabase project.** Customers that sign themselves up need a Buildpad Engine project with Customer tenants. Tell the developer so and stop.
+**On a Supabase project.** Customers that sign themselves up need a Buildpad Engine project with Customer tenants. Tell the developer so and stop.
 
 <!-- buildpad-backend: engine -->
+## Step 1. The backend
+
+The backend is the Buildpad Engine (the procedure above). Go on to step 2.
+
 On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
 ## Step 2. The tenancy mode
@@ -74,10 +78,9 @@ Write `.buildpad/onboarding-answer.json` exactly as shown, UTF-8, with a trailin
 
 On an Engine project with Customer_Tenants customers sign themselves up only while the project's Self_Onboarding is on, which `selfOnboarding` in `.buildpad/project.json` says. While it is off, tell the developer that a project Admin turns it on from the Platform's Customers page, and stop. While it is on, build it with the `add-customer-onboarding` skill: the application's own server routes call the Engine's sign-up, verification and customer routes with `BUILDPAD_ONBOARDING_KEY`, read on the server only and never sent to a browser. Never put the host administrator's credential or a call to `/api/tenants` in the application.
 
-While the answer is `false`, the paragraph above applies: tell the developer that a project Admin
-turns sign-up on from the Platform's Customers page, and stop. Who turns it on: a project Admin,
-from the Platform's Customers page, once a host administrator has turned on the premium flag
-Customer self-onboarding for the project. While the answer is `true`, go on with steps 4 to 11.
+The answer `false` stops here, as the paragraph above says. A project Admin can turn sign-up on
+only once a host administrator has turned on the premium flag Customer self-onboarding for the
+project. With the answer `true`, go on with steps 4 to 11.
 
 ## Step 4. Sign-in comes first
 
@@ -93,9 +96,10 @@ under `lib/`).
 
 - **Found:** wrap it as `sendMail({to, subject, text, html})` in `lib/mail/send.ts`.
 - **Not found:** ask: "Which mail provider sends this app's email (for example Amazon SES, Resend,
-  Postmark, SendGrid)? It needs a verified sending domain, and its API key set in the app's server
-  environment." With an answer, write `lib/mail/send.ts` for that provider with
-  `import "server-only"`, reading its key from a server variable the developer names.
+  Postmark, SendGrid, or an SMTP server)? It needs a verified sending domain, and its credentials (an
+  API key, or the SMTP host, port, user and password) set in the app's server environment." With an
+  answer, write `lib/mail/send.ts` for that provider with `import "server-only"`, reading its
+  credentials from server variables the developer names.
 - **No provider:** say "Verification mail needs a mail provider; this flow cannot be built without
   one" and stop.
 
@@ -127,24 +131,38 @@ Platform's exact line before the build command:
         - '[ -z "$BUILDPAD_ONBOARDING_KEY" ] || echo "BUILDPAD_ONBOARDING_KEY=$BUILDPAD_ONBOARDING_KEY" >> .env.production'
 ```
 
-Tell the developer that the app reads the key only after the next deployment. On another host,
-tell the developer to set it there as a server-only variable. `amplify.yml` is not an environment
-file, so you may open it.
+Add one line of the same form for each other server-only variable the flow reads: the mail
+provider's credentials, the bot check's secret and `HOST_ORIGIN` (the reference file, section 10,
+lists them). Tell the developer to set those variables, and the bot check's public site key, on the
+Amplify app before the next deployment (the [`amplify-env-vars`](../amplify-env-vars/SKILL.md)
+skill). The app reads them only after that deployment. On another host, tell the developer to set
+each there, the secrets as server-only variables. `amplify.yml` is not an environment file, so you
+may open it. Leave a `BUILDPAD_SIGNUP_MAIL` line as it is: it belongs to mail the Engine sends,
+which this flow does not use.
 
 ## Step 9. The Release and the Engine version
 
 No customer can be created until the project has a published Release; the Engine answers 409 until
-then. Sign-up also needs the Engine release the Platform names on the Customers page; the Platform
-turns sign-up on only for a project that runs it.
+then. Turning sign-up on publishes Release 1, and from then on every new customer is created from
+the latest published Release, not from the Blueprint as it is. A change made in the Blueprint after
+that reaches no customer until a later Release is published, and the Platform offers later Releases
+only once Releases are available. Tell the developer so, and that the structure new customers need
+is built in the Blueprint before sign-up is turned on. Sign-up also needs the Engine release the
+Platform names on the Customers page; the Platform turns sign-up on only for a project that runs
+it.
 
 Read neither fact. The [Refusals](#refusals) table maps the Engine's answers when either is
 missing.
 
 ## Step 10. Build
 
+Ask the developer for the app's name as people see it; the pages and the mail use it.
+
 Build the flow as [the reference file](references/engine-customer-onboarding.instructions.md)
 says: the module that holds the key, the client address, the four routes, the three pages, and the
-two changes to the sign-in of step 4.
+four changes to the sign-in of step 4 (the login route, the sign-in page, `settleTenant` and the
+middleware). Build the pages' forms with the app's own form components, as the project's rules
+require; the reference shows plain elements only to keep the logic visible.
 
 ## Step 11. Review
 
@@ -174,9 +192,10 @@ Keyed by the Engine's status and code. The person-facing text never repeats the 
 | customers | 403 `FORBIDDEN` | Sign-ups are off (or, rarely, the person is not verified) | "Creating companies is closed right now." | No retry |
 | customers | 403 `QUOTA_EXCEEDED` | The project's customer limit is reached | "Sign-ups are full right now. Contact <app>'s team." | No retry |
 | customers | 409 `CONFLICT`, message `MsgOnboardingNoRelease` | No published Release yet | "Companies cannot be created yet. Try again later." | Log `onboarding.no_release` |
-| customers | 409 `CONFLICT`, message `MsgOnboardingPerIdentity` | The person's company limit (`per_identity`) | "You have reached the number of companies you can create." | No retry |
+| customers | 409 `CONFLICT`, message `MsgOnboardingPerIdentity` | The person's company limit (`per_identity`), or a same-id request that raced the first | "You have reached the number of companies you can create." | The route first looks for its own `id` among the person's tenants and lands there when it is found; otherwise no retry |
 | customers | 409 `CONFLICT`, message `MsgOnboardingIDTaken` | The id belongs to another tenant | (never seen by a person: the form makes a new id and resubmits once) | New id, once |
 | customers | 503 `SERVICE_UNAVAILABLE` | The template-copy lock's deadline | "Creating your company is taking longer than usual…" | Same id: 2 s (route), 5 s, 10 s (form) |
+| any | (none: the app's own setup) | `BUILDPAD_ONBOARDING_KEY` is not in the running app | "Sign-up is not available right now." | Log `onboarding.not_configured`; the `amplify.yml` line and a new deployment |
 | any | 5xx other, or no answer | The Engine is down | "Something went wrong. Try again." | The person retries |
 
 The three 409s on the create route share the code `CONFLICT` and carry no `extensions`. The module
