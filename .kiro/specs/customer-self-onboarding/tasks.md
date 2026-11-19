@@ -12,7 +12,11 @@
 > starts, and S2 will move it, find each place by its anchor text, not by its line number.
 >
 > **One stage, one gate.** Every task below is S4. Task 1 is its gate, and no other task starts on
-> the integration branch before it is met. Writing tests (task 2) may start earlier on a branch of
+> the integration branch before it is met. **Amended 2026-11-19, approved by the user ("Go ahead"):** as with
+> `customer-tenant-skills` S2, tasks 3 to 8.1 are written and checked on the integration branch
+> while the Platform's dev switch-on runs; task 1 now gates task 8.2 (the dev run), the pull
+> request and task 9 (the release). Nothing reaches `main` before task 1 holds, and a contract row
+> that differs when task 1.1 reconciles it amends design.md and the text written here first. Writing tests (task 2) may start earlier on a branch of
 > its own, because R16's tests touch no skill text.
 >
 > **Merge order (binding).** S4 lands on `main` as **one pull request** from an integration branch
