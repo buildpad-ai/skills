@@ -189,10 +189,13 @@ real app must send it. Verify has no per-address limit; its only limit is 10 fai
 minutes per key and reported address, so sending the address also keeps one person's typos from
 spending another's failures.
 
-<!-- A-S1 pending: task 1.2 -->
-- `clientAddress(request)` answers the address the hosting platform appended, never an entry the
-  browser could have set.
-- On Amplify Hosting, that is the last entry of `X-Forwarded-For`.
+- `clientAddress(request)` answers the address the hosting platform set itself, never a value the
+  browser could have sent.
+- On Amplify Hosting, that is the `CloudFront-Viewer-Address` header without its port. CloudFront
+  overwrites a value the browser sends.
+- Do not read `X-Forwarded-For` there. CloudFront keeps whatever the browser sent at the front and
+  appends the client and then its own edge address, so the first entry is forged and the last is
+  CloudFront's.
 - It answers `null` unless the value is an IPv4 or IPv6 literal. With `null` the header is not
   sent, and the shared bucket applies.
 
@@ -202,16 +205,18 @@ import "server-only";
 import { isIP } from "node:net";
 
 export function clientAddress(request: Request): string | null {
-  const entries = (request.headers.get("x-forwarded-for") ?? "")
-    .split(",").map((s) => s.trim()).filter(Boolean);
-  const appended = entries.at(-1) ?? ""; // the entry the host appended, never one the browser sent
-  return isIP(appended) ? appended : null;
+  // Set by CloudFront as "<address>:<port>"; a value the browser sends is overwritten.
+  const viewer = request.headers.get("cloudfront-viewer-address")?.trim() ?? "";
+  const colon = viewer.lastIndexOf(":");
+  if (colon < 0) return null;
+  const address = viewer.slice(0, colon).replace(/^\[(.*)\]$/, "$1");
+  return isIP(address) ? address : null;
 }
 ```
 
-On another host, find which entry or header that host sets itself, and read only that one. If no
-entry is reliable, answer `null`, and tell the developer that every sign-up then shares one budget
-of 5 per 15 minutes.
+On another host, find which header that host sets itself, and read only that one. If no header is
+reliable, answer `null`, and tell the developer that every sign-up then shares one budget of 5 per
+15 minutes.
 
 ## 4. The bot check and the mail sender
 

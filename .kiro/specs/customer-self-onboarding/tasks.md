@@ -77,7 +77,7 @@
       dev was deploying on 2026-11-14, but `ENGINE_SELF_ONBOARDING_MIN_VERSION` is set nowhere.
     - TD-16: not met (follows TD-15).
   - _Requirements: 6.1; Dependencies_
-- [ ] 1.2 A-S1 on Amplify Hosting
+- [x] 1.2 A-S1 on Amplify Hosting
   - On the Platform's dev app (or any Amplify Hosting Next.js app), log `X-Forwarded-For` on a
     server route against the caller's known address, with a client that sends a forged
     `X-Forwarded-For` of its own.
@@ -85,6 +85,10 @@
     `clientAddress` text matches. If no entry is reliable, the design says to send no header, and
     the guide states the shared budget's cost (design Issue 3).
   - _Requirements: 3.1_
+  - Done 2026-11-19 (probe app on Amplify Hosting, deleted after the run). The last
+    `X-Forwarded-For` entry is CloudFront's edge, not the client, and a forged value stays at the
+    front. `clientAddress` now reads `CloudFront-Viewer-Address` without its port, which CloudFront
+    overwrites. Design "The client address" and reference §3 match.
 
 - [x] 2. Rule R16 (tests first)
 - [x] 2.1 R16's tests
@@ -232,8 +236,8 @@
   - _Requirements: 4.3_
 
   - Tasks 3 to 7 done 2026-11-19 on `feat/customer-self-onboarding-s4` (`85e57bd`..`f9917d8`, review
-    fixes in the next commit); `check.mjs` exits 0 without `--tag`. `clientAddress` waits on 1.2
-    (marked `A-S1 pending` in the reference file).
+    fixes in the next commit); `check.mjs` exits 0 without `--tag`. `clientAddress` waited on 1.2
+    (marked `A-S1 pending` in the reference file until 1.2 was done).
 - [ ] 8. Whole-branch check
 - [ ] 8.1 The check and the read-through
   - `node tools/repo-check/check.mjs` exits 0 on the integration branch (every rule, R15 and R16

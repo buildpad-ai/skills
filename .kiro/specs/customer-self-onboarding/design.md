@@ -556,10 +556,20 @@ export const createCustomer = (accessToken: string, name: string, id: string) =>
 The Engine limits sign-up and resend to 5 per 15 minutes per reported address and key. **Without
 the header, every request of the app shares one bucket of 5** (E 7.2 as built: "one shared address
 of the key"), so a real app must send it.
-- `clientAddress(request)` answers the address the hosting platform appended, never an entry the
-  browser could have set.
-- On Amplify Hosting, that is the last entry of `X-Forwarded-For` (assumption A-S1, checked in the
-  dev run).
+- `clientAddress(request)` answers the address the hosting platform set itself, never a value the
+  browser could have sent.
+- On Amplify Hosting, that is `CloudFront-Viewer-Address` without its port. `X-Forwarded-For` is
+  not read: its first entry can be forged and its last is CloudFront's edge.
+- **A-S1, amended 2026-11-19 (task 1.2).** The design first assumed the last `X-Forwarded-For`
+  entry. A Next.js 15.5.4 app on Amplify Hosting (WEB_COMPUTE, dev account) echoed its headers:
+  - `X-Forwarded-For` was `<forged…>, <client>, <CloudFront edge>`. What the client sent stays at
+    the front, and the edge address (64.252.x.x) is last.
+  - `CloudFront-Viewer-Address` was `<client>:<port>` every time, and a forged one was
+    overwritten.
+  - `X-Real-IP` and `Forwarded` were absent, and a forged `X-Real-IP` was dropped.
+
+  No fallback to the second-to-last `X-Forwarded-For` entry: on Amplify the header is always set,
+  and on a host without CloudFront that entry can be forged.
 - It answers `null` unless the value is an IPv4 or IPv6 literal (C-9). With `null` the header is not
   sent, and the shared bucket applies.
 
@@ -906,7 +916,8 @@ S3's if that comes first.
 7. Create a burst of companies from several accounts at once: some answer 503 and complete on retry
    with the same id. No company is made twice.
 8. **A-S1:** compare `X-Forwarded-For` on Amplify Hosting with the real client address. If the last
-   entry is not the client, correct `clientAddress` and the guide before release.
+   entry is not the client, correct `clientAddress` and the guide before release. (Done 2026-11-19,
+   task 1.2: the last entry was not the client; corrected.)
 
 ## Design choices
 
@@ -928,7 +939,8 @@ S3's if that comes first.
    `debugging-and-error-recovery` and the Mode_Guide §11, where S2 put the Engine's answers.
 3. **The shared address bucket.** Without `X-Onboarding-Client-Address`, an app's sign-ups are
    limited to 5 per 15 minutes in total. The header is optional in the Engine's contract and
-   practically required. The guide says so, and A-S1 must hold on Amplify Hosting.
+   practically required. The guide says so. On Amplify Hosting A-S1 holds through
+   `CloudFront-Viewer-Address` (task 1.2).
 4. **The app cannot read `per_identity`,** so "Create another company" is always shown, and the 409
    explains the limit (3.5 asked for it "where the project's `per_identity` allows it").
 5. **The create route's three 409s share one code and carry no `extensions`.** The module tells
