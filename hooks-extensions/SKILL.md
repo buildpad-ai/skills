@@ -390,6 +390,8 @@ In action hooks, access event data via `meta`:
 
 Every signature: [Engine services API](references/engine-services-api.instructions.md).
 
+Several writes that must succeed or fail together (take stock and create the order), and race-free counters and claims: the [atomic-writes skill](../atomic-writes/SKILL.md) (`services.transaction`, row locks, conditional PATCH).
+
 ### Elevated Permissions
 
 By default `services.items` calls in a hook are checked against the **grants of the caller who fired the hook**. Pass `{ elevated: true }` to evaluate them as an administrator while the audit trail (`user_created`/`user_updated` and the activity log) still names the caller. A filter runs before the caller's grant is applied to the payload, so a filter cannot write a column the caller may not.

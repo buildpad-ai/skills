@@ -299,6 +299,8 @@ const { services, accountability, env } = context;
 
 There is no Supabase service, no SQL and no `console` in a custom service on an Engine project.
 
+To make several `services.items` writes succeed or fail together, wrap them in `services.transaction`: the [atomic-writes skill](../atomic-writes/SKILL.md).
+
 On an Engine project stored code (hooks, cron jobs, custom services) runs in the Engine's runtime, which provides only what the Engine runtime table of the [hooks-extensions skill](../hooks-extensions/SKILL.md) lists; for each interface it lacks, the table says what replaces it.
 
 > **Important:** `services`, `accountability`, and `env` are NOT top-level variables.

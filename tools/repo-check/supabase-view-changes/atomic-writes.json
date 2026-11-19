@@ -1,0 +1,8 @@
+[
+  {
+    "path": "atomic-writes/SKILL.md",
+    "kind": "new-file",
+    "reason": "New skill atomic-writes: on a Supabase project it says that conditional updates and transactions are Buildpad Engine features that are not available, and stops.",
+    "release": "unreleased"
+  }
+]

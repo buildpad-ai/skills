@@ -152,6 +152,7 @@ The core methodology: every feature is specified as `requirements.md` (EARS) →
 | [relational-permissions](relational-permissions) | Permissions on junction/child collections for nested relational writes |
 | [grant-module-access](grant-module-access) | Application-level capability flags via Module-Level Access Keys |
 | [hooks-extensions](hooks-extensions) | DaaS runtime extensions: filter hooks, action hooks, utilities API |
+| [atomic-writes](atomic-writes) | Engine projects only: prevent race conditions and overbooking with conditional updates (`_inc`/`_dec`), optimistic locking and transactional filter hooks; on a Supabase project it says the feature is not available and stops |
 | [amplify-env-vars](amplify-env-vars) | Manage AWS Amplify environment variables via Buildpad MCP tools |
 
 ### Engineering practices
