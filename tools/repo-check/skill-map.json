@@ -46,6 +46,7 @@
   {"folder":"add-mobile-app","dependence":"none","treatment":"new skill, true for both kinds of project (wraps the deployed web app; no backend-specific step)","size":"small","plan":"RW"},
   {"folder":"add-mcp-server","dependence":"partial","treatment":"both paths, chosen by backend: the MCP route is shared; step 6 makes the hosted connector's data API session with the service key on Supabase and with a second sign-in at consent on the Engine","size":"small","plan":"BP"},
   {"folder":"add-comments","dependence":"partial","treatment":"both paths, chosen by backend; Engine passages for Customer_Tenants (customer-tenant-skills)","size":"small","plan":"BP"},
+  {"folder":"add-notifications","dependence":"none","treatment":"new skill, true for both kinds of project (stored code uses only services.items, services.custom and services.mail; no backend-specific step)","size":"small","plan":"RW"},
   {"folder":"migrate-to-engine","dependence":"partial","treatment":"new skill, both paths, chosen by backend: on an Engine project it ports the automation and app code of a project moved from Supabase; on a Supabase project it says the skill applies after the move and stops","size":"medium","plan":"BP"},
   {"folder":"add-ai-chat","dependence":"none","treatment":"new skill, true for both kinds of project (the chat talks only to the Chocolate Factory agent, never to the data API; no backend-specific step)","size":"small","plan":"RW"},
   {"folder":"amplify-env-vars","dependence":"none","treatment":"unchanged","size":"none","plan":"UC"},

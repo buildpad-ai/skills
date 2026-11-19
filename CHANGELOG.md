@@ -217,6 +217,22 @@ renamed, and the "Establish the backend first" procedure stays at version 1.
   page. Also Amazon Quick's Enterprise subscription and manual Sync, never sharing the browser's
   session (refresh-token rotation ends both), the default sign-out, and test steps.
 
+- New skill `add-notifications`: installs the Buildpad UI Notifications module
+  (`@buildpad/ui-notifications`, CLI target `notifications`) instead of a hand-built bell. One
+  standard `notifications` collection (recipient by user id, or by email for people without an
+  account, who get the digest only), read and update of `read_at` only where `recipient =
+  $CURRENT_USER`, and a `recipient` clause on every request because administrators bypass that rule.
+  The shared provider, the header bell and the `/notifications` inbox (tabs filtered on the server,
+  keyset paging, `?filter=`/`?id=` in the URL through `nextUrlState`, keyboard, one pane on phones),
+  with slots to preview the record, act on it and reply in place with the ui-comments `Composer`.
+  The `notifications` service and hooks make the rows (no self-notice, a unique `dedupe_key`,
+  replies merged into one unread row), and a daily digest emails what is still unread. It covers
+  moving an app that has its own bell (Chisel `feedback_notifications`, XCRM `crm_notifications`)
+  onto the standard. True for both kinds of project; no backend-specific step.
+- `add-comments/SKILL.md` (text): step 6 and Related skills point to `add-notifications` for the
+  in-app bell and inbox.
+- `buildpad-reference/SKILL.md` (text): a Notifications row in the modules table.
+
 ### Supabase projects
 
 This file is new:
