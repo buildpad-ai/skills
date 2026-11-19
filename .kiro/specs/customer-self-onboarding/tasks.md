@@ -53,8 +53,8 @@
 
 ## Tasks
 
-- [ ] 1. Gate: S4 opens
-- [ ] 1.1 Dependencies met and reconciled
+- [x] 1. Gate: S4 opens
+- [x] 1.1 Dependencies met and reconciled
   - Each holds, and is recorded as a dated, approved amendment of `requirements.md`'s Dependencies:
     - **TD-1:** `customer-tenant-skills` S2 released (its task 10.8), so TS-B, Mode_Guide §5,
       `settleTenant` and the S2 debugging and review places exist on `main`.
@@ -77,6 +77,9 @@
       dev was deploying on 2026-11-14, but `ENGINE_SELF_ONBOARDING_MIN_VERSION` is set nowhere.
     - TD-16: not met (follows TD-15).
   - _Requirements: 6.1; Dependencies_
+  - Done 2026-11-19: all four hold, recorded as the dated amendment in `requirements.md`'s
+    Dependencies. Every contract row the dev run exercised matches; none differs, so design.md and
+    the text stand.
 - [x] 1.2 A-S1 on Amplify Hosting
   - On the Platform's dev app (or any Amplify Hosting Next.js app), log `X-Forwarded-For` on a
     server route against the caller's known address, with a client that sends a forged

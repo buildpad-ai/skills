@@ -268,12 +268,53 @@ it, in one sitting.
 
 | ID | Owner | What it is | Needed by | Status when read |
 |---|---|---|---|---|
-| TD-1 | Platform | `project-tenants` Wave 1 switched on (its task 12.3) | every requirement | Unmet: deployed to dev and production, `CUSTOMER_TENANTS_ENABLED` unset |
-| TD-7 | Platform, Engine | Restated: an app's server can create a customer for a verified person, with a credential that is not the host's. **Met when TD-14 and TD-15 are met** | 1, 3 | Unmet. Was "settled as Decision 20 (a), not offered"; the companions are its later spec |
-| TD-14 | Engine | Entry 204 applied and released; its Decisions settled as this spec assumes (E-1 (a), E-2 (a), E-4 (a), E-6 (a), E-10 (a), E-11 (a)); the version the Platform gates on | 3 | Unmet: requirements approved 2026-11-08, nothing built |
-| TD-15 | Platform | `customer-self-onboarding` shipped and switched on: the flag, the switch, the key in the app's environment, Adoption | 2, 3 | Unmet: requirements approved 2026-11-08, nothing built |
+| TD-1 | Platform | `project-tenants` Wave 1 switched on (its task 12.3) | every requirement | **Met 2026-11-09** (see the amendment below). Was: deployed to dev and production, `CUSTOMER_TENANTS_ENABLED` unset |
+| TD-7 | Platform, Engine | Restated: an app's server can create a customer for a verified person, with a credential that is not the host's. **Met when TD-14 and TD-15 are met** | 1, 3 | **Met 2026-11-19** (TD-14 and TD-15). Was "settled as Decision 20 (a), not offered"; the companions are its later spec |
+| TD-14 | Engine | Entry 204 applied and released; its Decisions settled as this spec assumes (E-1 (a), E-2 (a), E-4 (a), E-6 (a), E-10 (a), E-11 (a)); the version the Platform gates on | 3 | **Met 2026-11-19** (see the amendment below). Was: requirements approved 2026-11-08, nothing built |
+| TD-15 | Platform | `customer-self-onboarding` shipped and switched on: the flag, the switch, the key in the app's environment, Adoption | 2, 3 | **Met 2026-11-19 on dev** (see the amendment below). Was: requirements approved 2026-11-08, nothing built |
 | TD-17 | Engine, Platform | Workspaces as scope nodes: the Engine entry that takes over entry 204's Requirement 10 (deferred by its Decision 12; scoped administration included) and the Platform's Requirement 10 | 3.11 | Unmet: requirements only; the Engine may defer it to an entry of its own |
-| TD-16 | Platform | The Onboarding_Signal: `selfOnboarding` in `.buildpad/project.json` and `get_project_detail` (P Requirement 8) | 2.2 | Unmet: requirements only |
+| TD-16 | Platform | The Onboarding_Signal: `selfOnboarding` in `.buildpad/project.json` and `get_project_detail` (P Requirement 8) | 2.2 | **Met 2026-11-19 for the kit** (see the amendment below; `get_project_detail` not checked, unused by S-1 (a)). Was: requirements only |
+
+> **Amended 2026-11-19: S4's gate holds (tasks 1.1 and 1.2).** Recorded under the user's "Go
+> ahead" of 2026-11-19 to the release plan (record the gate once dev passes). All times UTC.
+> - **TD-1.** `project-tenants` 12.3 done 2026-11-09: production `CUSTOMER_TENANTS_ENABLED=true`.
+>   `customer-tenant-skills` S2 released as v9.2.0 (PR #67, merge `0f1e770`).
+> - **TD-14.** Engine entry 204 merged as `da47c362` (`buildpad-daas-go` PR #43), with entry 205 as
+>   `2d58083f`. Both are in Engine 0.1.0-dev.23: dev catalog `2026.10.27` (the lowest dev id
+>   carrying 204) and production catalog `2026.11.11`, the production @current.
+> - **TD-15.** On dev at 10:38, SSM `/buildpad-platform/ENGINE_SELF_ONBOARDING_MIN_VERSION` was set
+>   to `2026.10.27`, and the `release/dev` pipeline finished at 11:01.
+>   - Test project "Self-onboarding Dev Run" (`cab4bc22-a7fe-4269-9e1e-4354d56f1826`), on catalog
+>     `2026.11.01`.
+>   - Flags `customer_tenants` and `customer_self_onboarding` were turned on at 11:02.
+>   - At 11:04 "Publish Release 1 and turn on" (`app` delivery) wrote `BUILDPAD_ONBOARDING_KEY` to
+>     the app. `BUILDPAD_SIGNUP_MAIL` was not written, because the mail gate (Platform 13.10) is
+>     closed.
+>   - Recorded as Platform 12.1, with 12.2 partly done, in `2a5046d3` on
+>     `docs/self-onboarding-dev-run` (local when read).
+> - **TD-16.** The Claude kit downloaded at 11:06:54 has `.buildpad/project.json` with
+>   `"selfOnboarding": true`, `"tenancy": "customer-tenants"` and `"backend": "engine"`.
+>   - Its `amplify.yml` carries the key's comment and guarded line exactly as task 5.2 copies them,
+>     with the same 8 spaces of indent.
+>   - The kit also has a `BUILDPAD_SIGNUP_MAIL` line. That line belongs to group 10, and S4's text
+>     neither needs nor contradicts it.
+> - **Contract rows reconciled** against the Engine on dev (11:05–11:06, four test people, with the
+>   key). No row differs, so the design and text stand unchanged.
+>   - C-2: a request with `Origin` is 403 `FORBIDDEN`.
+>   - C-3 and C-5: `{existing: false, verification: {code, expires_at}}`, with a 43-character code
+>     and 24 hours, or `{existing: true}`. A resend gives a new code.
+>   - C-6: `/api/auth/login` answers 400 `EMAIL_NOT_CONFIRMED`, and GoTrue answers
+>     `error_code: "email_not_confirmed"`. Once verified, the session is unbound and the tenant
+>     list is `[]`.
+>   - C-4: 200 `{identity: {id, email}}`.
+>   - C-7: 201 `{id, name, state: "ready"}`, and 200 on the same person's retry.
+>   - C-8: the switch works, and the person is an Administrator inside the customer.
+>   - The 409 prefixes (design Issue 5): "You have reached the limit of" and "Another customer
+>     already has that id." were seen. "This project has no published release yet" was read from
+>     the build's Swagger, because turning sign-up on publishes Release 1.
+>   - Not exercised, and contradicted by nothing seen: C-4's `INVALID_TOKEN`, C-9, C-11 and E 7.x.
+> - **A-S1 (task 1.2).** The design's assumption did not hold, and the design and text were
+>   corrected in `12ae0b4`: `clientAddress` reads `CloudFront-Viewer-Address`.
 
 Where a companion settles a Decision otherwise than this spec assumes (for instance E-4 (b), a
 webhook, or E-10 (b), a session from creation), Requirement 3 is restated before design.

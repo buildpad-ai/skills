@@ -799,6 +799,10 @@ As O5. `check.mjs` imports `onboardingKeyFindings` and adds it after R15.
 
 **Engine entry 204, as built** (`7ad36743`):
 
+> Reconciled 2026-11-19 against the Engine on dev (catalog `2026.10.27` and later): no row differs.
+> See the amendment in `requirements.md`'s Dependencies (task 1.1).
+
+
 | Row | Contract | Used by |
 |---|---|---|
 | C-2 | Header `X-Buildpad-Onboarding-Key`; a request with an `Origin` header is 403; no CORS; a key in the query string is 401 | `engine.ts` |
