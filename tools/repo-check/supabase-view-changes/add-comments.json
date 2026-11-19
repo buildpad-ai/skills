@@ -4,5 +4,11 @@
     "kind": "new-file",
     "reason": "New skill add-comments: the standard comment field with social mentions, pasted images, replies at any depth, an emoji picker, reactions and notifications.",
     "release": "v9.0.0"
+  },
+  {
+    "path": "add-comments/SKILL.md",
+    "kind": "text",
+    "reason": "Step 6 and Related skills point to add-notifications for an in-app bell and inbox, whose notify service the same events go through.",
+    "release": "v10.0.0"
   }
 ]
