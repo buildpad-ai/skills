@@ -14,6 +14,26 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
+## Unreleased
+
+A new skill for preventing race conditions and overbooking on Engine projects. It is a MINOR
+release: a skill is added, and the only text a Supabase project's agent reads is the new skill's
+statement that the feature is not available. No skill is removed or renamed, and the "Establish
+the backend first" procedure stays at version 1.
+
+- **`atomic-writes` (new skill):** preventing race conditions and overbooking on an Engine project
+  (data service 2026.11.01, Engine 0.1.0-dev.28): a conditional single-item PATCH (`condition`,
+  `409 CONDITION_NOT_MET`) with `_inc`/`_dec` for stock, seat, quota and counter claims; optimistic
+  locking with a `version` field; and filter hooks that run `services.transaction` with
+  `readOne(id, { lock: 'update' })` when several rows change together, with its options, error codes
+  and the gotchas found in real use. Its references give Next.js route handlers and a concurrency
+  verification recipe. `hooks-extensions` and `create-service` point to it from their Engine text.
+
+### Supabase projects
+
+- `atomic-writes/SKILL.md` (new file): on a Supabase project it says that conditional updates and
+  transactions are Buildpad Engine features that are not available, and stops.
+
 ## v9.3.0
 
 XAppHub sign-in can give new accounts a starting role. Install it with
