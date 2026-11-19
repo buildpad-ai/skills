@@ -193,7 +193,10 @@ In the mode `customer-tenants` people belong to each customer:
 - The application's people screens act in the current customer only: they call the Engine with the
   session, which is bound to it, and never name another tenant.
 
-On an Engine project with Customer_Tenants customers that sign themselves up are not available: only a Platform member creates a customer, on the Platform's Customers page, and no credential an application may hold can create one. Tell the developer so and stop: never put the host administrator's credential or a call to the Engine's tenant routes in the application.
+On an Engine project with Customer_Tenants customers sign themselves up only while the project's Self_Onboarding is on, which `selfOnboarding` in `.buildpad/project.json` says. While it is off, tell the developer that a project Admin turns it on from the Platform's Customers page, and stop. While it is on, build it with the `add-customer-onboarding` skill: the application's own server routes call the Engine's sign-up, verification and customer routes with `BUILDPAD_ONBOARDING_KEY`, read on the server only and never sent to a browser. Never put the host administrator's credential or a call to `/api/tenants` in the application.
+
+In the mode `customer-tenants` with Self-onboarding on, people who sign themselves up are built with
+the `add-customer-onboarding` skill; inviting further people into a customer stays here.
 
 <!-- /buildpad-backend -->
 ## Access-Control Semantics (IMPORTANT)
