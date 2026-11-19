@@ -263,10 +263,11 @@
     next MINOR after the latest release on `main`.
   - Done when the tag's CI (R10, R13) passes and the release is published.
   - _Requirements: 6.1_
-- [ ] 9.2 `customer-tenant-skills` task 12.2
+- [x] 9.2 `customer-tenant-skills` task 12.2
   - Tick it in `.kiro/specs/customer-tenant-skills/tasks.md`, citing this release and this spec.
   - Done when committed in the release's pull request or the one after it.
   - _Requirements: 6.2_
+  - Done 2026-11-19 in the release's pull request (with S2's 10.8 tick).
 
 - [ ] 10. Engine-sent verification mail (S-3 (b)), against Engine entry 205 and the Platform's
   group 13 as merged

@@ -494,7 +494,7 @@
 
 ### Stage S2 (when TD-1 is met)
 
-- [ ] 10. S2: sign-in, scopes, structure built in the Blueprint, people, planning, debugging and review (design T3 S2; Release plan S2)
+- [x] 10. S2: sign-in, scopes, structure built in the Blueprint, people, planning, debugging and review (design T3 S2; Release plan S2)
 - [x] 10.0 Gate: TD-1 met, and the companions reconciled
   - **Blocked until** the requirements' Dependencies record TD-1 as met, by a dated amendment the
     maintainer approves. TD-1 is met when `buildpad-platform` `project-tenants` is approved and its
@@ -606,13 +606,16 @@
   - Done when: FT holds for each folder.
   - _Requirements: 8.1, 8.2_
   - Done 2026-11-10: the 8.1 rows in the debugging tree, the 8.2 checks in the five spots; FT holds.
-- [ ] 10.8 Release S2 (MINOR)
+- [x] 10.8 Release S2 (MINOR)
   - Run the 9.1 checks, with S2's statement placement in place of S1's. Write the CHANGELOG
     section: one bullet per changed folder, and a Supabase projects subsection saying nothing a
     Supabase agent reads changes. Update the README's install tag. Then the maintainer tags and
     publishes the Release.
   - Done when: `node tools/repo-check/check.mjs --tag <tag>` exits 0, the tag-push run is green,
     and the release page exists.
+  - Done 2026-11-10: released as v9.2.0 (PR buildpad-ai/skills#67, merge `0f1e770`, annotated tag
+    on it, GitHub Release published, tag CI green). Recorded 2026-11-19 with
+    `customer-self-onboarding` S4.
   - _Requirements: 9.4_
 
 ### Stage S3 (when TD-3 is met)
@@ -675,10 +678,12 @@
   - No statement retires. Mode_Guide §5 and the sign-in folders of 10.3 swap the hand-written
     routes for the SDK's functions, and the TD-6 sentence is removed. That needs a design revision.
   - _Requirements: 3.1, 3.2, 3.3, 3.4 (met by hand-written routes from S2; this item only changes their form)_
-- [ ] 12.2 TD-7: customers that sign themselves up
+- [x] 12.2 TD-7: customers that sign themselves up
   - **Blocked:** Platform Decision 20 (a) means it is not offered; it needs a later Platform spec.
   - Retires TS-N1 from `add-multitenancy/SKILL.md`, `add-users/SKILL.md` and the Mode_Guide.
   - _Requirements: 7.1_
+  - Done in v10.1.0 by the spec `customer-self-onboarding` (stage S4): TD-7 met 2026-11-19, `met`
+    gains `TD-7`, TS-N1 retired and TS-O1 in its place.
 - [ ] 12.3 TD-8: a public page per customer (a host name mapped to a customer)
   - **Blocked:** Platform Decision 11 (b), Wave 2, with an Engine part.
   - Retires TS-N2 from `create-api-route/references/engine-api-routes.instructions.md` and the
