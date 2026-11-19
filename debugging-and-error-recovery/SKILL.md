@@ -197,7 +197,13 @@ Problem → Root Cause → Fix
     ├── Signs in but shows nothing → The profile is not yet entered, or the session is bound to the Blueprint → Switch to the customer; the chooser does it
     ├── 401 TENANT_SUSPENDED → A Platform member suspended the customer → Nothing in the app; the member resumes it
     ├── 503 SERVICE_UNAVAILABLE → The customer is not serving for a moment (an Engine upgrade migrating it), or the session store → Retry after a few seconds
-    └── A field in the Blueprint and not in a customer → Made after the customer was created, and Releases are not available yet → Ask the Platform member; the change reaches only customers created after it
+    ├── A field in the Blueprint and not in a customer → Made after the customer was created, and Releases are not available yet → Ask the Platform member; the change reaches only customers created after it
+    └── With Self-onboarding on (the add-customer-onboarding skill's flow):
+        ├── Signs up but no email arrives → The app's mail sender failed, or the mail provider's domain is not verified → Read the mail provider's logs
+        ├── Every sign-up answers 401 TOKEN_INVALID → BUILDPAD_ONBOARDING_KEY is missing, revoked, or not written into .env.production → Check the key list (last use) on the Platform's Customers page, and the amplify.yml line
+        ├── Sign-ups answer 429 after five in 15 minutes → No X-Onboarding-Client-Address, so every sign-up shares one bucket → Send the client's IP address in that header
+        ├── Creating a company answers 503 → The template-copy lock → Retry with the same id
+        └── Creating a company answers 409 "This project has no published release yet" → No published Release → Publish one from the Platform's Releases panel
 ```
 
 The Engine's log is at `GET <Engine_URL>/api/logs`, for an administrator or a user whose role grants the `system:logs` module key.
