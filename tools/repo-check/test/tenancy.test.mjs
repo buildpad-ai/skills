@@ -118,6 +118,68 @@ test('ts-held-back, ts-retired, ts-required-missing follow met', () => {
   assert.deepEqual(run([file('s/SKILL.md', L('# S'))], where('TS-B', ['s/SKILL.md'])(DATA(['TD-1']))), ['s/SKILL.md:1 ts-required-missing']);
 });
 
+// customer-self-onboarding S4 (task 3.1): TS-O1 replaces TS-N1 when TD-7 is met. The texts and
+// TS-O1's `in` are the repository's own; the files are fixtures.
+const REAL = (id) => TENANCY.statements.find((s) => s.id === id);
+const S4 = (met = []) => {
+  const d = DATA(met);
+  return {
+    ...d,
+    dependencies: { ...d.dependencies, 'TD-7': 'seven' },
+    statements: [
+      ...d.statements,
+      { ...REAL('TS-N1'), in: [] },
+      { ...REAL('TS-O1') },
+    ],
+  };
+};
+const ENGINE_COPY = (p, t) => file(p, L('# S', '', ENG, t, END));
+
+test('S4: TS-O1 is registered with requires TD-7 and the four files of design O3', () => {
+  const o1 = REAL('TS-O1');
+  assert.deepEqual(o1.requires, ['TD-7']);
+  assert.deepEqual(o1.until, []);
+  assert.ok(o1.text.startsWith(TENANCY.opening));
+  assert.deepEqual([...o1.in].sort(), [
+    'add-customer-onboarding/SKILL.md',
+    'add-multitenancy/SKILL.md',
+    'add-multitenancy/references/engine-customer-tenants.instructions.md',
+    'add-users/SKILL.md',
+  ]);
+  assert.deepEqual(REAL('TS-N1').until, ['TD-7']);
+  assert.ok(TENANCY.met.includes('TD-7'));
+});
+
+test('S4: with TD-7 met, a file holding TS-N1 fails ts-retired', () => {
+  const o1In = (files) => REAL('TS-O1').in.map((p) => ENGINE_COPY(p, REAL('TS-O1').text)).concat(files);
+  assert.deepEqual(run(o1In([ENGINE_COPY('s/SKILL.md', REAL('TS-N1').text)]), S4(['TD-1', 'TD-7'])), ['s/SKILL.md:4 ts-retired']);
+  assert.deepEqual(run([ENGINE_COPY('s/SKILL.md', REAL('TS-N1').text)], S4(['TD-1'])), []);
+});
+
+test('S4: each file of TS-O1\'s `in` without it fails ts-required-missing', () => {
+  const expected = REAL('TS-O1').in.map((p) => `${p}:1 ts-required-missing`).sort();
+  assert.deepEqual(run([], S4(['TD-1', 'TD-7'])).sort(), expected);
+  const bare = REAL('TS-O1').in.map((p) => ENGINE_COPY(p, 'Nothing here.'));
+  assert.deepEqual(run(bare, S4(['TD-1', 'TD-7'])).sort(), expected);
+  const all = REAL('TS-O1').in.map((p) => ENGINE_COPY(p, REAL('TS-O1').text));
+  assert.deepEqual(run(all, S4(['TD-1', 'TD-7'])), []);
+  // Before TD-7, TS-O1 is required nowhere.
+  assert.deepEqual(run([], S4(['TD-1'])), []);
+});
+
+test('S4: TS-O1 changed by one word fails ts-altered', () => {
+  const all = REAL('TS-O1').in.filter((p) => p !== 'add-users/SKILL.md').map((p) => ENGINE_COPY(p, REAL('TS-O1').text));
+  const altered = REAL('TS-O1').text.replace('never sent to a browser', 'never sent to the browser');
+  assert.notEqual(altered, REAL('TS-O1').text);
+  assert.deepEqual(run([...all, ENGINE_COPY('add-users/SKILL.md', altered)], S4(['TD-1', 'TD-7'])).sort(),
+    ['add-users/SKILL.md:1 ts-required-missing', 'add-users/SKILL.md:4 ts-altered'].sort());
+});
+
+test('S4: without TD-7, TS-O1 anywhere fails ts-held-back', () => {
+  assert.deepEqual(run([ENGINE_COPY('s/SKILL.md', REAL('TS-O1').text)], S4(['TD-1'])), ['s/SKILL.md:4 ts-held-back']);
+  assert.deepEqual(run([file('s/references/x.md', L(FILE_ENG, '# X', '', REAL('TS-O1').text))], S4()), ['s/references/x.md:4 ts-held-back']);
+});
+
 test('the Tenancy check: altered, missing, misplaced; a CRLF copy passes', () => {
   const altered = file('g/SKILL.md', L('# G', '', ENG, CHECK.replace('Step one', 'Step 1').trimEnd(), END));
   assert.deepEqual(tenancyFindings([altered, CHECK_FILES[1]], DATA(), CHECK).map((f) => `${f.path}:${f.line} ${f.code}`), ['g/SKILL.md:4 tenancy-check-altered']);
@@ -130,7 +192,7 @@ test('the Tenancy check: altered, missing, misplaced; a CRLF copy passes', () =>
 test('the repository data file: openings, ids, dependencies, in paths and the Tenancy check text', () => {
   const ids = TENANCY.statements.map((s) => s.id);
   assert.equal(new Set(ids).size, ids.length);
-  assert.equal(ids.length, 12);
+  assert.equal(ids.length, 13);
   for (const s of TENANCY.statements) {
     assert.ok(s.text.startsWith(TENANCY.opening), s.id);
     for (const d of [...s.requires, ...s.until]) assert.ok(Object.hasOwn(TENANCY.dependencies, d), `${s.id} ${d}`);
