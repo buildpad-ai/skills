@@ -132,6 +132,7 @@ The core methodology: every feature is specified as `requirements.md` (EARS) →
 | [add-microfrontend](add-microfrontend) | The composition mechanism: iframe host, postMessage bridge, auth/URL/scope syncing, CSP (load second). Supabase projects only for now: not yet available on an Engine project |
 | [add-microfrontend-zones](add-microfrontend-zones) | Path-based composition with Next.js Multi-Zones: one origin, one shared session, no iframes. Supabase projects only for now: not yet available on an Engine project |
 | [add-multitenancy](add-multitenancy) | Multi-tenancy (delegates to manage-scope) |
+| [add-customer-onboarding](add-customer-onboarding) | Let strangers sign up, verify their email, create their own customer and land in it, on an Engine project with Customer_Tenants and Self-onboarding on |
 | [add-external-oauth](add-external-oauth) | External OAuth/OIDC identity provider sign-in with a PKCE proxy flow on a Supabase project; on an Engine project, XAppHub sign-in only, through `signInWithIdToken`, and it stops for any other provider |
 | [add-i18n](add-i18n) | Internationalization: `app/[lang]` routing, middleware locale negotiation, dictionaries + I18nProvider, LanguageSwitcher, DaaS content translations |
 | [add-mobile-app](add-mobile-app) | Wrap the web app as iOS/Android with Capacitor (server-URL mode), plus when to use platform-managed mobile builds / Expo mobile microapps; SSO, push, geofencing, emulator gotchas |

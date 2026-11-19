@@ -1,0 +1,14 @@
+[
+  {
+    "path": "add-customer-onboarding/SKILL.md",
+    "kind": "new-file",
+    "reason": "New skill add-customer-onboarding: on a Supabase project it says that customers that sign themselves up need a Buildpad Engine project with Customer tenants, and stops.",
+    "release": "unreleased"
+  },
+  {
+    "path": "add-customer-onboarding/references/engine-customer-onboarding.instructions.md",
+    "kind": "new-file",
+    "reason": "New Engine-only reference file of add-customer-onboarding (the sign-up, verification and create-your-company flow); a Supabase project's view holds none of it.",
+    "release": "unreleased"
+  }
+]

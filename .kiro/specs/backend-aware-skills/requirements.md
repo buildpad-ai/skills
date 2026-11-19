@@ -668,6 +668,11 @@ folders: 69 folders; Dependence: core 3, partial 34, wording only 7, none 25; pl
 `tools/repo-check/skill-map.json`: BP 33, EF 3, US 1, NY 2, RW 8, RW+G 2, UC 20. The Counts line
 below is kept as the record of 16 October 2026.
 
+Amended 19 November 2026 by `customer-self-onboarding` (its task 5.3): the row
+`add-customer-onboarding` is added (core, plan EF). With it, `tools/repo-check/skill-map.json` reads
+72 folders; Dependence: core 5, partial 35, wording only 7, none 25; plans: BP 34, EF 4, US 1,
+NY 2, RW 9, RW+G 2, UC 20. The Counts line below is still kept as the record of 16 October 2026.
+
 | Folder | Dependence | Treatment | Size |
 |---|---|---|---|
 | `add-external-oauth` | core | says unavailable on the Engine and stops | small |
@@ -720,6 +725,7 @@ below is kept as the record of 16 October 2026.
 | `migrate-to-engine` | partial | new skill, both paths, chosen by backend: on an Engine project it ports the automation and app code of a project moved from Supabase; on a Supabase project it says the skill applies after the move and stops | medium |
 | `add-ai-chat` | none | new skill, true for both kinds of project (the chat talks only to the Chocolate Factory agent, never to the data API; no backend-specific step) | small |
 | `atomic-writes` | core | new skill, both paths, chosen by backend: on an Engine project it teaches conditional updates, optimistic locking and transactional hooks; on a Supabase project it says the feature is not available and stops | medium |
+| `add-customer-onboarding` | core | Engine only: on Supabase it says the flow needs an Engine project and stops; in the mode scope it says workspaces are not available yet (ES-17n) and stops; in the mode customer-tenants it builds the flow while Self-onboarding is on | medium |
 
 Unchanged, with no dependence found (20): `amplify-env-vars`, `buildpad-debug`, `buildpad-discovery`, `buildpad-impl`, `buildpad-review`, `buildpad-spec-batch`, `buildpad-spec-design`, `buildpad-spec-init`, `buildpad-spec-quick`, `buildpad-spec-requirements`, `buildpad-spec-status`, `buildpad-spec-tasks`, `buildpad-validate-design`, `buildpad-validate-gap`, `buildpad-validate-impl`, `buildpad-verify-completion`, `code-simplification`, `create-component`, `generate-docs`, `git-workflow-and-versioning`.
 
