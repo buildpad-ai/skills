@@ -90,6 +90,8 @@ On an Engine project the Supabase client is kept for sign-in only. Password sign
 <!-- buildpad-backend: engine -->
 On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
+In the mode `customer-tenants` with Self-onboarding on, sign-up is available through the `add-customer-onboarding` skill, which replaces ES-5's "sign-up" for that project only.
+
 On an Engine project with Customer_Tenants the password sign-in names no tenant: the application's own server route sends it without `X-Tenant-Id`. When the session it answers is bound to no tenant, the same route lists the person's tenants with `GET /api/auth/tenants`, switches with `POST /api/auth/tenant`, and replaces the session's access and refresh tokens with the pair the switch answers. The application takes its current tenant from the session, never from the environment or from the request, and sends no tenant id on a request that carries a session.
 
 In the mode `customer-tenants` the application holds these four auth routes in place of the CLI's login route (the `create-api-route` skill writes them, and the [`add-multitenancy`](../../add-multitenancy/SKILL.md) skill's guide `engine-customer-tenants` gives the chooser and the switch):
