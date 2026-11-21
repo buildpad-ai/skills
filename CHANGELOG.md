@@ -14,6 +14,26 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
+## v10.2.0
+
+The xBot connector's guide is now part of the skills. Install it with
+`npx skills add buildpad-ai/skills#v10.2.0`. No existing file changes, so this is a MINOR release.
+
+- `create-service/references/xbot.instructions.md` is new. It tells the agent what it means for the
+  project's repository when the xBot software factory is connected: which `xbot/*` branches and
+  `xbot:` pull requests are xBot's, how to ask for a change with `/xbot fix` on one of its pull
+  requests, and how to send a problem to xBot through its signal API from server-side code, with the
+  key in a server-only variable. The agent finds it as it finds every connector's guide, by the
+  provider key (`xbot`) in `get_project_detail`'s `connectors[]`.
+- The file was written on the Buildpad Platform and shipped only in its vendored copy of the
+  skills, so every sync of a release deleted it.
+
+### Supabase projects
+
+No existing file changes. This file is new:
+
+- `create-service/references/xbot.instructions.md` (new-file)
+
 ## v10.1.0
 
 Customers can sign themselves up on an Engine project with Customer tenants and Self-onboarding on,
