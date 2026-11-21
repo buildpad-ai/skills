@@ -242,7 +242,7 @@
     fixes in the next commit); `check.mjs` exits 0 without `--tag`. `clientAddress` waited on 1.2
     (marked `A-S1 pending` in the reference file until 1.2 was done).
 - [ ] 8. Whole-branch check
-- [ ] 8.1 The check and the read-through
+- [x] 8.1 The check and the read-through
   - `node tools/repo-check/check.mjs` exits 0 on the integration branch (every rule, R15 and R16
     included).
   - Run the design's manual read-through: the Supabase stop; the `scope` stop at ES-17n; the
@@ -250,6 +250,9 @@
     word for word in its three places.
   - Done when both are recorded in the pull request with reader, date and commit.
   - _Requirements: 1.1 to 5.2_
+  - Done 2026-11-21: recorded in PR buildpad-ai/skills#73 (reader Claude Code, commit 8e31bae).
+    The check reports no finding (R15 and R16 included), and 247 tests pass. Each of the five paths
+    stops or builds as the design says. ES-17n is word for word in its three places.
 - [x] 8.2 Dev run
   - With the Platform's dev run (its task 12.2): steps 1 to 8 of the design's dev run, with an
     agent following the skill on a fresh Next.js kit.
