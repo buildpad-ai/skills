@@ -333,6 +333,6 @@
     "path": "create-service/references/xbot.instructions.md",
     "kind": "new-file",
     "reason": "New connector reference for xBot, read when a project has the xBot connector: which xbot/* branches and xbot: pull requests are xBot's, /xbot fix on a pull request, and how to send a problem through xBot's signal API from server-side code; it was shipped only in the Platform's vendored copy until now.",
-    "release": "unreleased"
+    "release": "v10.2.0"
   }
 ]
