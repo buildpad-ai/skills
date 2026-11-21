@@ -93,6 +93,12 @@ Customer_Tenants have limits: about 1,000 to 2,000 tenants share one database; e
 shares one Engine, one connection pool and one upgrade window; a project backup restores every
 customer at once; and they exist on Engine projects only.
 
+Many small workspaces (thousands), where shared tables are acceptable and each workspace's owner
+manages only their own people, fit scope nodes; customers that need their data kept apart, their own
+administrators, or fewer than the project's quota fit Customer_Tenants.
+
+On an Engine project in the mode `scope` a workspace that a person creates for themselves, as a scope node they own in the project's one tenant, is not available: no route lets a person who is not an administrator create a scope node or give roles at one. Tell the developer so and stop: build no substitute, and never give the application an administrator's credential to create one. Customers that sign themselves up, each a tenant of its own, are available in the mode `customer-tenants`, with the `add-customer-onboarding` skill.
+
 - In the mode `scope`, continue with `/manage-scope` as above.
 - If the developer chooses Customer_Tenants and the mode is not `customer-tenants`, tell the
   developer that Customer_Tenants are turned on for the project on the Buildpad platform, after
@@ -102,9 +108,10 @@ customer at once; and they exist on Engine projects only.
 
 Never put the Engine's host administrator credential, a session bound to the Engine's host, or a
 call to `/api/tenants` into an application, a worker, a test or a tool call of yours, and never
-create a customer from code.
+create a customer from code, except through the `add-customer-onboarding` skill's route, with the
+person's own session.
 
-On an Engine project with Customer_Tenants customers that sign themselves up are not available: only a Platform member creates a customer, on the Platform's Customers page, and no credential an application may hold can create one. Tell the developer so and stop: never put the host administrator's credential or a call to the Engine's tenant routes in the application.
+On an Engine project with Customer_Tenants customers sign themselves up only while the project's Self_Onboarding is on, which `selfOnboarding` in `.buildpad/project.json` says. While it is off, tell the developer that a project Admin turns it on from the Platform's Customers page, and stop. While it is on, build it with the `add-customer-onboarding` skill: the application's own server routes call the Engine's sign-up, verification and customer routes with `BUILDPAD_ONBOARDING_KEY`, read on the server only and never sent to a browser. Never put the host administrator's credential or a call to `/api/tenants` in the application.
 <!-- /buildpad-backend -->
 
 See `/manage-scope` for the complete setup guide.

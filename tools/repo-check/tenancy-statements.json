@@ -4,14 +4,14 @@
   "dependencies": {
     "TD-1": "Platform project-tenants Wave 1 shipped: the flag, the Customers page, creating customers",
     "TD-3": "Engine entry 192 applied, and the Platform's Releases (project-tenants Requirement 9) shipped",
-    "TD-7": "Customers that sign themselves up (Platform Decision 20 (b), a later spec)",
+    "TD-7": "An app's server can create a customer for a verified person (Engine entry 204 and the Platform's customer-self-onboarding)",
     "TD-8": "A host name mapped to a customer (Platform Decision 11 (b), Wave 2)",
     "TD-9": "XAppHub sign-in in a customer (Platform Decision 21 (b), Wave 2)",
     "TD-10": "Workers per customer (Platform Decision 13, Wave 3)",
     "TD-12": "Backup and restore of one customer (Platform Decision 14, Wave 3)",
     "TD-13": "Open Studio into a customer (Platform Requirement 10, Wave 2)"
   },
-  "met": ["TD-1"],
+  "met": ["TD-1", "TD-7"],
   "anchors": [
     {
       "es": "ES-3",
@@ -83,7 +83,8 @@
         "agents/test-engineer.md",
         "agents/security-auditor.md",
         "references/security-checklist.md",
-        "add-multitenancy/references/engine-customer-tenants.instructions.md"
+        "add-multitenancy/references/engine-customer-tenants.instructions.md",
+        "add-customer-onboarding/SKILL.md"
       ]
     },
     {
@@ -182,6 +183,20 @@
         "add-multitenancy/SKILL.md",
         "add-users/SKILL.md",
         "add-multitenancy/references/engine-customer-tenants.instructions.md"
+      ]
+    },
+    {
+      "id": "TS-O1",
+      "requires": [
+        "TD-7"
+      ],
+      "until": [],
+      "text": "On an Engine project with Customer_Tenants customers sign themselves up only while the project's Self_Onboarding is on, which `selfOnboarding` in `.buildpad/project.json` says. While it is off, tell the developer that a project Admin turns it on from the Platform's Customers page, and stop. While it is on, build it with the `add-customer-onboarding` skill: the application's own server routes call the Engine's sign-up, verification and customer routes with `BUILDPAD_ONBOARDING_KEY`, read on the server only and never sent to a browser. Never put the host administrator's credential or a call to `/api/tenants` in the application.",
+      "in": [
+        "add-multitenancy/SKILL.md",
+        "add-users/SKILL.md",
+        "add-multitenancy/references/engine-customer-tenants.instructions.md",
+        "add-customer-onboarding/SKILL.md"
       ]
     },
     {

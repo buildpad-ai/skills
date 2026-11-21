@@ -196,4 +196,8 @@ res.status(500).json({
   - [ ] No host credential or host session is present anywhere
   - [ ] No request reaches two customers with one token, and no server code holds two customers' sessions at once
   - [ ] No cache in the application (server or browser) is keyed without the current customer, and a switch reloads the page
+- [ ] In the mode `customer-tenants` with Self-onboarding on (the `add-customer-onboarding` skill's flow):
+  - [ ] `BUILDPAD_ONBOARDING_KEY` is read only in one server-only module, never with a `NEXT_PUBLIC_` prefix and never in a client component
+  - [ ] The sign-up route checks the bot-check token before it calls the Engine
+  - [ ] The sign-up page shows the same text for a new and an existing address
 <!-- /buildpad-backend -->

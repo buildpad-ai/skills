@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Repository_Check (design, Requirement 7): runs R1 to R15 over the checked set.
+// Repository_Check (design, Requirement 7): runs R1 to R16 over the checked set.
 //
 //   node tools/repo-check/check.mjs [--root DIR] [--baseline-ref v1.0.0] [--skill-map FILE]
 //                                   [--tag TAG] [--only R1,R2,...] [--render OUT_DIR]
@@ -25,8 +25,9 @@ import { frontMatterIssues, frontMatterYamlIssues } from './lib/frontmatter.mjs'
 import { mapIssues, validateSkillMap, templateIssues, readmeIssues, SKILL_MAP_PATH } from './lib/map.mjs';
 import { parseChangeFile, releaseIssues, convertedFindings, CHANGE_DIR, CONVERTED_DIR } from './lib/release.mjs';
 import { tenancyFindings } from './lib/tenancy.mjs';
+import { onboardingKeyFindings } from './lib/onboarding-key.mjs';
 
-export const RULES = ['R1', 'R2', 'R3', 'R4', 'R5', 'R6a', 'R6b', 'R7', 'R8', 'R9', 'R10', 'R11', 'R12', 'R13', 'R14', 'R15'];
+export const RULES = ['R1', 'R2', 'R3', 'R4', 'R5', 'R6a', 'R6b', 'R7', 'R8', 'R9', 'R10', 'R11', 'R12', 'R13', 'R14', 'R15', 'R16'];
 const USAGE = 'usage: node tools/repo-check/check.mjs [--root DIR] [--baseline-ref v1.0.0] [--skill-map FILE] [--tag TAG] [--only R1,R2,...] [--render OUT_DIR]';
 
 class UsageError extends Error {}
@@ -344,6 +345,9 @@ function runCheck(opts, { stdout, env }) {
   if (want('R12')) add(runContractTest());
 
   if (want('R15')) add(tenancyFindings(textFiles, tenancy.data, tenancy.checkText));
+
+  // R16 (customer-self-onboarding O5): the onboarding key stays on the server.
+  if (want('R16')) add(onboardingKeyFindings(textFiles));
 
   if (want('R13') && opts.tag) add(convertedFindings(skillMap, converted));
 

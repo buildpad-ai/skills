@@ -23,17 +23,17 @@ Starters downloaded from the Platform carry only their project's text: the other
 
 ```bash
 # Install skills from a release (interactive picker)
-npx skills add buildpad-ai/skills#v10.0.0
+npx skills add buildpad-ai/skills#v10.1.0
 
 # Install everything from a release
-npx skills add buildpad-ai/skills#v10.0.0 --all
+npx skills add buildpad-ai/skills#v10.1.0 --all
 
 # Install a single skill from a release
-npx skills add buildpad-ai/skills#v10.0.0@create-project
-npx skills add https://github.com/buildpad-ai/skills/tree/v10.0.0/create-project
+npx skills add buildpad-ai/skills#v10.1.0@create-project
+npx skills add https://github.com/buildpad-ai/skills/tree/v10.1.0/create-project
 ```
 
-The [skills CLI](https://github.com/vercel-labs/skills) detects your agents and writes each skill to the right location (`.claude/skills/`, `.kiro/skills/`, `.agents/skills/`, …). A tag never moves, so installing `#v10.0.0` always gives the same files. Replace `v10.0.0` with any tag from the [releases](https://github.com/buildpad-ai/skills/releases).
+The [skills CLI](https://github.com/vercel-labs/skills) detects your agents and writes each skill to the right location (`.claude/skills/`, `.kiro/skills/`, `.agents/skills/`, …). A tag never moves, so installing `#v10.1.0` always gives the same files. Replace `v10.1.0` with any tag from the [releases](https://github.com/buildpad-ai/skills/releases).
 
 ## Stay on the skills as they were before Engine support
 
@@ -132,6 +132,7 @@ The core methodology: every feature is specified as `requirements.md` (EARS) →
 | [add-microfrontend](add-microfrontend) | The composition mechanism: iframe host, postMessage bridge, auth/URL/scope syncing, CSP (load second). Supabase projects only for now: not yet available on an Engine project |
 | [add-microfrontend-zones](add-microfrontend-zones) | Path-based composition with Next.js Multi-Zones: one origin, one shared session, no iframes. Supabase projects only for now: not yet available on an Engine project |
 | [add-multitenancy](add-multitenancy) | Multi-tenancy (delegates to manage-scope) |
+| [add-customer-onboarding](add-customer-onboarding) | Let strangers sign up, verify their email, create their own customer and land in it, on an Engine project with Customer_Tenants and Self-onboarding on |
 | [add-external-oauth](add-external-oauth) | External OAuth/OIDC identity provider sign-in with a PKCE proxy flow on a Supabase project; on an Engine project, XAppHub sign-in only, through `signInWithIdToken`, and it stops for any other provider |
 | [add-i18n](add-i18n) | Internationalization: `app/[lang]` routing, middleware locale negotiation, dictionaries + I18nProvider, LanguageSwitcher, DaaS content translations |
 | [add-mobile-app](add-mobile-app) | Wrap the web app as iOS/Android with Capacitor (server-URL mode), plus when to use platform-managed mobile builds / Expo mobile microapps; SSO, push, geofencing, emulator gotchas |

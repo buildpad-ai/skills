@@ -798,6 +798,8 @@ On an Engine project the project is one tenant. Every scope hierarchy begins bel
 
 On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
+On an Engine project in the mode `scope` a workspace that a person creates for themselves, as a scope node they own in the project's one tenant, is not available: no route lets a person who is not an administrator create a scope node or give roles at one. Tell the developer so and stop: build no substitute, and never give the application an administrator's credential to create one. Customers that sign themselves up, each a tenant of its own, are available in the mode `customer-tenants`, with the `add-customer-onboarding` skill.
+
 In the mode `customer-tenants`, scopes live inside each customer:
 
 - Every scope URI begins with the current customer's node: the `uri_path` of the `current` entry of

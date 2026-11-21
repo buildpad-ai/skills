@@ -197,7 +197,16 @@ Problem → Root Cause → Fix
     ├── Signs in but shows nothing → The profile is not yet entered, or the session is bound to the Blueprint → Switch to the customer; the chooser does it
     ├── 401 TENANT_SUSPENDED → A Platform member suspended the customer → Nothing in the app; the member resumes it
     ├── 503 SERVICE_UNAVAILABLE → The customer is not serving for a moment (an Engine upgrade migrating it), or the session store → Retry after a few seconds
-    └── A field in the Blueprint and not in a customer → Made after the customer was created, and Releases are not available yet → Ask the Platform member; the change reaches only customers created after it
+    ├── A field in the Blueprint and not in a customer → Made after the customer was created, and Releases are not available yet → Ask the Platform member; the change reaches only customers created after it
+    └── With Self-onboarding on (the add-customer-onboarding skill's flow):
+        ├── Signs up but no email arrives → The app's mail sender failed, or the mail provider's domain is not verified → Read the mail provider's logs
+        ├── A new person loops between signing in and the sign-in page → The middleware reads the unbound session (403 at GET /auth/v1/user) as signed out → Change lib/supabase/middleware.ts as the add-multitenancy guide's section 5.6 says
+        ├── Every sign-up says "Sign-up is not available right now." → The log names it: onboarding.not_configured (BUILDPAD_ONBOARDING_KEY not written into .env.production), onboarding.key_invalid (401 TOKEN_INVALID: the key is revoked) or onboarding.engine_too_old → Check the key list (last use) on the Platform's Customers page, and the amplify.yml line
+        ├── Every sign-up says "Please complete the check." → The bot-check secret is not set (onboarding.human_check_not_configured), or the form reuses a spent token → Set the secret and its amplify.yml line; remount the widget after each refused submit
+        ├── A change made in the Blueprint reaches no customer, even a new one → Sign-up was turned on: new customers are created from Release 1 → No customer gets it until a later Release is published
+        ├── Sign-ups answer 429 after five in 15 minutes → No X-Onboarding-Client-Address, so every sign-up shares one bucket → Send the client's IP address in that header
+        ├── Creating a company answers 503 → The template-copy lock → Retry with the same id
+        └── Creating a company answers 409 "This project has no published release yet" → The Blueprint has no published Release → Ask the Platform member who turned Self-onboarding on: turning it on publishes the first Release
 ```
 
 The Engine's log is at `GET <Engine_URL>/api/logs`, for an administrator or a user whose role grants the `system:logs` module key.

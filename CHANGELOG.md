@@ -14,6 +14,84 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
+## v10.1.0
+
+Customers can sign themselves up on an Engine project with Customer tenants and Self-onboarding on,
+and a new skill builds the flow. Install it with `npx skills add buildpad-ai/skills#v10.1.0`. This
+is stage S4 of `customer-self-onboarding`, opened when the Platform switched Self-onboarding on (dev,
+19 November 2026) with Engine 0.1.0-dev.23 (ledger entries 204 and 205). It is a MINOR release: one
+skill is added, every other new text stands in text for Engine projects only, no skill is removed or
+renamed, and the "Establish the backend first" procedure stays at version 1.
+
+TS-N1 ("customers that sign themselves up are not available") is retired. TS-O1 takes its place:
+customers sign themselves up only while the project's Self_Onboarding is on, which `selfOnboarding`
+in `.buildpad/project.json` says; while it is off the developer is told how a project Admin turns it
+on. ES-17n is new: in the mode `scope`, a workspace a person creates for themselves as a scope node
+is not available.
+
+- **New skill `add-customer-onboarding`:** on an Engine project with Customer tenants and
+  Self-onboarding on, a person signs up, confirms their email, creates their company and becomes its
+  Administrator. The skill establishes the backend, the tenancy mode and `selfOnboarding` first, and
+  stops in the mode `scope` (ES-17n) or with Self-onboarding off (TS-O1). It then sets up:
+  - the mail provider and the bot check (Cloudflare Turnstile as the example);
+  - `BUILDPAD_ONBOARDING_KEY` in one server-only module, and the guarded `amplify.yml` line that
+    makes the key readable at run time;
+  - `clientAddress`, which sends the caller's address as `X-Onboarding-Client-Address` (from
+    `CloudFront-Viewer-Address` on Amplify Hosting) so sign-ups are limited per person rather than
+    per app;
+  - the sign-up, verify, resend and create-your-company routes and pages, with the Engine's answers
+    and what the app shows for each.
+
+  Its reference `engine-customer-onboarding.instructions.md` holds the code, for Engine projects only.
+- **`add-multitenancy`:** the chooser compares scope workspaces with self-signed-up customers
+  (ES-17n). The guide `engine-customer-tenants` gains:
+  - §5.5, sign-in with Self-onboarding on: a person with no customer is offered to create one, and
+    an unverified sign-in answers `EMAIL_NOT_CONFIRMED`;
+  - §5.6, the middleware and the shared server client: the CLI's middleware read a session bound to
+    no customer as signed out (the Engine answers it with 403 at `GET /auth/v1/user`), so a person
+    who had just signed in looped back to sign-in, and `lib/supabase/server.ts` sends no
+    `X-Tenant-Id` in this mode;
+  - in §5, `settleTenant` runs only in the login route: the layout redirects to `/choose-customer`.
+    §5 now points to `create-api-route` for the routes' code, and gives the current customer's code;
+  - §13, with TS-O1. With Self-onboarding on, new customers are created from Release 1, so a later
+    change in the Blueprint reaches no customer until a later Release (§1, §7.1, §10);
+  - its tree and review checks for the flow.
+- **`add-users`:** TS-O1 replaces TS-N1; inviting further people into a customer stays here.
+- **`manage-scope`:** ES-17n.
+- **`authentication-proxy`:** in the mode `customer-tenants` with Self-onboarding on, sign-up is
+  available through `add-customer-onboarding`, in the skill and its reference.
+- **`security-and-hardening`**, **`references/security-checklist.md`**, **`agents/security-auditor`:**
+  the sign-in exception for the flow, plus three checks:
+  - the key is read only on the server, never with a `NEXT_PUBLIC_` prefix;
+  - the bot check runs before the Engine call;
+  - new and existing addresses get the same text.
+- **`create-api-route`:** in the mode `customer-tenants`, `settleTenant` gains the `SELF_ONBOARDING`
+  switch the guide's copy has, and runs only in the login route.
+- **`create-project`:** with Self-onboarding on, sign-up is available through
+  `add-customer-onboarding`, and the sign-in route sends no `X-Tenant-Id` in the mode
+  `customer-tenants`.
+- **`debugging-and-error-recovery`:** eight rows for the flow:
+  - no mail;
+  - a sign-in loop;
+  - "Sign-up is not available right now.", with the log event that names its cause;
+  - a bot check that always fails;
+  - a Blueprint change that reaches no new customer;
+  - 429 after five;
+  - 503 on create;
+  - 409 with no published Release.
+- **Repository check:** rule R16 fails a file that names the onboarding key with the `NEXT_PUBLIC_`
+  prefix, and a `'use client'` block that reads the key or imports the module that sends it. TS-O1
+  and ES-17n are registered; `met` gains `TD-7`.
+
+### Supabase projects
+
+No existing file changes. These files are new:
+
+- `add-customer-onboarding/SKILL.md` (new-file): on a Supabase project it says that customers that
+  sign themselves up need a Buildpad Engine project with Customer tenants, and stops.
+- `add-customer-onboarding/references/engine-customer-onboarding.instructions.md` (new-file): the
+  flow's code, for Engine projects only; a Supabase project's view holds none of it.
+
 ## v10.0.0
 
 Two skills are added, `add-notifications` and `atomic-writes`. Install it with

@@ -81,7 +81,7 @@ Security-first development practices for web applications. Treat every external 
 
 ### Ask First (Requires Human Approval)
 
-- Changing how the application signs users in (sign-up, magic links, password recovery and OAuth sign-in with any provider other than XAppHub are not available on an Engine project: tell the developer so instead of building one; XAppHub sign-in follows the `add-external-oauth` skill)
+- Changing how the application signs users in (sign-up, magic links, password recovery and OAuth sign-in with any provider other than XAppHub are not available on an Engine project, except, in the mode `customer-tenants` with Self-onboarding on, the `add-customer-onboarding` skill's flow: tell the developer so instead of building one; XAppHub sign-in follows the `add-external-oauth` skill)
 <!-- /buildpad-backend -->
 - Storing new categories of sensitive data (PII, payment info)
 - Adding new external service integrations
@@ -221,7 +221,10 @@ export async function POST(req: NextRequest) {
 - [ ] The application stores no password; the Engine holds them, and an administrator resets one in the Studio's Users module
 - [ ] The application's own session cookies are httpOnly, secure, sameSite; calls to the Engine carry `Authorization: Bearer`, never a cookie
 - [ ] Login has rate limiting
-- [ ] No sign-up, magic link or password-recovery flow, and no OAuth sign-in with a provider other than XAppHub, is offered (not available on an Engine project)
+- [ ] No sign-up, magic link or password-recovery flow, and no OAuth sign-in with a provider other than XAppHub, is offered (not available on an Engine project), except, in the mode `customer-tenants` with Self-onboarding on, the `add-customer-onboarding` skill's flow, where:
+  - [ ] `BUILDPAD_ONBOARDING_KEY` is read only in one server-only module, never with a `NEXT_PUBLIC_` prefix and never in a client component
+  - [ ] The sign-up route checks the bot-check token before it calls the Engine
+  - [ ] The sign-up page shows the same text for a new and an existing address
 
 ### Authorization
 - [ ] Every endpoint forwards the user's own access token, so the Engine applies the user's roles, policies and permissions

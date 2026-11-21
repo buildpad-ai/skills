@@ -1,0 +1,428 @@
+# Implementation Plan
+
+> Phase 3 of the gated spec `customer-self-onboarding` (skills repository part), from the approved
+> `requirements.md` (6 requirements; K-1 to K-10 settled; criteria 1.2 and 2.2 amended 2026-11-09 by
+> S-2 (b) and S-1 (a)) and the approved `design.md` (approved 2026-11-09, "Approve as
+> recommended"). **Generated 2026-11-09; approved by the user on 2026-11-09 ("Approve tasks").**
+>
+> **Names.** Stage S4 (design O6). Statements TS-O1 (O3) and ES-17n (O4). The Onboarding check (O2)
+> and its record `.buildpad/onboarding-answer.json` (O1). Rule R16 and its codes (O5). Mode_Guide
+> §1 to §13. Contract rows C-n (Engine entry 204 as built, `7ad36743`) and P-Sn (the Platform's
+> design, `221dbdd7`). Line numbers are the design's, at `0f667fb`. If `main` moves before a task
+> starts, and S2 will move it, find each place by its anchor text, not by its line number.
+>
+> **One stage, one gate.** Every task below is S4. Task 1 is its gate, and no other task starts on
+> the integration branch before it is met. **Amended 2026-11-19, approved by the user ("Go ahead"):** as with
+> `customer-tenant-skills` S2, tasks 3 to 8.1 are written and checked on the integration branch
+> while the Platform's dev switch-on runs; task 1 now gates task 8.2 (the dev run), the pull
+> request and task 9 (the release). Nothing reaches `main` before task 1 holds, and a contract row
+> that differs when task 1.1 reconciles it amends design.md and the text written here first. Writing tests (task 2) may start earlier on a branch of
+> its own, because R16's tests touch no skill text.
+>
+> **Merge order (binding).** S4 lands on `main` as **one pull request** from an integration branch
+> (`feat/customer-self-onboarding-s4`, cut from `origin/main` after S2's release). The order is:
+> 1, then 2, then 3, then 4, then 5 to 7 in any order, then 8 and 9. Adding `TD-7` to `met` (task
+> 3.1) makes R15 fail every file that still holds TS-N1 and every file of TS-O1's `in` that lacks
+> it, until tasks 4 to 6 are done. So `node tools/repo-check/check.mjs` exits 0 only at the end of
+> the branch, as with S1. Each sub-task proves itself locally with the commands in its Done-when
+> line.
+>
+> **Rules for every text sub-task (4.x to 7.x).** These are `customer-tenant-skills`' T-1 to T-5 as
+> they apply here:
+> - **T-1. Statements.** Copy TS-O1 verbatim from `tools/repo-check/tenancy-statements.json`, and
+>   ES-17n verbatim from `CONTRIBUTING.md`. Each stands as a paragraph of its own, not in a list
+>   item, a table cell or a fence. Never write the reserved opening "On an Engine project with
+>   Customer_Tenants" in any other sentence; mode-specific prose says "In the mode
+>   `customer-tenants`".
+> - **T-2. Engine only.** Every new text stands in Engine-only text: an `engine` passage, a file
+>   marked `engine`, or the new skill's Engine passage. The new skill's Supabase stop (design, order
+>   of work 1) is its one shared sentence.
+> - **T-3. TS-A.** The new `SKILL.md` carries TS-A after its Gate (I-G). The changed folders already
+>   carry it.
+> - **T-4. Never the key's public name.** No text writes the onboarding key's name with the
+>   `NEXT_PUBLIC_` prefix. Warnings say "never with a `NEXT_PUBLIC_` prefix" (R16).
+> - **T-5. Supabase views.** Only task 7.1 adds files to `converted/` and `supabase-view-changes/`
+>   (the new skill). Every other text sub-task leaves both unchanged.
+> - **FT (folder done):**
+>   - `node --test "tools/repo-check/test/*.test.mjs"` passes;
+>   - `node tools/repo-check/check.mjs --only R1,R2,R3,R4,R5,R6a,R6b,R7,R8,R9,R10,R11,R12,R14,R16`
+>     exits 0;
+>   - `node tools/repo-check/check.mjs --only R15 | grep ' <folder>/'` prints nothing;
+>   - a read-through of `node tools/repo-check/check.mjs --render <out>` for that folder's Engine
+>     view, recorded with reader, date and commit.
+
+## Tasks
+
+- [x] 1. Gate: S4 opens
+- [x] 1.1 Dependencies met and reconciled
+  - Each holds, and is recorded as a dated, approved amendment of `requirements.md`'s Dependencies:
+    - **TD-1:** `customer-tenant-skills` S2 released (its task 10.8), so TS-B, Mode_Guide §5,
+      `settleTenant` and the S2 debugging and review places exist on `main`.
+    - **TD-14:** Engine entry 204 merged and released. Contract rows C-2 to C-9, C-11 and E 7.x are
+      reconciled against the released build, including the three 409 message prefixes the
+      Refusals table matches (design Issue 5) and the GoTrue `email_not_confirmed` answer.
+    - **TD-15:** the Platform's `customer-self-onboarding` shipped and switched on in at least one
+      environment (its task 12.2).
+    - **TD-16:** `selfOnboarding` is present in a kit downloaded there (P-S1), and the kit's
+      `amplify.yml` line is exactly the text task 5.2 copies (P-S4).
+  - Done when the amendment is committed and names each release, commit and kit checked. **If a
+    contract row differs**, amend design.md (dated) and the task it changes before going on.
+  - **Blocked until** all four hold.
+  - **Where they stand, 2026-11-14:**
+    - TD-1: met. S2 was released as v9.2.0 (its task 10.8 box on `main` is not ticked).
+    - TD-14: entry 204 merged (`buildpad-daas-go` PR #43, `da47c362`). Released, as far as can be
+      read here: v9.3.0 names Engine 0.1.0-dev.25 (data service `2026.11.13`), which carries
+      entry 207, merged after 204 and 205. Its contract rows are still to be reconciled.
+    - TD-15: not met. The Platform's self-onboarding is merged to `main` and `release/dev`, and
+      dev was deploying on 2026-11-14, but `ENGINE_SELF_ONBOARDING_MIN_VERSION` is set nowhere.
+    - TD-16: not met (follows TD-15).
+  - _Requirements: 6.1; Dependencies_
+  - Done 2026-11-19: all four hold, recorded as the dated amendment in `requirements.md`'s
+    Dependencies. Every contract row the dev run exercised matches; none differs, so design.md and
+    the text stand.
+- [x] 1.2 A-S1 on Amplify Hosting
+  - On the Platform's dev app (or any Amplify Hosting Next.js app), log `X-Forwarded-For` on a
+    server route against the caller's known address, with a client that sends a forged
+    `X-Forwarded-For` of its own.
+  - Done when the design names which entry is the client's as the host appended it, and task 5.2's
+    `clientAddress` text matches. If no entry is reliable, the design says to send no header, and
+    the guide states the shared budget's cost (design Issue 3).
+  - _Requirements: 3.1_
+  - Done 2026-11-19 (probe app on Amplify Hosting, deleted after the run). The last
+    `X-Forwarded-For` entry is CloudFront's edge, not the client, and a forged value stays at the
+    front. `clientAddress` now reads `CloudFront-Viewer-Address` without its port, which CloudFront
+    overwrites. Design "The client address" and reference §3 match.
+
+- [x] 2. Rule R16 (tests first)
+- [x] 2.1 R16's tests
+  - New `tools/repo-check/test/onboarding.test.mjs`, written before the rule, as the design's
+    Testing Strategy lists:
+    - the public name in prose fails, and in a fence fails;
+    - a `'use client'` block reading the key fails, for each of the four spellings and with a
+      leading comment line;
+    - a `'use client'` block importing `lib/onboarding/engine` fails;
+    - a server block reading the key passes, and a client block without it passes;
+    - each finding names R16, the path and the line.
+  - Done when the tests run and fail for the missing rule.
+  - _Requirements: 5.1_
+- [x] 2.2 R16
+  - `tools/repo-check/lib/onboarding-key.mjs` (`onboardingKeyFindings(textFiles)`), using
+    `lib/markdown.mjs` for fenced blocks. `check.mjs`: `RULES` gains `'R16'`, and the rule runs
+    after R15. `CONTRIBUTING.md` "What the check runs" gains the R16 row (O5); its header says
+    "R1 to R16".
+  - Done when `node --test tools/repo-check/test/onboarding.test.mjs` passes and
+    `node tools/repo-check/check.mjs --only R16` exits 0 on the branch.
+  - **Built 2026-11-14** on `feat/customer-self-onboarding-r16` (cut from `origin/main` `5bd3425`,
+    with the spec branch merged in), held for the S4 integration pull request as O6 says. The CLI
+    test that named R16 as unknown now names R17, and a CLI test for R16 is added. All 241
+    repo-check tests pass; the full check exits 0. `CONTRIBUTING.md` has no "R1 to R15" header to
+    change; the rule table gains R16's row.
+  - _Requirements: 5.1_
+
+- [x] 3. Register
+- [x] 3.1 TS-O1 and `met`
+  - `tools/repo-check/tenancy-statements.json`: TS-O1 with `requires: ["TD-7"]`, `until: []`, its
+    text (O3) and its `in` (O3's four files); `dependencies["TD-7"]` restated as the design says;
+    `met` gains `"TD-7"`.
+  - `CONTRIBUTING.md` "Tenancy statements": the TS-O1 row. TS-N1's row is unchanged.
+  - `tenancy.test.mjs`, tests first:
+    - with `TD-7` met, a file holding TS-N1 fails `ts-retired`;
+    - each `in` file without TS-O1 fails `ts-required-missing`;
+    - TS-O1 changed by one word fails `ts-altered`;
+    - without `TD-7`, TS-O1 anywhere fails `ts-held-back`.
+  - Done when `node --test tools/repo-check/test/tenancy.test.mjs tools/repo-check/test/docs.test.mjs`
+    passes. `check.mjs --only R15` then lists exactly TS-N1's three files and TS-O1's four files,
+    which tasks 4 to 6 clear.
+  - _Requirements: 1.1, 1.2, 1.5, 5.2_
+- [x] 3.2 ES-17n
+  - `CONTRIBUTING.md` "Engine statements": the ES-17n row after ES-16 (O4).
+  - `guard.test.mjs` gains TS-O1 and ES-17n: no §C20 pattern and no marker token.
+  - Done when `node --test tools/repo-check/test/guard.test.mjs` passes.
+  - _Requirements: 2.1, 3.11 (until TD-17)_
+
+- [x] 4. The Mode_Guide (`add-multitenancy/references/engine-customer-tenants.instructions.md`)
+- [x] 4.1 §1, §3, §4 and §13
+  - §1 Status: the sentence pointing to §13.
+  - §3 Never: the two exceptions. "Never create a customer from code, except through the
+    `add-customer-onboarding` skill's route, with the person's own session" (1.3), and the
+    sentence about the id a person's own creation chose.
+  - §4: TS-N1 and its "Who could offer it later" line removed.
+  - New §13 "Customers who sign themselves up": TS-O1, the 1.4 line, and the link to the skill's
+    `SKILL.md` (S-2 (b), criterion 1.2 as amended).
+  - Done when FT holds for `add-multitenancy`, and R15 lists nothing for this file.
+  - _Requirements: 1.2 to 1.4_
+- [x] 4.2 §5 sign-in, §11 debugging, §12 review (S2's sections)
+  - §5:
+    - the login route's `email_not_confirmed` → 403 `EMAIL_NOT_CONFIRMED` mapping, with resend;
+    - `settleTenant`'s empty-list branch with `SELF_ONBOARDING`, exactly as the design's block;
+    - the chooser's "Create another company" link;
+    - the fifth route an unbound session may use.
+  - §11: the five debugging rows of the design's Folder passages.
+  - §12: the three security checks.
+  - Done when FT holds for `add-multitenancy`.
+  - _Requirements: 3.5, 4.1, 4.3_
+
+- [x] 5. The new skill `add-customer-onboarding`
+- [x] 5.1 `SKILL.md`
+  - Front matter as the design's Folder section. Then:
+    - the Gate (byte copy of `tools/repo-check/gate.md`);
+    - the Supabase stop;
+    - one Engine passage holding TS-A, the Tenancy check pointer, ES-17n for the mode `scope`, the
+      Onboarding check (O2, written once here), TS-O1, and the order of work steps 4 to 11 with
+      their exact sentences;
+    - the Refusals table;
+    - a link to the reference file.
+  - Done when FT holds for `add-customer-onboarding` (R5 and R14 for its front matter; R15 lists
+    nothing for it).
+  - _Requirements: 1.2, 2.1 to 2.6, 3.8, 3.11_
+- [x] 5.2 `references/engine-customer-onboarding.instructions.md`
+  - `<!-- buildpad-backend-file: engine -->`, the Gate, then the flow as the design writes it:
+    - the files table;
+    - `lib/onboarding/engine.ts` (the block of "The module that holds the key", with `mapRefusal`'s
+      table);
+    - `clientAddress` as task 1.2 settled it;
+    - `verifyHuman`'s interface, and `sendMail`'s;
+    - the four routes and three pages, each with its `'use client'` marking where it is client
+      code;
+    - the code in the fragment, and the app URL from `NEXT_PUBLIC_MICROAPP_URL_MAIN`;
+    - the two changes to S2's sign-in;
+    - the create route's same-id retry (once after 2 s in the route; 5 s and 10 s in the form), and
+      the two sentences on the template-copy lock;
+    - the `amplify.yml` line, copied from the Platform's template (task 1.1).
+  - Done when FT holds, `check.mjs --only R16` exits 0 (no client block reads the key or imports the
+    module), and a read-through confirms every Engine path and member against task 1.1's
+    reconciliation.
+  - _Requirements: 3.1 to 3.10_
+- [x] 5.3 Folder registration
+  - `tools/repo-check/skill-map.json`: the design's row. The same row goes in
+    `.kiro/specs/backend-aware-skills/requirements.md`'s Skill map, with its Counts line updated.
+  - `tools/repo-check/converted/add-customer-onboarding`.
+  - `tools/repo-check/supabase-view-changes/add-customer-onboarding.json`: two `new-file` entries,
+    `"release": "unreleased"` until task 9.
+  - README catalogue: one entry with the front matter's description.
+  - Done when `node --test tools/repo-check/test/map.test.mjs tools/repo-check/test/readme.test.mjs`
+    passes and `check.mjs --only R4,R7,R11,R13` exits 0.
+  - _Requirements: 6.1_
+
+- [x] 6. TS-O1 in the chooser and `add-users`
+- [x] 6.1 `add-multitenancy/SKILL.md`
+  - TS-N1 (`:109`) replaced by TS-O1.
+  - The "never create a customer from code" sentence (`:102-104`) gains the 1.3 exception.
+  - After the limits paragraph (`:92-94`): the scale-and-isolation guide (K-10), then ES-17n.
+  - The Tenancy check copy is untouched (R15 `tenancy-check-altered`).
+  - Done when FT holds for `add-multitenancy`.
+  - _Requirements: 1.2, 1.3, 3.11_
+- [x] 6.2 `add-users/SKILL.md`
+  - TS-N1 (`:178`) replaced by TS-O1, then the 4.2 sentence.
+  - Done when FT holds for `add-users`.
+  - _Requirements: 1.2, 4.2_
+- [x] 6.3 `manage-scope/SKILL.md`
+  - ES-17n after the TS-A that follows ES-9's copy (`:797-799`).
+  - Done when FT holds for `manage-scope`.
+  - _Requirements: 3.11 (until TD-17)_
+
+- [x] 7. The skills that speak of sign-up
+- [x] 7.1 `authentication-proxy` (both files)
+  - After each ES-5 copy (`SKILL.md:67`, `references/authentication-proxy.instructions.md:88`): the
+    K-8 sentence naming `add-customer-onboarding`, in the mode `customer-tenants` only.
+  - Done when FT holds for `authentication-proxy`.
+  - _Requirements: 4.2_
+- [x] 7.2 `security-and-hardening`, `references/security-checklist.md`, `agents/security-auditor.md`
+  - The exception at `security-and-hardening/SKILL.md:83` and `:223`, and at
+    `agents/security-auditor.md:84`. The three checks in the checklist places the design names (the
+    S2 places in the checklist and the auditor).
+  - Done when FT holds for each of the three.
+  - _Requirements: 4.1_
+- [x] 7.3 `debugging-and-error-recovery`
+  - The five rows in the Engine tree (S2's place). `buildpad-debug` is unchanged (design Issue 2).
+  - Done when FT holds for `debugging-and-error-recovery`.
+  - _Requirements: 4.3_
+
+  - Tasks 3 to 7 done 2026-11-19 on `feat/customer-self-onboarding-s4` (`85e57bd`..`f9917d8`, review
+    fixes in the next commit); `check.mjs` exits 0 without `--tag`. `clientAddress` waited on 1.2
+    (marked `A-S1 pending` in the reference file until 1.2 was done).
+- [ ] 8. Whole-branch check
+- [ ] 8.1 The check and the read-through
+  - `node tools/repo-check/check.mjs` exits 0 on the integration branch (every rule, R15 and R16
+    included).
+  - Run the design's manual read-through: the Supabase stop; the `scope` stop at ES-17n; the
+    `selfOnboarding: false` stop; the stop without a mail provider; the full path. Check ES-17n
+    word for word in its three places.
+  - Done when both are recorded in the pull request with reader, date and commit.
+  - _Requirements: 1.1 to 5.2_
+- [x] 8.2 Dev run
+  - With the Platform's dev run (its task 12.2): steps 1 to 8 of the design's dev run, with an
+    agent following the skill on a fresh Next.js kit.
+  - Done when each step's outcome is recorded. A finding amends design.md (dated) and the text task
+    it changes before task 9.
+  - _Requirements: 3.1 to 3.10_
+  - Done 2026-11-19: outcomes and amendments in design.md "Dev run, 2026-11-19". Two live defects
+    were fixed in the text: L1, the middleware loop; and L2, the same-id race. 22 build findings were
+    handled, and the reasons are recorded for those left unchanged. The new and changed code was
+    type-checked (`tsc --strict`).
+
+- [ ] 9. Release S4 (MINOR)
+- [ ] 9.1 Release
+  - `CHANGELOG.md`: the design's entry. The change file's `release` becomes the tag. The tag is the
+    next MINOR after the latest release on `main`.
+  - Done when the tag's CI (R10, R13) passes and the release is published.
+  - _Requirements: 6.1_
+- [x] 9.2 `customer-tenant-skills` task 12.2
+  - Tick it in `.kiro/specs/customer-tenant-skills/tasks.md`, citing this release and this spec.
+  - Done when committed in the release's pull request or the one after it.
+  - _Requirements: 6.2_
+  - Done 2026-11-19 in the release's pull request (with S2's 10.8 tick).
+
+- [ ] 10. Engine-sent verification mail (S-3 (b)), against Engine entry 205 and the Platform's
+  group 13 as merged
+  - **Written in full 2026-11-14 and approved by the user the same day ("Approve tasks")** (it was
+    an outline until both were merged). Each task starts only once 10.1's gate holds.
+    Built on the design's "S-3 (b) as built", with **S-4 settled (b) by the user on 2026-11-14**
+    ("(b) as recommended"). The marks *(S-4 (b))* show what that decision adds.
+  - **Where it lands.** If its gate (10.1) holds before S4's integration pull request, group 10
+    joins that pull request and S4's release. Otherwise it is a later pull request and a MINOR
+    release of its own (10.8).
+  - Same rules as groups 2 to 9: tests first (R16), T-1 to T-5, FT per folder.
+
+- [ ] 10.1 Gate: Engine-sent mail is live somewhere
+  - Each holds, recorded as a dated amendment of `requirements.md`'s Dependencies:
+    - Engine entry 205 released and in the Platform's Version_Catalog;
+    - the Platform's group 13 deployed, and `ENGINE_ONBOARDING_MAIL_MIN_VERSION` set, in at least
+      one environment (its 13.10);
+    - a kit downloaded there carries `selfOnboardingMail`;
+    - *(S-4 (b) only)* the Platform writes `BUILDPAD_SIGNUP_MAIL` beside the key (a Platform task
+      after group 13; this group names it, the Platform's spec owns it).
+      **Holds as of 2026-11-14, as reported by the Platform's session (not yet checked here):** the
+      Platform's Requirement 11 and group 14 (PR #288 spec, PR #296 code, `main` `dc5d4bfb`); on dev
+      through PR #301 (`aws-dev` `release/dev` `09693b9f`); migration T6 on `sbase-dev` and
+      production, with the code reaching production at `main`'s next release. Dormant on dev
+      while the mail gate is unset. Contract: the value is exactly `app`, `demo` or `relay`. It is a
+      server-only variable on the Amplify app that holds the key, written in the same write as
+      `BUILDPAD_ONBOARDING_KEY`, and only while `ENGINE_ONBOARDING_MAIL_MIN_VERSION`'s gate is open.
+      A change of delivery rewrites it. Turning sign-up off, or revoking the key in that app, removes
+      both variables whether the gate is open or not.
+  - Reconcile against the released build: the answer `{existing: false, mail: {sent}}`, the
+    link `verify_url#code=`, `/verify-email`, `RECIPIENT_NOT_ALLOWED` and its message, and the
+    demo cap's message prefix "This demo has sent". A difference amends design.md (dated) first.
+  - Done when the amendment is committed with the releases, commits and kit checked.
+  - **Blocked until** each holds.
+  - _Requirements: 6.1; Dependencies_
+
+- [ ] 10.2 R16: the guarded pass-through *(S-4 (b) only)*, tests first
+  - `onboarding.test.mjs` gains: a fenced block marked as the demo pass-through (its fixed comment
+    `// Demo only: no human check while the Engine sends the mail to the project's members.`)
+    without `process.env.BUILDPAD_SIGNUP_MAIL === "demo"` fails `onboarding-demo-unguarded`; with
+    it, passes; the code is named in the finding.
+  - `lib/onboarding-key.mjs` gains the code; `CONTRIBUTING.md`'s R16 row names it.
+  - Done when `node --test tools/repo-check/test/onboarding.test.mjs` passes and
+    `check.mjs --only R16` exits 0.
+  - _Requirements: 5.1_
+
+- [ ] 10.3 The Onboarding check reads the delivery (O1, O2)
+  - O1 gains the signal member `selfOnboardingMail` (`app`, `demo`, `relay`), read from
+    `.buildpad/project.json` only (S-1 (a)). A missing or unknown value is `app`. It is never
+    asked and never written to `.buildpad/onboarding-answer.json`.
+  - O2's text in `add-customer-onboarding/SKILL.md` gains one step after the answer `true`: "Read
+    `selfOnboardingMail` from `.buildpad/project.json`: `demo` or `relay` means the Engine mails the
+    code; anything else, or no field, means the app does."
+  - Done when FT holds for `add-customer-onboarding`.
+  - _Requirements: 2.2, 2.3_
+
+- [ ] 10.4 Steps 5, 6 and 8 branch on the delivery (`SKILL.md`)
+  - Step 5 (Mail_Sender): skipped under `demo` and `relay`, with the sentence "The Engine mails the
+    sign-up code for this project, so the app needs no mail provider for sign-up."
+  - Step 6 (bot check): under `demo`, *(S-4 (b))* write `lib/onboarding/human-check.ts` as the
+    guarded pass-through, with its fixed comment; under `relay` and `app`, as approved.
+  - Step 8 (`amplify.yml`): *(S-4 (b))* a second line, for `BUILDPAD_SIGNUP_MAIL`, directly after
+    the key's, as the Platform's group 14 states it:
+    `[ -z "$BUILDPAD_SIGNUP_MAIL" ] || echo "BUILDPAD_SIGNUP_MAIL=$BUILDPAD_SIGNUP_MAIL" >> .env.production`,
+    with the comment "Self-onboarding: who sends the sign-up mail (app, demo or relay); the demo's
+    human check reads it. Server only; never NEXT_PUBLIC_."
+  - K-4 and K-5 gain their dated amendment notes in `requirements.md` (S-3 (b) and S-4).
+  - Done when FT holds for `add-customer-onboarding`, and `check.mjs --only R16` exits 0.
+  - _Requirements: 2.3, 2.4_
+
+- [ ] 10.5 The flow in the reference file
+  - `lib/onboarding/engine.ts`: `signUp` and `resend` answer either shape; `mapRefusal` gains
+    `RECIPIENT_NOT_ALLOWED` and the demo cap (by its message prefix, Issue 5).
+  - Sign-up and resend routes: branch on the answer, as the design's "The answer decides". With
+    `mail.sent: false`, the page shows "We could not send the email. Try again." and offers resend;
+    with `verification` and no mail sender, 503 and `onboarding.mail_sender_missing`.
+  - The sign-up page: under `demo`, the demo sentence.
+  - The verify page: unchanged; the reference file says the Platform links to it.
+  - The refusals table: the two new rows.
+  - *(S-4 (b))* `verifyHuman`'s guarded pass-through block, with the 503 refusal.
+  - Done when FT holds, R16 exits 0, and a read-through confirms every member against 10.1.
+  - _Requirements: 3.2 to 3.4, 3.8, 3.10_
+
+- [ ] 10.6 The folder passages
+  - `debugging-and-error-recovery`: rows for "a team member's address gets no demo mail" (the
+    member list, mirrored within a minute), "outsiders are refused" (`RECIPIENT_NOT_ALLOWED`, the
+    demo's rule), "too many attempts in a demo" (the cap) and "sign-up mail is not set up"
+    (`onboarding.mail_sender_missing`).
+  - `security-and-hardening` and `agents/security-auditor.md`: one check, that a demo pass-through
+    is the guarded one *(S-4 (b))*.
+  - The Mode_Guide §13: one paragraph on the three deliveries, and how to move a demo to
+    production (choose `app` or `relay` on the Platform, then redeploy).
+  - Done when FT holds for each folder.
+  - _Requirements: 4.1, 4.3_
+
+- [ ] 10.7 Whole-branch check and the dev run's demo case
+  - `node tools/repo-check/check.mjs` exits 0.
+  - The dev run gains: with `demo` on, an agent following the skill on a fresh kit writes no mail
+    sender and *(S-4 (b))* the guarded pass-through; a member signs up, receives the Engine's mail,
+    verifies on `/verify-email` and creates a company; an outsider is refused; switching the
+    Platform to `relay` and redeploying makes sign-up refuse until a captcha is added *(S-4 (b))*.
+  - Done when each outcome is recorded with its time.
+  - _Requirements: 3.1 to 3.10_
+
+- [ ] 10.8 Release
+  - With S4 (one CHANGELOG entry, the delivery named in it) if 10.1 held before S4's pull request;
+    otherwise a MINOR of its own, with its own CHANGELOG entry and change file.
+  - Done when the tag's CI passes and the release is published.
+  - _Requirements: 6.1_
+
+## Deferred, not in this plan
+
+- **Requirement 3.11's `scope` branch beyond ES-17n:** waits for TD-17 (the Engine entry that
+  takes over entry 204's Requirement 10, and the Platform's Requirement 10). A spec of its own
+  designs it, and ES-17n retires then.
+- **Engine gaps, for a later Engine entry (not opened now):**
+  1. no `created_at` on the tenant summary;
+  2. the create route's three 409s share `CONFLICT` with no `extensions` (the guide matches
+     message prefixes until then);
+  3. without `X-Onboarding-Client-Address`, all of an app's sign-ups share one budget of 5 per
+     15 minutes;
+  4. `max_linked_tenants` counts self-service creations only (the Platform's D-2).
+  5. ~~The Engine mailing the verification code itself~~: **moved 2026-11-09** into Engine entry 205
+     `onboarding-verification-mail`, merged 2026-11-09 (PR #44). This repository's part is
+     group 10.
+
+  Entry 204's own open item on password policy (no strength rule in any Engine door) also stands.
+  The app keeps a floor of 8 characters on sign-up until then.
+- **Mobile apps' sign-up** (the Platform's Issue 6).
+
+## Requirements coverage
+
+| Criterion | Task(s) |
+|---|---|
+| 1.1 | 3.1 |
+| 1.2 | 3.1, 4.1, 5.1, 6.1, 6.2 |
+| 1.3 | 4.1, 6.1 |
+| 1.4 | 4.1 |
+| 1.5 | 3.1 (held back until `met`) |
+| 2.1 | 3.2, 5.1 |
+| 2.2 to 2.6 | 5.1 |
+| 3.1 | 1.2, 5.2 |
+| 3.2 to 3.4 | 5.2 |
+| 3.5 | 4.2, 5.2 |
+| 3.6, 3.7, 3.9, 3.10 | 5.2 |
+| 3.8 | 5.1, 5.2 |
+| 3.11 | 3.2, 5.1, 6.1, 6.3 (ES-17n until TD-17) |
+| 4.1 | 4.2, 7.2 |
+| 4.2 | 6.2, 7.1 |
+| 4.3 | 4.2, 7.3 |
+| 5.1 | 2.1, 2.2 |
+| 5.2 | 3.1 |
+| 6.1 | 1.1, 5.3, 9.1 |
+| 6.2 | 9.2 |

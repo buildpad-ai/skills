@@ -241,14 +241,24 @@ test('R12: the contract test and every shared case, exit 0; one changed expectat
   assert.match(r.stdout, /^R12 tools\/repo-check\/test\/contract\.test\.mjs:\d+ contract-test-failed .*rpc positive/m);
 });
 
-test('R15: accepted by --only, R16 is not; an altered statement fails with file and line', () => {
+test('R15: accepted by --only; an altered statement fails with file and line', () => {
   const root = makeRepo(FIXTURE);
   assert.equal(run(root, ['--only', 'R15']).code, 0);
-  assert.equal(run(root, ['--only', 'R16']).code, 2);
   change(root, { 'skill-a/SKILL.md': L(...FM('skill-a'), '', '# A', '', ENG, 'On an Engine project with Customer_Tenants alphA.', END) });
   const r = run(root, ['--only', 'R15']);
   assert.equal(r.code, 1, r.stdout + r.stderr);
   assert.deepEqual(findingLines(r.stdout).map((l) => l.split(' ').slice(0, 3).join(' ')), ['R15 skill-a/SKILL.md:9 ts-altered']);
+});
+
+test('R16: accepted by --only, R17 is not; the public key name fails with file and line', () => {
+  const root = makeRepo(FIXTURE);
+  assert.equal(run(root, ['--only', 'R16']).code, 0);
+  assert.equal(run(root, ['--only', 'R17']).code, 2);
+  const publicName = ['NEXT', 'PUBLIC', 'BUILDPAD', 'ONBOARDING', 'KEY'].join('_');
+  change(root, { 'skill-a/SKILL.md': L(...FM('skill-a'), '', '# A', '', `Set ${publicName} in the app.`) });
+  const r = run(root, ['--only', 'R16']);
+  assert.equal(r.code, 1, r.stdout + r.stderr);
+  assert.deepEqual(findingLines(r.stdout).map((l) => l.split(' ').slice(0, 3).join(' ')), ['R16 skill-a/SKILL.md:8 onboarding-key-public']);
 });
 
 test('R15: a missing or non-JSON data file exits 2 and names it', () => {
