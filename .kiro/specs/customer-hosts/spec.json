@@ -1,0 +1,14 @@
+{
+  "feature_name": "customer-hosts",
+  "created_at": "2026-11-22T04:00:00Z",
+  "updated_at": "2026-11-22T04:00:00Z",
+  "language": "en",
+  "phase": "implemented",
+  "phase_note": "Lightweight spec. Decisions D-1 (customer hosts are a Platform feature, TD-18 met 2026-11-22), D-2 (split TS-N2 into TS-N2m and TS-H1) and D-3 (branch, PR and v10.3.0 release notes) settled by the user on 2026-11-22. The pattern was built and tested first in xLMS (spec host-tenant-routing, main-app PR 90).",
+  "approvals": {
+    "requirements": { "generated": true, "approved": true },
+    "design": { "generated": true, "approved": true },
+    "tasks": { "generated": true, "approved": true }
+  },
+  "ready_for_implementation": true
+}

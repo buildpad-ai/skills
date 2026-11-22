@@ -9,9 +9,10 @@
     "TD-9": "XAppHub sign-in in a customer (Platform Decision 21 (b), Wave 2)",
     "TD-10": "Workers per customer (Platform Decision 13, Wave 3)",
     "TD-12": "Backup and restore of one customer (Platform Decision 14, Wave 3)",
-    "TD-13": "Open Studio into a customer (Platform Requirement 10, Wave 2)"
+    "TD-13": "Open Studio into a customer (Platform Requirement 10, Wave 2)",
+    "TD-18": "The Platform serves each customer of a project with Customer_Tenants on a host name of its own (a wildcard subdomain), and get_project_detail lists each customer's slug"
   },
-  "met": ["TD-1", "TD-7"],
+  "met": ["TD-1", "TD-7", "TD-18"],
   "anchors": [
     {
       "es": "ES-3",
@@ -203,12 +204,41 @@
       "id": "TS-N2",
       "requires": [],
       "until": [
-        "TD-8"
+        "TD-8",
+        "TD-18"
       ],
       "text": "On an Engine project with Customer_Tenants a public page of one customer is not available: a request without a session acts in the tenant `X-Tenant-Id` names, and nothing maps a host name to a customer yet. A page without a session reads the Blueprint only, through `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. Tell the developer so and stop: do not put a customer's tenant id in the application or let a visitor choose it.",
       "in": [
         "create-api-route/references/engine-api-routes.instructions.md",
         "add-multitenancy/references/engine-customer-tenants.instructions.md"
+      ]
+    },
+    {
+      "id": "TS-N2m",
+      "requires": [
+        "TD-18"
+      ],
+      "until": [
+        "TD-8"
+      ],
+      "text": "On an Engine project with Customer_Tenants a public page of one customer is not available: a request without a session acts in the tenant `X-Tenant-Id` names, and the Engine maps no host name to a customer. A page without a session reads the Blueprint only, through `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. Tell the developer so and stop: never send a customer's tenant id as `X-Tenant-Id`, and never let a visitor choose a tenant. A customer's own host name serves signed-in people only, as the `add-multitenancy` skill's guide `engine-customer-tenants` says in its section 14.",
+      "in": [
+        "create-api-route/references/engine-api-routes.instructions.md",
+        "add-multitenancy/references/engine-customer-tenants.instructions.md",
+        "authentication-proxy/references/authentication-proxy.instructions.md"
+      ]
+    },
+    {
+      "id": "TS-H1",
+      "requires": [
+        "TD-18"
+      ],
+      "until": [],
+      "text": "On an Engine project with Customer_Tenants the Buildpad platform serves the application on one host name per customer, `<slug>.<customer domain>`, and the application maps the host to the customer itself, with a committed map from each customer's `slug` to its `id` copied from `customers[]` of `get_project_detail`. The map only chooses which entry of the signed-in person's own `GET /api/auth/tenants` list to enter: the password sign-in still sends no `X-Tenant-Id`, and nothing without a session uses the map. On a customer's host the application enters that customer without a chooser, refuses a person whose list does not hold it without signing them out, answers 404 for a subdomain the map does not name, and builds a redirect from the request's host only when that host is one label of the customer domain and in the map. Build it as the `add-multitenancy` skill's guide `engine-customer-tenants` says in its section 14.",
+      "in": [
+        "add-multitenancy/references/engine-customer-tenants.instructions.md",
+        "create-api-route/references/engine-api-routes.instructions.md",
+        "authentication-proxy/references/authentication-proxy.instructions.md"
       ]
     },
     {
