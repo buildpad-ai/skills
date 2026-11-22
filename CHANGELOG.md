@@ -14,6 +14,57 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
+## v10.4.0
+
+XAppHub sign-in at customers: on an Engine project with Customer tenants, XAppHub sign-in now
+reaches customers where the Buildpad platform says so, and the skills tell the agent how to build
+it. Install it with `npx skills add buildpad-ai/skills#v10.4.0`. It is a MINOR release: every new
+text is for Engine projects only, no skill is added, removed or renamed, and the "Establish the
+backend first" procedure stays at version 1.
+
+TD-9 (XAppHub sign-in in a customer, the Platform's Decision 21 (b)) is met, so TS-N3 is retired.
+The condition now lives in the text, per project: XAppHub sign-in is available only where
+`get_project_detail` reports the `my-apps` connector's `externalSignIn.customers.reached` as true,
+which it does once a project Admin has confirmed on the Platform's Customers page that the
+application names each customer's tenant at sign-in from its host name. Where the field is absent
+(the Platform does not offer it, as on production today) or `reached` is false, the agent tells the
+developer and stops, as before. TS-N3m says so, and TS-X1 is new: the start route and the callback
+each take the tenant from the request's host through the customer host map, a subdomain the map
+does not name answers 404 before any redirect to XAppHub, the bare host stays the Blueprint for the
+developers' own sign-in, `redirect_uri` is the request's own checked origin, and the tenant is never
+read from `state`, a query parameter or a cookie. TS-H1 is reworded in place: its only use of the
+map without a session is this sign-in.
+
+- **`add-multitenancy`:** the guide `engine-customer-tenants` gains section 15, XAppHub sign-in at
+  customers:
+  - what to do for each answer of `get_project_detail` (no connector, `customers` absent, `reached`
+    false or true), and the "on for N of M customers" the developer is told;
+  - `signInTenantOf(headers)` beside section 14's matcher: `customer`, `blueprint` or `unknown`,
+    from the host only;
+  - the start route's 404 before the redirect, and `redirect_uri` from `publicOrigin()`; the
+    callback resolving the host again and sending the customer's id as `X-Tenant-Id`;
+  - a customer's starting role (set on the Platform's Customers page, not with the
+    `external-sign-in` tool), the redirect URLs the Connectors page lists and that are added in
+    XAppHub by hand, the three facts to tell the developer, the CLI's `external-oauth-engine` module
+    in the mode `customer-tenants`, and tests.
+
+  Sections 1, 4, 5.3, 11 (four symptoms) and 12 (four review checks) follow.
+- **`add-external-oauth`:** TS-N3m and TS-X1 in place of TS-N3. Step 1 names the customer hosts'
+  callbacks, Step 3 says to check that the installed routes take the tenant from the host, the
+  sign-in's step 4 and "Accounts and roles" name the host's customer, and two troubleshooting rows
+  are new.
+- **`create-api-route`, `authentication-proxy`:** TS-H1's new wording.
+- **Repository check:** TD-9 is met; TS-N3 is retired; TS-N3m and TS-X1 are registered. A new test
+  runs the guide's own host matcher and `signInTenantOf`, with their types stripped, against host
+  cases (one label, port, case, lookalikes, two labels, the bare and development hosts), and checks
+  that the guide's start route refuses an unknown host before it redirects and that neither route
+  reads a tenant from the query, `state` or a cookie. Spec `.kiro/specs/xapphub-customer-sign-in/`.
+
+### Supabase projects
+
+No file that a Supabase project's agent reads changes. The changed files are Engine-only, or the
+change stands in an Engine passage.
+
 ## v10.3.0
 
 Customer hosts: on an Engine project with Customer tenants, the Buildpad platform serves the
