@@ -72,6 +72,9 @@ until Releases are available (section 13).
 
 Customers that sign themselves up: available while the project's Self-onboarding is on (section 13).
 
+Customer hosts: the Platform serves the application on one host name per customer, and signed-in
+people use it to reach their customer directly (section 14).
+
 What the mode does not offer is listed in section 4.
 
 ## 2. What the mode is
@@ -95,9 +98,9 @@ only for that person's own retry, is not such an input.
 
 ## 4. Not available
 
-On an Engine project with Customer_Tenants a public page of one customer is not available: a request without a session acts in the tenant `X-Tenant-Id` names, and nothing maps a host name to a customer yet. A page without a session reads the Blueprint only, through `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. Tell the developer so and stop: do not put a customer's tenant id in the application or let a visitor choose it.
+On an Engine project with Customer_Tenants a public page of one customer is not available: a request without a session acts in the tenant `X-Tenant-Id` names, and the Engine maps no host name to a customer. A page without a session reads the Blueprint only, through `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. Tell the developer so and stop: never send a customer's tenant id as `X-Tenant-Id`, and never let a visitor choose a tenant. A customer's own host name serves signed-in people only, as the `add-multitenancy` skill's guide `engine-customer-tenants` says in its section 14.
 
-Who could offer it later: the Buildpad platform with the Engine, by mapping a host name to a customer (the Platform's second wave).
+Who could offer it later: the Buildpad platform with the Engine, by mapping a host name to a customer for requests without a session (the Platform's second wave).
 
 On an Engine project with Customer_Tenants XAppHub sign-in is not available: its first sign-in would create the person's account in the Blueprint, outside every customer. Tell the developer so and stop: people sign in with a password, as the `add-multitenancy` skill's guide says.
 
@@ -518,6 +521,16 @@ Creating a company answers 503 (Self-onboarding)
 Creating a company answers 409 before creating anything (Self-onboarding)
   → the Blueprint has no published Release
   → ask the Platform member who turned Self-onboarding on: turning it on publishes the first Release
+"There is no customer at this address." (404) on a customer host
+  → the subdomain's slug is not in config/customer-hosts.ts
+  → add the customer from get_project_detail's customers[], then deploy (section 14.6)
+The chooser, or every customer, appears on a customer host
+  → the application does not see the customer host: the hosting passes another name in
+    X-Forwarded-Host and Host, or the host map is not read
+  → log requestHost() once on the deployed app; check the map and section 14.2
+"Your account does not belong to <customer>." on a customer host
+  → the person's own list lacks that customer (another customer's person, or not yet added)
+  → an administrator of that customer adds them, or they use their own customer's host
 ```
 
 ## 12. Review checks
@@ -530,6 +543,15 @@ In the mode `customer-tenants`:
   at once;
 - no cache in the application (server or browser) is keyed without the current customer, and a
   switch reloads the page.
+
+With customer hosts (section 14), also:
+- the customer host map holds only `slug`, `tenantId` and `name`, copied from `customers[]` of
+  `get_project_detail`, and no code without a session reads it;
+- on a customer's host the sign-in, the list, the switch and the decline use only that customer's
+  entry of the person's own list; a person outside it gets 403 `NOT_A_MEMBER` and no sign-out;
+- a subdomain the map does not name answers 404 on every path;
+- every redirect is built from `publicOrigin()`, which uses the request's host only when it is one
+  label of the customer domain and in the map; the matcher's tests include lookalike hosts.
 
 With Self-onboarding on (section 13), also:
 - `BUILDPAD_ONBOARDING_KEY` is read only in one server-only module, never with a `NEXT_PUBLIC_`
@@ -549,3 +571,216 @@ Turning sign-up on publishes Release 1, and new customers are created from it, s
 the Blueprint afterwards reaches no customer until a later Release is published (section 7.1).
 
 Build it with the [`add-customer-onboarding`](../../add-customer-onboarding/SKILL.md) skill.
+
+## 14. Customer hosts
+
+On an Engine project with Customer_Tenants the Buildpad platform serves the application on one host name per customer, `<slug>.<customer domain>`, and the application maps the host to the customer itself, with a committed map from each customer's `slug` to its `id` copied from `customers[]` of `get_project_detail`. The map only chooses which entry of the signed-in person's own `GET /api/auth/tenants` list to enter: the password sign-in still sends no `X-Tenant-Id`, and nothing without a session uses the map. On a customer's host the application enters that customer without a chooser, refuses a person whose list does not hold it without signing them out, answers 404 for a subdomain the map does not name, and builds a redirect from the request's host only when that host is one label of the customer domain and in the map. Build it as the `add-multitenancy` skill's guide `engine-customer-tenants` says in its section 14.
+
+The Platform sets the hosts up: every customer of the project is served on `<slug>.<customer domain>`,
+for example `acme.lms.apps.buildpad.ai`, and the application keeps answering on its own address (the
+bare host). The Engine maps no host to a tenant, and its `GET /api/auth/tenants` entries carry no
+slug, so the application holds the map. Take each customer's `slug`, `id` and `name` from
+`customers[]` of `get_project_detail`. Ask the developer once for the customer domain (the part
+after `<slug>.`) when you do not know it. A request without a session still reads the Blueprint only
+(section 4).
+
+| Host | What the application does |
+|---|---|
+| `<slug>.<customer domain>`, slug in the map | Sign-in enters that customer, never the chooser; a person whose list lacks it is refused (14.3) |
+| `<label>.<customer domain>`, label not in the map | 404 on every path (14.2) |
+| Any other host (the bare host, the hosting's default domain, `localhost`) | Sections 5.1 to 5.6, unchanged |
+| `<slug>.localhost:<port>`, in development only | As the customer's host |
+
+### 14.1 The map and the host
+
+```ts
+// config/customer-hosts.ts: committed. Copied from get_project_detail customers[]; one line per customer.
+export const CUSTOMER_HOST_SUFFIX = "lms.apps.buildpad.ai"; // the customer domain
+export const CUSTOMER_HOSTS: Readonly<Record<string, { tenantId: string; name: string }>> = {
+  acme: { tenantId: "<customers[].id>", name: "Acme" },
+};
+```
+
+```ts
+// lib/customer-host.ts: Edge-safe (the middleware imports it). No server-only import.
+import { CUSTOMER_HOST_SUFFIX, CUSTOMER_HOSTS } from "@/config/customer-hosts";
+
+const LABEL = "[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?"; // exactly one DNS label
+const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const CUSTOMER = new RegExp(`^(${LABEL})\\.${esc(CUSTOMER_HOST_SUFFIX)}$`);
+const DEV = new RegExp(`^(${LABEL})\\.localhost$`);
+
+export type HostCustomer =
+  | { kind: "bare" }
+  | { kind: "unknown"; slug: string }
+  | { kind: "customer"; slug: string; tenantId: string; name: string };
+
+/** The host the client addressed: the first X-Forwarded-Host entry, else Host. */
+export function requestHost(headers: Pick<Headers, "get">): string | null {
+  const first = (v: string | null) => v?.split(",")[0]?.trim() || null;
+  return first(headers.get("x-forwarded-host")) ?? first(headers.get("host"));
+}
+
+/** Lower case, port removed; null for an IPv6 literal or a trailing dot. */
+export function hostnameOf(host: string | null): string | null {
+  const v = host?.trim().toLowerCase();
+  if (!v || v.startsWith("[")) return null;
+  const name = v.split(":")[0];
+  return name && !name.endsWith(".") ? name : null;
+}
+
+export function resolveHostCustomer(host: string | null): HostCustomer {
+  const name = hostnameOf(host);
+  const m = name && (CUSTOMER.exec(name) ?? (process.env.NODE_ENV !== "production" ? DEV.exec(name) : null));
+  if (!m) return { kind: "bare" };
+  const slug = m[1];
+  const entry = Object.hasOwn(CUSTOMER_HOSTS, slug) ? CUSTOMER_HOSTS[slug] : undefined;
+  return entry ? { kind: "customer", slug, ...entry } : { kind: "unknown", slug };
+}
+
+export const hostCustomerOf = (h: Pick<Headers, "get">) => resolveHostCustomer(requestHost(h));
+
+/** Exactly https://<one label>.<customer domain>: no port, path, user info or lookalike suffix. */
+export function isCustomerOrigin(origin: string): boolean {
+  try {
+    const u = new URL(origin);
+    return u.protocol === "https:" && !u.port && !u.username && origin === u.origin && CUSTOMER.test(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
+/** All entries on the bare host, the host's customer on its host, none on an unknown one. */
+export function onlyHostCustomer<T extends { id: string }>(tenants: T[], host: HostCustomer): T[] {
+  if (host.kind === "bare") return tenants;
+  return host.kind === "customer" ? tenants.filter((t) => t.id === host.tenantId) : [];
+}
+
+export const notMemberOfHost = (name: string) => `Your account does not belong to ${name}.`;
+```
+
+In route handlers and server components read the host with `hostCustomerOf(await headers())`
+(`next/headers`). A forged `X-Forwarded-Host` changes only which customer the client's own request
+asks for: the person's own list and the Engine still decide, and a browser cannot set the header on
+another person's cross-site request.
+
+### 14.2 The middleware
+
+Answer an unknown subdomain before anything else, so it never falls back to the bare host's sign-in
+(where a person could open any of their customers on an address meant for one):
+
+```ts
+// middleware.ts: first lines of the middleware function.
+if (hostCustomerOf(request.headers).kind === "unknown") {
+  const body = { errors: [{ message: "There is no customer at this address.", extensions: { code: "UNKNOWN_CUSTOMER_HOST" } }] };
+  return request.nextUrl.pathname.startsWith("/api/")
+    ? NextResponse.json(body, { status: 404, headers: { "Cache-Control": "private, no-store" } })
+    : new NextResponse("There is no customer at this address.\n", { status: 404, headers: { "Cache-Control": "private, no-store" } });
+}
+```
+
+A mapped customer host passes on: the routes and the current-customer read take the customer from
+the host themselves. The session cookies stay host-only (the `@supabase/ssr` default, no `Domain`), so
+each host has its own session and the bare host's session is not sent to a customer's host.
+
+### 14.3 Sign-in, the list, the switch and the decline
+
+Give `settleTenant` (5.2) the host, and filter the list before anything else. With at most one entry
+left, the person is entered without a chooser:
+
+```ts
+// lib/auth/tenants.ts: settleTenant on a customer's host.
+export async function settleTenant(supabase: ServerClient, accessToken: string, host: HostCustomer = { kind: "bare" }) {
+  const tenants = onlyHostCustomer(await listTenants(accessToken), host);
+  if (host.kind !== "bare" && tenants.length === 0) {
+    // Refused, never moved to another of the person's customers. No signOut: the client's default
+    // sign-out ends the person's sessions on every host and device. The login route drops this
+    // host's new cookies instead.
+    return { error: "NOT_A_MEMBER" as const, message: notMemberOfHost(host.kind === "customer" ? host.name : "this customer") };
+  }
+  // ... then exactly the body of 5.2, on `tenants`.
+}
+```
+
+```ts
+// app/api/auth/login/route.ts: after signInWithPassword, still with no X-Tenant-Id.
+const host = hostCustomerOf(await headers());
+const settled = await settleTenant(supabase, data.session.access_token, host);
+if ("error" in settled && settled.error === "NOT_A_MEMBER") {
+  for (const { name } of cookieStore.getAll()) {
+    if (/^sb-.+-auth-token(\.\d+)?$/.test(name)) cookieStore.delete(name); // this host's new session
+  }
+  return NextResponse.json({ errors: [{ message: settled.message, extensions: { code: "NOT_A_MEMBER" } }] }, { status: 403 });
+}
+```
+
+The other routes of 5.1, on a customer's host:
+
+- **`GET /api/auth/tenants`** answers `onlyHostCustomer(tenants, host)`; when that is empty, 403
+  `NOT_A_MEMBER` with `notMemberOfHost(name)`.
+- **`POST /api/auth/tenant`** first lists the person's tenants and refuses, with 403 `NOT_A_MEMBER`,
+  an id that is not in `onlyHostCustomer(tenants, host)`. Only then does it switch, and the Engine
+  checks the id again.
+- **`DELETE /api/auth/tenants/[id]`** forwards only the host's customer id. Any other id gets 404.
+- **The current customer** (5.3) is read from `onlyHostCustomer(tenants, host)`. A session bound to
+  another customer has no current customer on this host, so data routes refuse it as an unbound
+  session (403), and the layout sends it to the chooser, which offers only the host's customer. When
+  the person's list lacks the host's customer, the layout shows `notMemberOfHost(name)` with "Sign in
+  again", without signing out. The "Switch customer" menu offers nothing on a customer's host.
+
+The catch-all proxy keeps refusing the Engine's `auth/*` and `tenants*` paths: the tenant still
+comes only through these routes.
+
+### 14.4 Origins and redirects
+
+The CLI's `lib/origin.ts` builds every redirect from `publicOrigin(request)`: the configured
+`NEXT_PUBLIC_HOST_ORIGIN` first, then the forwarded host. Put the customer's host in front, rebuilt
+from the checked name, so a redirect returns to the host the request came to:
+
+```ts
+// lib/origin.ts: the first lines of publicOrigin(request), and the helper.
+export function customerOrigin(request: Pick<Request, "headers" | "url">): string | null {
+  const host = requestHost(request.headers);
+  if (resolveHostCustomer(host).kind !== "customer") return null;
+  const name = hostnameOf(host)!;
+  if (name.endsWith(".localhost")) return new URL(`${new URL(request.url).protocol}//${host}`).origin; // development
+  return `https://${name}`; // never the header's own text, never a port
+}
+
+export function publicOrigin(request: Pick<Request, "headers" | "url">): string {
+  const customer = customerOrigin(request);
+  if (customer) return customer;
+  // ... the CLI's body: NEXT_PUBLIC_HOST_ORIGIN, then the forwarded host, then the request's origin.
+}
+```
+
+`NEXT_PUBLIC_HOST_ORIGIN` stays the bare host's origin. A host that matches the pattern but not the
+map, or a lookalike such as `evil-lms.apps.buildpad.ai`, `acme.lms.apps.buildpad.ai.evil.com` or
+`a.acme.lms.apps.buildpad.ai`, is never a redirect target: `publicOrigin` uses the configured
+origin for it. Where the application checks a POST's `Origin` header against its own (for example
+the consent POST of the `add-mcp-server` skill), compare it with the request's `customerOrigin()`
+on a customer's host, and with the configured origin anywhere else. Send the consent page's redirect
+to that same origin, and on a customer's host let the consent bind only the host's customer.
+
+### 14.5 Development and tests
+
+- In development `<slug>.localhost:3000` stands for the customer's host. Browsers resolve every
+  `*.localhost` name to the loopback address. Add `allowedDevOrigins: ["*.localhost"]` to
+  `next.config.ts` so the dev server serves those origins.
+- Unit tests: the matcher refuses `evil-<domain>`, `<slug>.<domain>.evil.com`, two labels,
+  `http://`, a port, a path and a trailing dot. A mapped slug gives `customer`, an unmapped one
+  `unknown`, and any other host `bare`. On a customer's host, the sign-in enters a member who has
+  several customers without a chooser. It refuses a non-member with 403 and no sign-out. The list,
+  the switch and the decline refuse other ids. The middleware answers 404 for an unknown
+  subdomain.
+- Playwright: from Node, name the host with an `x-forwarded-host` header, because Node's resolver
+  may not resolve `*.localhost`. From the browser, open `http://<slug>.localhost:<port>`. Tests that
+  sign in reach the Engine, so ask the developer first.
+
+### 14.6 Adding a customer host
+
+When the Platform creates a customer, add its `slug`, `id` and `name` from `get_project_detail` to
+`config/customer-hosts.ts` and deploy. Until then its subdomain answers 404. No environment variable
+changes, and the application keeps no list of redirect URLs for its own hosts. After the first
+deploy, open `https://<slug>.<customer domain>` and sign in as a member: no chooser should appear. If
+it does, the hosting is not passing the customer's host name to the application (section 11).

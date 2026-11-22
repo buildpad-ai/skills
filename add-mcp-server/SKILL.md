@@ -353,7 +353,7 @@ connector's included; tell the person to connect again afterwards.
 
 On an Engine project with Customer_Tenants the password sign-in names no tenant: the application's own server route sends it without `X-Tenant-Id`. When the session it answers is bound to no tenant, the same route lists the person's tenants with `GET /api/auth/tenants`, switches with `POST /api/auth/tenant`, and replaces the session's access and refresh tokens with the pair the switch answers. The application takes its current tenant from the session, never from the environment or from the request, and sends no tenant id on a request that carries a session.
 
-In the mode `customer-tenants` the consent step signs in without `X-Tenant-Id`; when the session is unbound it asks the person to choose a customer and switches before it stores the session, so one connection acts in one customer.
+In the mode `customer-tenants` the consent step signs in without `X-Tenant-Id`; when the session is unbound it asks the person to choose a customer and switches before it stores the session, so one connection acts in one customer. With customer hosts (the `add-multitenancy` skill's guide `engine-customer-tenants`, section 14), a consent opened on a customer's host runs on that host: `authorize` redirects to the consent page there, the consent POST accepts only that host's `Origin`, and the connection binds only the host's customer. A person outside it gets "Your account does not belong to <customer>." Discovery and `MCP_RESOURCE_URL` stay on the bare host.
 <!-- /buildpad-backend -->
 
 **token**: for `authorization_code`, check that the code's client and redirect equal the request's,

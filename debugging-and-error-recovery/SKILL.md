@@ -198,6 +198,9 @@ Problem → Root Cause → Fix
     ├── 401 TENANT_SUSPENDED → A Platform member suspended the customer → Nothing in the app; the member resumes it
     ├── 503 SERVICE_UNAVAILABLE → The customer is not serving for a moment (an Engine upgrade migrating it), or the session store → Retry after a few seconds
     ├── A field in the Blueprint and not in a customer → Made after the customer was created, and Releases are not available yet → Ask the Platform member; the change reaches only customers created after it
+    ├── "There is no customer at this address." (404) on a customer host → The subdomain's slug is not in config/customer-hosts.ts → Add the customer from get_project_detail's customers[] and deploy (the add-multitenancy guide's section 14.6)
+    ├── The chooser appears on a customer host → The application does not see the customer host (the hosting passes another name in X-Forwarded-Host and Host) → Log requestHost() once on the deployed app (the add-multitenancy guide's section 14.1)
+    ├── "Your account does not belong to <customer>." on a customer host → The person's own list lacks that customer → An administrator of that customer adds them, or they use their own customer's host
     └── With Self-onboarding on (the add-customer-onboarding skill's flow):
         ├── Signs up but no email arrives → The app's mail sender failed, or the mail provider's domain is not verified → Read the mail provider's logs
         ├── A new person loops between signing in and the sign-in page → The middleware reads the unbound session (403 at GET /auth/v1/user) as signed out → Change lib/supabase/middleware.ts as the add-multitenancy guide's section 5.6 says

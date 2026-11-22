@@ -689,6 +689,10 @@
   - Retires TS-N2 from `create-api-route/references/engine-api-routes.instructions.md` and the
     Mode_Guide.
   - _Requirements: 3.7, 7.1_
+  - 22 November 2026 (spec `customer-hosts`): TD-18, a host name per customer for signed-in people,
+    was met first. TS-N2 is retired and TS-N2m (until TD-8) and TS-H1 take its place. When TD-8 is
+    met, TS-N2m is the statement this task retires, and section 14 of the Mode_Guide gains the public
+    page.
 - [ ] 12.4 TD-9: XAppHub sign-in in a customer
   - **Blocked:** Platform Decision 21 (b), Wave 2, with an Engine part
     (`external_sign_in.go:66-67`).

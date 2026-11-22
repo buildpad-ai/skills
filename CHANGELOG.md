@@ -14,6 +14,54 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
+## v10.3.0
+
+Customer hosts: on an Engine project with Customer tenants, the Buildpad platform serves the
+application on one host name per customer (`<slug>.<customer domain>`), and the skills now tell the
+agent how to build it. Install it with `npx skills add buildpad-ai/skills#v10.3.0`. It is a MINOR
+release: every new text is for Engine projects only, no skill is added, removed or renamed, and the
+"Establish the backend first" procedure stays at version 1.
+
+TD-18 (a host name per customer, with each customer's `slug` in `get_project_detail`) is met, so
+TS-N2 is retired. TS-N2m takes its place: a public (signed-out) page of one customer is still not
+available, until TD-8, but it no longer forbids the map that customer hosts need. TS-H1 is new:
+the application maps each customer's `slug` to its `id` with a committed map copied from
+`customers[]`. The map only chooses which entry of the signed-in person's own list to enter. On a
+customer's host the application enters that customer without a chooser and refuses a non-member
+without signing them out. It answers 404 for an unmapped subdomain, and builds a redirect from the
+request's host only when that host is in the map.
+
+- **`add-multitenancy`:** the guide `engine-customer-tenants` gains section 14, Customer hosts:
+  - `config/customer-hosts.ts` and an Edge-safe `lib/customer-host.ts`. The matcher accepts exactly
+    one DNS label of the customer domain, and refuses lookalikes such as `evil-<domain>` and
+    `<slug>.<domain>.evil.com`;
+  - the middleware answers 404 for an unmapped subdomain;
+  - `settleTenant`, the login route and the list, switch and decline routes on a customer's host. A
+    non-member gets 403 `NOT_A_MEMBER`, and this host's new cookies are dropped with no sign-out,
+    which would end the person's sessions on every host;
+  - `publicOrigin()` puts the mapped customer host first, rebuilt from the checked name;
+  - development on `<slug>.localhost`, the unit and Playwright tests, and adding a customer host.
+
+  Section 4 holds TS-N2m. Sections 1, 11 and 12 gain the status, three symptoms and four review
+  checks.
+- **`create-api-route`:** the Engine routes reference holds TS-N2m and TS-H1, and says what the four
+  sign-in routes do on a customer's host.
+- **`authentication-proxy`:** the reference holds TS-N2m and TS-H1, and says how `publicOrigin()`
+  keeps redirects on the request's customer host.
+- **`add-mcp-server`:** a consent opened on a customer's host redirects, checks `Origin` and binds the
+  customer on that host. Discovery stays on `MCP_RESOURCE_URL`.
+- **`debugging-and-error-recovery`:** three rows. A 404 "There is no customer at this address."; the
+  chooser on a customer host, where the hosting does not pass the host name; and "Your account does
+  not belong to <customer>.".
+- **Repository check:** TD-18 is registered and met; TS-N2 is retired; TS-N2m and TS-H1 are
+  registered. The pattern was built and tested first in the xLMS application (spec
+  `.kiro/specs/customer-hosts/`).
+
+### Supabase projects
+
+No file that a Supabase project's agent reads changes. The changed files are Engine-only, or the
+change stands in an Engine passage.
+
 ## v10.2.0
 
 The xBot connector's guide is now part of the skills. Install it with

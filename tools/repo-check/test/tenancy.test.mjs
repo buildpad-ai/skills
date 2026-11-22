@@ -192,7 +192,7 @@ test('the Tenancy check: altered, missing, misplaced; a CRLF copy passes', () =>
 test('the repository data file: openings, ids, dependencies, in paths and the Tenancy check text', () => {
   const ids = TENANCY.statements.map((s) => s.id);
   assert.equal(new Set(ids).size, ids.length);
-  assert.equal(ids.length, 13);
+  assert.equal(ids.length, 15); // customer-hosts: TS-N2m and TS-H1
   for (const s of TENANCY.statements) {
     assert.ok(s.text.startsWith(TENANCY.opening), s.id);
     for (const d of [...s.requires, ...s.until]) assert.ok(Object.hasOwn(TENANCY.dependencies, d), `${s.id} ${d}`);

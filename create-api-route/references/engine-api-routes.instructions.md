@@ -138,7 +138,9 @@ On an Engine project the Supabase client is kept for sign-in only. Password sign
 
 On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
-On an Engine project with Customer_Tenants a public page of one customer is not available: a request without a session acts in the tenant `X-Tenant-Id` names, and nothing maps a host name to a customer yet. A page without a session reads the Blueprint only, through `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. Tell the developer so and stop: do not put a customer's tenant id in the application or let a visitor choose it.
+On an Engine project with Customer_Tenants a public page of one customer is not available: a request without a session acts in the tenant `X-Tenant-Id` names, and the Engine maps no host name to a customer. A page without a session reads the Blueprint only, through `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. Tell the developer so and stop: never send a customer's tenant id as `X-Tenant-Id`, and never let a visitor choose a tenant. A customer's own host name serves signed-in people only, as the `add-multitenancy` skill's guide `engine-customer-tenants` says in its section 14.
+
+On an Engine project with Customer_Tenants the Buildpad platform serves the application on one host name per customer, `<slug>.<customer domain>`, and the application maps the host to the customer itself, with a committed map from each customer's `slug` to its `id` copied from `customers[]` of `get_project_detail`. The map only chooses which entry of the signed-in person's own `GET /api/auth/tenants` list to enter: the password sign-in still sends no `X-Tenant-Id`, and nothing without a session uses the map. On a customer's host the application enters that customer without a chooser, refuses a person whose list does not hold it without signing them out, answers 404 for a subdomain the map does not name, and builds a redirect from the request's host only when that host is one label of the customer domain and in the map. Build it as the `add-multitenancy` skill's guide `engine-customer-tenants` says in its section 14.
 
 On an Engine project the data API serves no request without a session; only the sign-in, `GET /api/server/info` and the Engine's password routes are served without one (an application must not use them: on an Engine project an administrator resets a user's password). The requests that take their tenant from the header `X-Tenant-Id` are the password sign-in, XAppHub sign-in and anonymous reads of public files. A browser can send `X-Tenant-Id` to the Engine from another origin, without cookies or credentials: the Engine allows that header from any origin and allows no credentialed cross-origin request. Even so, the request that names the tenant is the sign-in made through the application's own server route, which sends `X-Tenant-Id` with the value of `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. A public file shown in a browser is loaded through a signed URL from `/api/files/signed-url`, not by an anonymous read. A request without a session that names no tenant is served from the Engine's host plane, not from the project. A request with a session takes its tenant from the session.
 
@@ -383,6 +385,15 @@ export async function DELETE(
 ```
 
 After the switch answers, the browser reloads the whole page (`window.location.assign("/")`), so every client cache, `DaaSProvider` and any `ScopeProvider` start in the new customer. The `add-multitenancy` skill's guide `engine-customer-tenants` gives the chooser, the current customer and the switch menu.
+
+On a customer's host (the guide's section 14) the four routes read the host with `hostCustomerOf(await headers())` and keep only that customer's entry of the person's own list (`onlyHostCustomer`):
+
+- the login route passes the host to `settleTenant`, which then never answers `choose`. When the person's list lacks the host's customer, the route deletes this host's new session cookies and answers 403 `NOT_A_MEMBER` "Your account does not belong to <customer>.", with no sign-out;
+- `GET /api/auth/tenants` answers only that entry, or the same 403 when there is none;
+- `POST /api/auth/tenant` lists the person's tenants first and refuses, with 403 `NOT_A_MEMBER`, an id that is not the host's customer, before it calls the Engine's switch;
+- `DELETE /api/auth/tenants/[id]` forwards only the host's customer id, and answers 404 for any other.
+
+A subdomain that the map does not name never reaches these routes: the middleware answers 404.
 
 ### Logout and current user
 
