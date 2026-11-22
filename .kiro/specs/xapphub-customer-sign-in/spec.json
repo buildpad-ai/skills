@@ -1,0 +1,23 @@
+{
+  "feature_name": "xapphub-customer-sign-in",
+  "created_at": "2026-11-22T10:00:00Z",
+  "updated_at": "2026-11-22T11:00:00Z",
+  "language": "en",
+  "phase": "implemented",
+  "phase_note": "Lightweight spec (requirements and design in one file), written 2026-11-22 before any skill change, from the Platform's companion brief companion-skills.md (buildpad-platform spec xapphub-customer-sign-in, Decision 21 (b) of project-tenants). Read at origin/main 56ce3bf (v10.3.0). Decisions D-1 (TD-9 met), D-2 (TS-N3 retired, TS-N3m and TS-X1), D-3 (TS-H1 amended in place), D-4 (Mode_Guide section 15) and D-5 (run the guide's code in a test) OPEN, each with a recommendation. APPROVED 2026-11-22 by the user ('Approve as recommended'): D-1 to D-5 settled as recommended; requirements, design and tasks approved. IMPLEMENTED 2026-11-22 on feat/xapphub-customer-sign-in: tasks 1 to 8 done; node --test 254 pass, check.mjs no finding. Not pushed, tagged or released.",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true
+}

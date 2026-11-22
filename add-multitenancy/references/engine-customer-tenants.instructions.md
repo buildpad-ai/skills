@@ -75,6 +75,10 @@ Customers that sign themselves up: available while the project's Self-onboarding
 Customer hosts: the Platform serves the application on one host name per customer, and signed-in
 people use it to reach their customer directly (section 14).
 
+XAppHub sign-in at customers: available where `get_project_detail` reports
+`externalSignIn.customers.reached` as true; each sign-in acts in the customer its host names
+(section 15).
+
 What the mode does not offer is listed in section 4.
 
 ## 2. What the mode is
@@ -102,9 +106,8 @@ On an Engine project with Customer_Tenants a public page of one customer is not 
 
 Who could offer it later: the Buildpad platform with the Engine, by mapping a host name to a customer for requests without a session (the Platform's second wave).
 
-On an Engine project with Customer_Tenants XAppHub sign-in is not available: its first sign-in would create the person's account in the Blueprint, outside every customer. Tell the developer so and stop: people sign in with a password, as the `add-multitenancy` skill's guide says.
-
-Who could offer it later: the Buildpad platform, by trusting the XAppHub client in every customer once host names map to customers (the Platform's second wave).
+XAppHub sign-in is available only where the project's confirmation is given, and is built as
+section 15 says.
 
 On an Engine project with Customer_Tenants a worker acts in the Blueprint only, with the project's own worker token; a worker that acts in a customer's tenant is not available. Work that must run in every customer runs as stored code (cron jobs, hooks) built in the Blueprint, which each customer receives as it receives the structure. Tell the developer so and stop: never give a worker a customer's credential or a host credential.
 
@@ -287,7 +290,8 @@ if (customer && !customer.current) redirect("/choose-customer"); // from next/na
 - **`NEXT_PUBLIC_BUILDPAD_TENANT_ID`** stays the Blueprint's id. It labels the application's own
   tenant in the chooser, and names the tenant of a request without a session (section 4 says what
   that means for public pages).
-- **XAppHub** sign-in is not available in this mode (section 4).
+- **XAppHub** sign-in acts in the customer the host names, and only where the project's
+  confirmation is given (section 15).
 - **Caches after a switch.** No cache in the application, on the server or in the browser, is keyed
   without the current customer; the reload after a switch starts every client cache again.
 
@@ -531,6 +535,18 @@ The chooser, or every customer, appears on a customer host
 "Your account does not belong to <customer>." on a customer host
   → the person's own list lacks that customer (another customer's person, or not yet added)
   → an administrator of that customer adds them, or they use their own customer's host
+"There is no customer at this address." (404) at "Continue with XAppHub" on a customer host
+  → the slug is not in config/customer-hosts.ts: the sign-in never starts
+  → add the customer and deploy (section 14.6)
+XAppHub sign-in answers sign_in_refused for everyone at one customer's host
+  → that customer's XAppHub sign-in is off or not yet on, so it does not trust the client
+  → the Customers page shows its state and the reason; a project Admin turns it on or retries
+XAppHub shows "redirect_uri does not match any registered redirect URLs" on a customer host
+  → the customer's callback is not added to the client in XAppHub
+  → add the URL the Connectors page lists (section 15.5)
+XAppHub sign-in on a customer host lands in the Blueprint, or back on the bare host
+  → the start route or the callback still uses NEXT_PUBLIC_BUILDPAD_TENANT_ID or NEXT_PUBLIC_HOST_ORIGIN
+  → change them as sections 15.2 and 15.3 say, or update the CLI (15.7)
 ```
 
 ## 12. Review checks
@@ -546,12 +562,21 @@ In the mode `customer-tenants`:
 
 With customer hosts (section 14), also:
 - the customer host map holds only `slug`, `tenantId` and `name`, copied from `customers[]` of
-  `get_project_detail`, and no code without a session reads it;
+  `get_project_detail`, and no code without a session reads it, except the XAppHub sign-in of
+  section 15;
 - on a customer's host the sign-in, the list, the switch and the decline use only that customer's
   entry of the person's own list; a person outside it gets 403 `NOT_A_MEMBER` and no sign-out;
 - a subdomain the map does not name answers 404 on every path;
 - every redirect is built from `publicOrigin()`, which uses the request's host only when it is one
   label of the customer domain and in the map; the matcher's tests include lookalike hosts.
+
+With XAppHub sign-in at customers (section 15), also:
+- the start route and the callback each take the tenant from the request's host through the map,
+  never from `state`, a query parameter, a cookie or the person's input;
+- an unknown customer host answers 404 before any redirect to XAppHub;
+- `redirect_uri` is `publicOrigin(request)` followed by `/api/auth/callback`, the same at the start
+  and at the code exchange;
+- the developer was told the three facts of section 15.6.
 
 With Self-onboarding on (section 13), also:
 - `BUILDPAD_ONBOARDING_KEY` is read only in one server-only module, never with a `NEXT_PUBLIC_`
@@ -574,7 +599,7 @@ Build it with the [`add-customer-onboarding`](../../add-customer-onboarding/SKIL
 
 ## 14. Customer hosts
 
-On an Engine project with Customer_Tenants the Buildpad platform serves the application on one host name per customer, `<slug>.<customer domain>`, and the application maps the host to the customer itself, with a committed map from each customer's `slug` to its `id` copied from `customers[]` of `get_project_detail`. The map only chooses which entry of the signed-in person's own `GET /api/auth/tenants` list to enter: the password sign-in still sends no `X-Tenant-Id`, and nothing without a session uses the map. On a customer's host the application enters that customer without a chooser, refuses a person whose list does not hold it without signing them out, answers 404 for a subdomain the map does not name, and builds a redirect from the request's host only when that host is one label of the customer domain and in the map. Build it as the `add-multitenancy` skill's guide `engine-customer-tenants` says in its section 14.
+On an Engine project with Customer_Tenants the Buildpad platform serves the application on one host name per customer, `<slug>.<customer domain>`, and the application maps the host to the customer itself, with a committed map from each customer's `slug` to its `id` copied from `customers[]` of `get_project_detail`. At a password sign-in the map only chooses which entry of the signed-in person's own `GET /api/auth/tenants` list to enter, and sends no `X-Tenant-Id`; its only use without a session is the XAppHub sign-in of section 15 of the `add-multitenancy` skill's guide `engine-customer-tenants`. On a customer's host the application enters that customer without a chooser, refuses a person whose list does not hold it without signing them out, answers 404 for a subdomain the map does not name, and builds a redirect from the request's host only when that host is one label of the customer domain and in the map. Build it as the `add-multitenancy` skill's guide `engine-customer-tenants` says in its section 14.
 
 The Platform sets the hosts up: every customer of the project is served on `<slug>.<customer domain>`,
 for example `acme.lms.apps.buildpad.ai`, and the application keeps answering on its own address (the
@@ -784,3 +809,156 @@ When the Platform creates a customer, add its `slug`, `id` and `name` from `get_
 changes, and the application keeps no list of redirect URLs for its own hosts. After the first
 deploy, open `https://<slug>.<customer domain>` and sign in as a member: no chooser should appear. If
 it does, the hosting is not passing the customer's host name to the application (section 11).
+
+## 15. XAppHub sign-in at customers
+
+On an Engine project with Customer_Tenants XAppHub sign-in is available only where `get_project_detail` reports the `my-apps` connector's `externalSignIn.customers.reached` as true: a project Admin has then confirmed on the Platform's Customers page that the application names each customer's tenant at sign-in from its host name. Where `externalSignIn.customers` is absent or `reached` is false, XAppHub sign-in is not available: its first sign-in would create the person's account in the Blueprint, outside every customer. Tell the developer so and stop: people sign in with a password, as the `add-multitenancy` skill's guide says. Where `reached` is true, build it as that guide `engine-customer-tenants` says in its section 15.
+
+On an Engine project with Customer_Tenants an XAppHub sign-in acts in the customer that the request's host name names. The sign-in start route and the callback each resolve the host with the application's customer host map: a customer's host sends that customer's `id` as `X-Tenant-Id` to `signInWithIdToken`, a subdomain the map does not name answers 404 before any redirect to XAppHub, and the bare host signs in to the Blueprint with `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. The `redirect_uri` is the request's own checked origin followed by `/api/auth/callback`, and the tenant is never read from `state`, a query parameter or a cookie. Build it as the `add-multitenancy` skill's guide `engine-customer-tenants` says in its section 15, and tell the developer the three facts listed there.
+
+**Check first.** Call `get_project_detail` and find the `my-apps` entry of `connectors`, as Step 1
+of the [`add-external-oauth`](../../add-external-oauth/SKILL.md) skill says. Its
+`externalSignIn.customers` is `{ reached, on, total }`:
+
+| What `get_project_detail` reports | What to do |
+|---|---|
+| No `my-apps` connector | Not available: XAppHub is not connected. Where the Platform offers XAppHub sign-in at customers, a project Admin first confirms it on the Customers page, then connects XAppHub on the Connectors page. Tell the developer so and stop |
+| `externalSignIn.customers` absent | Not available: the Platform does not offer it for this project. Tell the developer so and stop |
+| `reached: false` | Not available yet: a project Admin confirms on the Platform's Customers page that the application names each customer's tenant at sign-in from its host name. Tell the developer so and stop; call `get_project_detail` again once it is given |
+| `reached: true` | Build it as this section says, and tell the developer that XAppHub sign-in is on for `on` of `total` customers. A customer whose sign-in is off, or not yet on, refuses every XAppHub sign-in at its host (section 11) |
+
+Section 15 stands on section 14: the committed map, the matcher, the middleware's 404 and
+`publicOrigin()`. Build section 14 first if the application does not have it. There is still one
+map, `config/customer-hosts.ts`, copied from `customers[]`. The host label is the customer's
+`slug`, the Platform's own, because the Platform registers each customer's callback from it. A new
+customer is served once its entry is added and the application deployed (14.6).
+
+| Host | What an XAppHub sign-in does |
+|---|---|
+| `<slug>.<customer domain>`, slug in the map | Acts in that customer: `X-Tenant-Id` is its `id`, and the person comes back to the same host |
+| `<label>.<customer domain>`, label not in the map | 404 before any redirect to XAppHub (and on every path, 14.2) |
+| Any other host (the bare host, the hosting's default domain, `localhost`) | Acts in the Blueprint with `NEXT_PUBLIC_BUILDPAD_TENANT_ID`, as today: the developers' own sign-in |
+| `<slug>.localhost:<port>`, in development only | As the customer's host |
+
+### 15.1 The sign-in's tenant
+
+The host decides, and nothing else: section 14.1's `requestHost` reads the first
+`x-forwarded-host` entry, else `host`; `hostnameOf` lowers the case and drops the port; the matcher
+accepts exactly one DNS label in front of the customer domain. Two labels, a lookalike suffix or a
+trailing dot is not a customer host: it is the bare host, whose sign-in acts in the Blueprint and
+whose redirect goes to the configured origin (14.4).
+
+```ts
+// lib/customer-host.ts: add beside resolveHostCustomer (14.1). Edge-safe, like the rest of the file.
+export type SignInTenant =
+  | { kind: "customer"; tenantId: string; name: string }
+  | { kind: "blueprint"; tenantId: string }
+  | { kind: "unknown" };
+
+/** The tenant an XAppHub sign-in on this request acts in, from the host only. */
+export function signInTenantOf(headers: Pick<Headers, "get">): SignInTenant {
+  const host = hostCustomerOf(headers);
+  if (host.kind === "customer") return { kind: "customer", tenantId: host.tenantId, name: host.name };
+  if (host.kind === "unknown") return { kind: "unknown" };
+  return { kind: "blueprint", tenantId: process.env.NEXT_PUBLIC_BUILDPAD_TENANT_ID! };
+}
+```
+
+### 15.2 The start route
+
+`GET /api/auth/oauth/my-apps` resolves the host before it does anything else. An unknown customer
+host never starts a sign-in. The `redirect_uri` is the request's own origin, rebuilt from the
+checked name by `publicOrigin()` (14.4): on a customer's host `https://<slug>.<customer domain>`,
+elsewhere the configured origin, as today. Never take it from `NEXT_PUBLIC_HOST_ORIGIN` alone,
+which would send every customer's person back to the bare host.
+
+```ts
+// app/api/auth/oauth/[provider]/route.ts: the first lines of GET.
+const tenant = signInTenantOf(request.headers);
+if (tenant.kind === "unknown") {
+  const body = { errors: [{ message: "There is no customer at this address.", extensions: { code: "UNKNOWN_CUSTOMER_HOST" } }] };
+  return NextResponse.json(body, { status: 404, headers: { "Cache-Control": "private, no-store" } });
+}
+const redirectUri = `${publicOrigin(request)}/api/auth/callback`;
+// ... the module's body: the random state, raw nonce and PKCE verifier in the host-only flow
+// cookie, then the redirect to OAUTH_AUTHORIZATION_URL with redirect_uri set to redirectUri:
+return NextResponse.redirect(authorizationUrl);
+```
+
+### 15.3 The callback
+
+`/api/auth/callback` resolves the host again. The flow cookie is host-only, so a flow that began
+on one host and ends on another finds no cookie and answers `sign_in_expired`. The tenant never
+comes from `state`, a query parameter, the flow cookie or the person's input: a request cannot ask
+for another tenant than its host names.
+
+```ts
+// app/api/auth/callback/route.ts: before the code exchange.
+// From the host again, never from the query, the flow cookie or the person's input.
+const tenant = signInTenantOf(request.headers);
+if (tenant.kind === "unknown") {
+  const body = { errors: [{ message: "There is no customer at this address.", extensions: { code: "UNKNOWN_CUSTOMER_HOST" } }] };
+  return NextResponse.json(body, { status: 404, headers: { "Cache-Control": "private, no-store" } });
+}
+const redirectUri = `${publicOrigin(request)}/api/auth/callback`; // the value the start route sent
+// ... the module's body: compare the flow's state, exchange the code with redirectUri, then make
+// the Engine client for signInWithIdToken with this header in place of the environment's id:
+const engineHeaders = { "X-Tenant-Id": tenant.tenantId };
+```
+
+### 15.4 After the sign-in
+
+- The Engine creates the person's account in the customer the header names, or finds it there, and
+  answers a session in that customer. The role check (`GET <Engine_URL>/api/users/me`) is unchanged:
+  an account with no role is sent to `/auth/pending-access`, as today.
+- On a customer's host the current customer is read as 14.3 says, and the person's list now holds
+  the host's customer.
+- **A starting role per customer.** A customer's new XAppHub accounts get a role at once only when a
+  starting role is set in that customer. A project Admin sets it per customer on the Platform's
+  Customers page, where the Platform offers it. The `external-sign-in` MCP tool acts in the
+  Blueprint only, through the project's MCP token: it sets nothing in a customer.
+
+### 15.5 Redirect URLs at XAppHub
+
+Each customer host needs its own callback at XAppHub,
+`https://<slug>.<customer domain>/api/auth/callback`. The Platform's Connectors page lists every
+such URL; they are added to the client in XAppHub by hand. Until a customer's URL is there, XAppHub
+answers "redirect_uri does not match any registered redirect URLs" at that host. To try a customer
+host in development, `http://<slug>.localhost:3000/api/auth/callback` needs adding the same way.
+The application keeps no list of these URLs.
+
+### 15.6 What to tell the developer
+
+**A new use of the map.** Until now the map only picked one of a signed-in person's own
+customers. With XAppHub sign-in its tenant id is sent before any session exists. A forged host
+changes only which tenant that person's own sign-in targets, and the Engine accepts the token only
+in a tenant that trusts the client. That is the designed behaviour, and these facts of the Engine
+follow from it. They are not choices of the application; tell the developer all three:
+
+1. A person who signs in at two customers' addresses gets an account in each.
+2. Anyone with an XAppHub account for this application can get an account in a customer whose
+   XAppHub sign-in is on, with no role (or the customer's starting role), by opening its address.
+   A project Admin turns it off per customer on the Platform's Customers page.
+3. A customer administrator never signs in with XAppHub: they use their password.
+
+### 15.7 The CLI's module
+
+The Buildpad CLI's `external-oauth-engine` module does 15.1 to 15.3 itself in a release that knows
+the mode `customer-tenants`. After installing it (the `add-external-oauth` skill's Step 3), read the
+installed start route and callback: they must resolve the host, answer 404 for an unknown customer
+host before the redirect, build `redirect_uri` from the request's origin, and send the host's
+customer as `X-Tenant-Id`. If they still send `NEXT_PUBLIC_BUILDPAD_TENANT_ID` on every host, the CLI
+is older: update it and install again, or change the two routes as 15.2 and 15.3 show. Point the
+module's host lookup at the application's own map of section 14.1, and keep no second copy of it.
+
+### 15.8 Tests
+
+- Unit: `signInTenantOf` gives `customer` for a mapped slug (in upper case and with a port too),
+  `unknown` for an unmapped one, and `blueprint` for the bare host, the hosting's default domain,
+  `localhost`, two labels and the lookalikes of 14.5.
+- The start route answers 404 for an unknown customer host and never redirects; on a customer's
+  host its redirect's `redirect_uri` is `https://<slug>.<customer domain>/api/auth/callback`.
+- The callback sends the host's customer as `X-Tenant-Id`, the Blueprint's id on the bare host, and
+  answers 404 for an unknown one; a `tenant` query parameter, or a changed `state`, changes nothing.
+- A sign-in that reaches XAppHub and the Engine is run by hand, or by Playwright with the
+  developer's agreement: one person at two customers' hosts gets an account in each.

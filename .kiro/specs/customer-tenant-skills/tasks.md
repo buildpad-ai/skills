@@ -693,11 +693,16 @@
     was met first. TS-N2 is retired and TS-N2m (until TD-8) and TS-H1 take its place. When TD-8 is
     met, TS-N2m is the statement this task retires, and section 14 of the Mode_Guide gains the public
     page.
-- [ ] 12.4 TD-9: XAppHub sign-in in a customer
+- [x] 12.4 TD-9: XAppHub sign-in in a customer
   - **Blocked:** Platform Decision 21 (b), Wave 2, with an Engine part
     (`external_sign_in.go:66-67`).
   - Retires TS-N3 from `add-external-oauth/SKILL.md` and the Mode_Guide.
   - _Requirements: 3.8, 7.1_
+  - Done in v10.4.0 by the spec `xapphub-customer-sign-in` (22 November 2026): the Platform shipped
+    Decision 21 (b) (spec `xapphub-customer-sign-in`; no Engine change was needed), so TD-9 is met
+    and TS-N3 retired. The condition is per project, in the text: TS-N3m stops where
+    `get_project_detail` reports `externalSignIn.customers.reached` absent or false, and TS-X1 with
+    section 15 of the Mode_Guide says how to build it where it is true. TS-H1 is reworded in place.
 - [ ] 12.5 TD-10: workers per customer
   - **Blocked:** Platform Decision 13, Wave 3.
   - Retires TS-N4 from `worker-messaging/SKILL.md` and the Mode_Guide (§4, §9). Check how it

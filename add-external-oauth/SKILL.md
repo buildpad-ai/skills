@@ -49,7 +49,9 @@ is not available on an Engine project: tell the developer so and stop.
 
 On an Engine project with Customer_Tenants each customer of the application is a tenant of its own, and the project's tenant is the Blueprint every customer is copied from. Establish the tenancy mode as the `add-multitenancy` skill says: from the field `tenancy` of `.buildpad/project.json`, else from `.buildpad/tenancy-answer.json`. In the mode `customer-tenants` that skill's guide `engine-customer-tenants` replaces what ES-3, ES-4, ES-5, ES-7 and ES-9 say about the project's tenant; in the mode `scope` they hold as written.
 
-On an Engine project with Customer_Tenants XAppHub sign-in is not available: its first sign-in would create the person's account in the Blueprint, outside every customer. Tell the developer so and stop: people sign in with a password, as the `add-multitenancy` skill's guide says.
+On an Engine project with Customer_Tenants XAppHub sign-in is available only where `get_project_detail` reports the `my-apps` connector's `externalSignIn.customers.reached` as true: a project Admin has then confirmed on the Platform's Customers page that the application names each customer's tenant at sign-in from its host name. Where `externalSignIn.customers` is absent or `reached` is false, XAppHub sign-in is not available: its first sign-in would create the person's account in the Blueprint, outside every customer. Tell the developer so and stop: people sign in with a password, as the `add-multitenancy` skill's guide says. Where `reached` is true, build it as that guide `engine-customer-tenants` says in its section 15.
+
+On an Engine project with Customer_Tenants an XAppHub sign-in acts in the customer that the request's host name names. The sign-in start route and the callback each resolve the host with the application's customer host map: a customer's host sends that customer's `id` as `X-Tenant-Id` to `signInWithIdToken`, a subdomain the map does not name answers 404 before any redirect to XAppHub, and the bare host signs in to the Blueprint with `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. The `redirect_uri` is the request's own checked origin followed by `/api/auth/callback`, and the tenant is never read from `state`, a query parameter or a cookie. Build it as the `add-multitenancy` skill's guide `engine-customer-tenants` says in its section 15, and tell the developer the three facts listed there.
 
 On an Engine project these are not available, and XAppHub sign-in uses none of them: a service-role
 key, the Supabase administration API, a session made from a magic link or a one-time code, and a
@@ -68,6 +70,11 @@ the Studio and is not a way for an application to sign a user in.
    localhost one. A custom domain, or a callback in a microapp or zone (such as
    `/crm/api/mcp/oauth/xapphub`), must be added to the client in XAppHub by hand: XAppHub refuses
    any other redirect URI exactly ("redirect_uri does not match any registered redirect URLs").
+   In the mode `customer-tenants` each customer host has its own callback,
+   `https://<slug>.<customer domain>/api/auth/callback`: the Connectors page lists them, and they
+   are added in XAppHub by hand too. The same entry's `externalSignIn.customers` says whether
+   XAppHub sign-in reaches customers at all (section 15 of the `add-multitenancy` skill's guide
+   `engine-customer-tenants`).
 3. If there is no such connector, tell the developer to connect XAppHub on the project's Connectors
    page and stop. The application cannot register the client or make the Engine trust it.
 
@@ -109,6 +116,11 @@ The CLI replaces the copies of these files that an earlier `external-oauth` inst
 are unchanged. It keeps a changed copy and warns: then compare it with the Engine version, or run
 the command again with `--overwrite`.
 
+In the mode `customer-tenants`, read the installed start route and callback as section 15.7 of the
+`add-multitenancy` skill's guide `engine-customer-tenants` says: they must take the tenant from the
+request's host. A CLI that does not know the mode yet sends `NEXT_PUBLIC_BUILDPAD_TENANT_ID` on
+every host.
+
 Other skills say that the CLI's OAuth callback and provider routes cannot be used on an Engine
 project. Those are the files of the `external-oauth` module. The files of `external-oauth-engine`
 are the ones this part describes.
@@ -132,7 +144,9 @@ parameters). Keep the password form: administrators and existing password users 
    and the PKCE verifier, and takes the `id_token` from the answer.
 4. It calls `signInWithIdToken({ provider: 'my-apps', token: id_token, nonce: rawNonce })` on a
    Supabase server client for the Engine_URL that sends `X-Tenant-Id` with the value of
-   `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. `nonce` is the raw nonce: the Engine refuses a token whose
+   `NEXT_PUBLIC_BUILDPAD_TENANT_ID` (in the mode `customer-tenants`, the id of the customer the
+   request's host names, and the Blueprint's on any other host, as section 15 of the
+   `add-multitenancy` skill's guide `engine-customer-tenants` says). `nonce` is the raw nonce: the Engine refuses a token whose
    nonce claim is not the SHA-256 digest of it. The provider name `my-apps` is fixed: it is the
    name the Engine knows XAppHub by.
 5. It asks `GET <Engine_URL>/api/users/me` with the new access token whether the account holds a
@@ -201,7 +215,9 @@ only a relative `returnTo` path.
   writes no role. The callback therefore ends a role-less session and shows
   `/auth/pending-access`, which tells the user that their account waits for access and that they
   sign in again once they have it. Do not let a role-less session into pages that the Engine will
-  refuse.
+  refuse. In the mode `customer-tenants` the account is created in the customer the request's host
+  names, and a customer's starting role is set on the Platform's Customers page, not with the
+  `external-sign-in` tool (section 15.4 of the `add-multitenancy` skill's guide).
 - **A starting role (Engine 0.1.0-dev.25, data service 2026.11.13 and later).** A tenant
   administrator can name one role that the Engine itself gives to new XAppHub accounts whose verified
   email is in listed domains, so their first session already holds it and the callback lets them in.
@@ -244,7 +260,9 @@ only a relative `returnTo` path.
 |---|---|
 | `sign_in_refused` for every user | The connector is not `connected` (the Engine does not trust the client id), or the `nonce` sent to XAppHub is not the digest of the nonce given to the Engine |
 | `sign_in_refused` for one user | One of the refused accounts above; that user signs in with their password |
-| XAppHub shows "redirect_uri does not match any registered redirect URLs" | The callback is on a custom domain or in a microapp or zone: add it to the client in XAppHub (Step 1) |
+| XAppHub shows "redirect_uri does not match any registered redirect URLs" | The callback is on a custom domain, on a customer host, or in a microapp or zone: add it to the client in XAppHub (Step 1) |
+| `sign_in_refused` for every user at one customer's host (mode `customer-tenants`) | That customer's XAppHub sign-in is off or not yet on: the Platform's Customers page shows its state |
+| 404 "There is no customer at this address." when the sign-in starts (mode `customer-tenants`) | The host's slug is not in the application's customer host map: add the customer and deploy |
 | `sign_in_failed` | The code exchange failed (check `OAUTH_CLIENT_SECRET` and that the redirect URI is registered), or the project's Engine has no XAppHub sign-in enabled: ask the Buildpad Platform administrator |
 | `sign_in_expired` | The flow cookie is missing: more than ten minutes passed, or the sign-in started in another browser or on another host name |
 | `configuration_error` | An `OAUTH_*` variable or one of the Engine variables of Step 2 is missing |

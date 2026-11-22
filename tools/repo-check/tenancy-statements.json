@@ -6,13 +6,13 @@
     "TD-3": "Engine entry 192 applied, and the Platform's Releases (project-tenants Requirement 9) shipped",
     "TD-7": "An app's server can create a customer for a verified person (Engine entry 204 and the Platform's customer-self-onboarding)",
     "TD-8": "A host name mapped to a customer (Platform Decision 11 (b), Wave 2)",
-    "TD-9": "XAppHub sign-in in a customer (Platform Decision 21 (b), Wave 2)",
+    "TD-9": "XAppHub sign-in in a customer (Platform Decision 21 (b), spec xapphub-customer-sign-in): per project, where get_project_detail reports the my-apps connector's externalSignIn.customers.reached as true",
     "TD-10": "Workers per customer (Platform Decision 13, Wave 3)",
     "TD-12": "Backup and restore of one customer (Platform Decision 14, Wave 3)",
     "TD-13": "Open Studio into a customer (Platform Requirement 10, Wave 2)",
     "TD-18": "The Platform serves each customer of a project with Customer_Tenants on a host name of its own (a wildcard subdomain), and get_project_detail lists each customer's slug"
   },
-  "met": ["TD-1", "TD-7", "TD-18"],
+  "met": ["TD-1", "TD-7", "TD-18", "TD-9"],
   "anchors": [
     {
       "es": "ES-3",
@@ -234,7 +234,7 @@
         "TD-18"
       ],
       "until": [],
-      "text": "On an Engine project with Customer_Tenants the Buildpad platform serves the application on one host name per customer, `<slug>.<customer domain>`, and the application maps the host to the customer itself, with a committed map from each customer's `slug` to its `id` copied from `customers[]` of `get_project_detail`. The map only chooses which entry of the signed-in person's own `GET /api/auth/tenants` list to enter: the password sign-in still sends no `X-Tenant-Id`, and nothing without a session uses the map. On a customer's host the application enters that customer without a chooser, refuses a person whose list does not hold it without signing them out, answers 404 for a subdomain the map does not name, and builds a redirect from the request's host only when that host is one label of the customer domain and in the map. Build it as the `add-multitenancy` skill's guide `engine-customer-tenants` says in its section 14.",
+      "text": "On an Engine project with Customer_Tenants the Buildpad platform serves the application on one host name per customer, `<slug>.<customer domain>`, and the application maps the host to the customer itself, with a committed map from each customer's `slug` to its `id` copied from `customers[]` of `get_project_detail`. At a password sign-in the map only chooses which entry of the signed-in person's own `GET /api/auth/tenants` list to enter, and sends no `X-Tenant-Id`; its only use without a session is the XAppHub sign-in of section 15 of the `add-multitenancy` skill's guide `engine-customer-tenants`. On a customer's host the application enters that customer without a chooser, refuses a person whose list does not hold it without signing them out, answers 404 for a subdomain the map does not name, and builds a redirect from the request's host only when that host is one label of the customer domain and in the map. Build it as the `add-multitenancy` skill's guide `engine-customer-tenants` says in its section 14.",
       "in": [
         "add-multitenancy/references/engine-customer-tenants.instructions.md",
         "create-api-route/references/engine-api-routes.instructions.md",
@@ -248,6 +248,30 @@
         "TD-9"
       ],
       "text": "On an Engine project with Customer_Tenants XAppHub sign-in is not available: its first sign-in would create the person's account in the Blueprint, outside every customer. Tell the developer so and stop: people sign in with a password, as the `add-multitenancy` skill's guide says.",
+      "in": [
+        "add-external-oauth/SKILL.md",
+        "add-multitenancy/references/engine-customer-tenants.instructions.md"
+      ]
+    },
+    {
+      "id": "TS-N3m",
+      "requires": [
+        "TD-9"
+      ],
+      "until": [],
+      "text": "On an Engine project with Customer_Tenants XAppHub sign-in is available only where `get_project_detail` reports the `my-apps` connector's `externalSignIn.customers.reached` as true: a project Admin has then confirmed on the Platform's Customers page that the application names each customer's tenant at sign-in from its host name. Where `externalSignIn.customers` is absent or `reached` is false, XAppHub sign-in is not available: its first sign-in would create the person's account in the Blueprint, outside every customer. Tell the developer so and stop: people sign in with a password, as the `add-multitenancy` skill's guide says. Where `reached` is true, build it as that guide `engine-customer-tenants` says in its section 15.",
+      "in": [
+        "add-external-oauth/SKILL.md",
+        "add-multitenancy/references/engine-customer-tenants.instructions.md"
+      ]
+    },
+    {
+      "id": "TS-X1",
+      "requires": [
+        "TD-9"
+      ],
+      "until": [],
+      "text": "On an Engine project with Customer_Tenants an XAppHub sign-in acts in the customer that the request's host name names. The sign-in start route and the callback each resolve the host with the application's customer host map: a customer's host sends that customer's `id` as `X-Tenant-Id` to `signInWithIdToken`, a subdomain the map does not name answers 404 before any redirect to XAppHub, and the bare host signs in to the Blueprint with `NEXT_PUBLIC_BUILDPAD_TENANT_ID`. The `redirect_uri` is the request's own checked origin followed by `/api/auth/callback`, and the tenant is never read from `state`, a query parameter or a cookie. Build it as the `add-multitenancy` skill's guide `engine-customer-tenants` says in its section 15, and tell the developer the three facts listed there.",
       "in": [
         "add-external-oauth/SKILL.md",
         "add-multitenancy/references/engine-customer-tenants.instructions.md"
