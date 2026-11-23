@@ -73,7 +73,8 @@ until Releases are available (section 13).
 Customers that sign themselves up: available while the project's Self-onboarding is on (section 13).
 
 Customer hosts: the Platform serves the application on one host name per customer, and signed-in
-people use it to reach their customer directly (section 14).
+people use it to reach their customer directly (section 14). Customers exist in Development and,
+where the Platform offers it, in Production; each Environment's branch carries its own map.
 
 XAppHub sign-in at customers: available where `get_project_detail` reports
 `externalSignIn.customers.reached` as true; each sign-in acts in the customer its host names
@@ -513,7 +514,8 @@ Signs up but no email arrives (Self-onboarding)
   → the app's Mail_Sender failed, or the mail provider's domain is not verified
   → the mail provider's logs
 Every sign-up says "Sign-up is not available right now." (Self-onboarding)
-  → the log names it: onboarding.not_configured (the key is not in .env.production),
+  → the log names it: onboarding.not_configured (no key: not in .env.production, or `off`, which
+    the Platform sets on Production's branch, where sign-up is not offered),
     onboarding.key_invalid (401 TOKEN_INVALID: the key is revoked), onboarding.engine_too_old
   → the Customers page's key list (last use) and the amplify.yml line
 Sign-ups answer 429 after five (Self-onboarding)
@@ -526,8 +528,12 @@ Creating a company answers 409 before creating anything (Self-onboarding)
   → the Blueprint has no published Release
   → ask the Platform member who turned Self-onboarding on: turning it on publishes the first Release
 "There is no customer at this address." (404) on a customer host
-  → the subdomain's slug is not in config/customer-hosts.ts
-  → add the customer from get_project_detail's customers[], then deploy (section 14.6)
+  → the slug is not in the branch's BUILDPAD_CUSTOMER_HOSTS: the customer is new, belongs to the
+    other Environment, or the map is out of date
+  → Update and redeploy on the Customers page, in the customer's Environment (section 14.6)
+Every customer host answers 404
+  → the application read an empty map: the amplify.yml line is missing, or the value is not JSON
+  → the log's customer_hosts.empty line gives the reason (sections 14.1 and 14.6)
 The chooser, or every customer, appears on a customer host
   → the application does not see the customer host: the hosting passes another name in
     X-Forwarded-Host and Host, or the host map is not read
@@ -536,8 +542,8 @@ The chooser, or every customer, appears on a customer host
   → the person's own list lacks that customer (another customer's person, or not yet added)
   → an administrator of that customer adds them, or they use their own customer's host
 "There is no customer at this address." (404) at "Continue with XAppHub" on a customer host
-  → the slug is not in config/customer-hosts.ts: the sign-in never starts
-  → add the customer and deploy (section 14.6)
+  → the slug is not in the branch's BUILDPAD_CUSTOMER_HOSTS: the sign-in never starts
+  → Update and redeploy on the Customers page (section 14.6)
 XAppHub sign-in answers sign_in_refused for everyone at one customer's host
   → that customer's XAppHub sign-in is off or not yet on, so it does not trust the client
   → the Customers page shows its state and the reason; a project Admin turns it on or retries
@@ -561,9 +567,10 @@ In the mode `customer-tenants`:
   switch reloads the page.
 
 With customer hosts (section 14), also:
-- the customer host map holds only `slug`, `tenantId` and `name`, copied from `customers[]` of
-  `get_project_detail`, and no code without a session reads it, except the XAppHub sign-in of
-  section 15;
+- the customer host map is read from `BUILDPAD_CUSTOMER_HOSTS` on the server (14.1), never
+  committed, never with a `NEXT_PUBLIC_` prefix and never in a client component; it holds only slugs
+  and tenant ids (and optional display names), and no code without a session reads it, except the
+  XAppHub sign-in of section 15;
 - on a customer's host the sign-in, the list, the switch and the decline use only that customer's
   entry of the person's own list; a person outside it gets 403 `NOT_A_MEMBER` and no sign-out;
 - a subdomain the map does not name answers 404 on every path;
@@ -595,19 +602,44 @@ Who turns it on: a project Admin, from the Platform's Customers page, once a hos
 Turning sign-up on publishes Release 1, and new customers are created from it, so a change made in
 the Blueprint afterwards reaches no customer until a later Release is published (section 7.1).
 
+Self-onboarding is Development's only. The Platform sets `BUILDPAD_ONBOARDING_KEY=off` on the
+`production` branch (Amplify drops an empty value), and the `add-customer-onboarding` skill's code
+reads `off` as no key: Production's application offers no sign-up. Production's customers are
+created by a Platform member on the Customers page.
+
 Build it with the [`add-customer-onboarding`](../../add-customer-onboarding/SKILL.md) skill.
 
 ## 14. Customer hosts
 
-On an Engine project with Customer_Tenants the Buildpad platform serves the application on one host name per customer, `<slug>.<customer domain>`, and the application maps the host to the customer itself, with a committed map from each customer's `slug` to its `id` copied from `customers[]` of `get_project_detail`. At a password sign-in the map only chooses which entry of the signed-in person's own `GET /api/auth/tenants` list to enter, and sends no `X-Tenant-Id`; its only use without a session is the XAppHub sign-in of section 15 of the `add-multitenancy` skill's guide `engine-customer-tenants`. On a customer's host the application enters that customer without a chooser, refuses a person whose list does not hold it without signing them out, answers 404 for a subdomain the map does not name, and builds a redirect from the request's host only when that host is one label of the customer domain and in the map. Build it as the `add-multitenancy` skill's guide `engine-customer-tenants` says in its section 14.
+On an Engine project with Customer_Tenants the Buildpad platform serves the application on one host name per customer, `<slug>.<customer domain>`, and the application maps the host to the customer itself, with a map from each customer's `slug` to its `id` that the Platform writes as the server variable `BUILDPAD_CUSTOMER_HOSTS`, one value per Environment, and that the application reads on the server and never commits. At a password sign-in the map only chooses which entry of the signed-in person's own `GET /api/auth/tenants` list to enter, and sends no `X-Tenant-Id`; its only use without a session is the XAppHub sign-in of section 15 of the `add-multitenancy` skill's guide `engine-customer-tenants`. On a customer's host the application enters that customer without a chooser, refuses a person whose list does not hold it without signing them out, answers 404 for a subdomain the map does not name, and builds a redirect from the request's host only when that host is one label of the customer domain and in the map. Build it as the `add-multitenancy` skill's guide `engine-customer-tenants` says in its section 14.
 
 The Platform sets the hosts up: every customer of the project is served on `<slug>.<customer domain>`,
 for example `acme.lms.apps.buildpad.ai`, and the application keeps answering on its own address (the
 bare host). The Engine maps no host to a tenant, and its `GET /api/auth/tenants` entries carry no
-slug, so the application holds the map. Take each customer's `slug`, `id` and `name` from
-`customers[]` of `get_project_detail`. Ask the developer once for the customer domain (the part
-after `<slug>.`) when you do not know it. A request without a session still reads the Blueprint only
-(section 4).
+slug, so the application resolves the host itself, with the map the Platform writes. Ask the
+developer once for the customer domain (the part after `<slug>.`) when you do not know it. A request
+without a session still reads the Blueprint only (section 4).
+
+**The map is a branch variable.** The Platform writes `BUILDPAD_CUSTOMER_HOSTS` on each Amplify
+branch of the main app, as a server variable whose value is JSON `{ "<slug>": "<tenant id>" }`:
+
+- `main` holds Development's ready and suspended customers, and `production` holds Production's.
+  The same slug in both Environments is expected, with a different tenant id in each.
+- One piece of code serves both Environments, because each branch has its own value. Never put a
+  tenant id in the code, and never commit a map from slugs to ids. If the application has one (this
+  guide said to commit `config/customer-hosts.ts` copied from `customers[]` before), replace it with
+  the reader of 14.1.
+- The value holds slugs and tenant ids only, never a credential. It is still read on the server
+  only: never give it a `NEXT_PUBLIC_` prefix, and never read it in a client component.
+- The Platform manages it. Never set, change or remove it with `amplify_set_env_vars`, which refuses
+  it where the Customers page manages it. A member writes it, and redeploys the application, with
+  **Update and redeploy** on the Customers page (14.6).
+
+`get_project_detail` lists Development's customers as `customers` and Production's as
+`productionCustomers`, each with `id`, `name`, `slug` and `state`. `productionCustomers` is absent
+while the Platform does not offer customers in Production, or Production is not ready. Read them to
+answer the developer, or to give development a value (14.5). The application reads neither: it
+reads only its own branch's variable.
 
 | Host | What the application does |
 |---|---|
@@ -619,12 +651,66 @@ after `<slug>.`) when you do not know it. A request without a session still read
 ### 14.1 The map and the host
 
 ```ts
-// config/customer-hosts.ts: committed. Copied from get_project_detail customers[]; one line per customer.
+// config/customer-hosts.ts: Edge-safe (the middleware imports it). The map is the branch's BUILDPAD_CUSTOMER_HOSTS.
 export const CUSTOMER_HOST_SUFFIX = "lms.apps.buildpad.ai"; // the customer domain
-export const CUSTOMER_HOSTS: Readonly<Record<string, { tenantId: string; name: string }>> = {
-  acme: { tenantId: "<customers[].id>", name: "Acme" },
-};
+
+/** Optional display names by slug: names only, never a tenant id. A slug without one is shown as itself. */
+const CUSTOMER_NAMES: Readonly<Record<string, string>> = {};
+
+const LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/; // exactly one DNS label
+
+const warned = new Set<string>();
+function warnOnce(reason: string) {
+  if (warned.has(reason)) return;
+  warned.add(reason);
+  console.warn(JSON.stringify({ event: "customer_hosts.empty", reason })); // never the value
+}
+
+/** Slug -> tenant id from the variable's JSON. Missing, empty, not JSON or not an object: the empty map. */
+export function parseCustomerHosts(raw: string | undefined): Record<string, string> {
+  if (!raw) {
+    warnOnce("not_set");
+    return {};
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    warnOnce("not_json");
+    return {};
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    warnOnce("not_an_object");
+    return {};
+  }
+  const map: Record<string, string> = {};
+  for (const [slug, id] of Object.entries(parsed)) {
+    if (LABEL.test(slug) && typeof id === "string" && id !== "") map[slug] = id; // drop anything else
+  }
+  return map;
+}
+
+// Parsed once, from a literal process.env read: the value of the application's last build (14.6).
+export const CUSTOMER_HOSTS: Readonly<Record<string, { tenantId: string; name: string }>> = Object.fromEntries(
+  Object.entries(parseCustomerHosts(process.env.BUILDPAD_CUSTOMER_HOSTS)).map(([slug, tenantId]) => [
+    slug,
+    { tenantId, name: Object.hasOwn(CUSTOMER_NAMES, slug) ? CUSTOMER_NAMES[slug] : slug },
+  ]),
+);
 ```
+
+The value reaches the running application through `.env.production`, like every server variable on
+Amplify Hosting. Add the line before the build command of `amplify.yml`, beside the other server
+variables' lines (the Buildpad CLI's module adds the same line):
+
+```yaml
+        # Customer hosts: the branch's slug -> tenant id map, written by the Platform. Server only; never NEXT_PUBLIC_.
+        - '[ -z "$BUILDPAD_CUSTOMER_HOSTS" ] || echo "BUILDPAD_CUSTOMER_HOSTS=$BUILDPAD_CUSTOMER_HOSTS" >> .env.production'
+```
+
+The server reads that file, and Next.js gives the middleware the value the build saw. Either way the
+application serves the map of its last build, so a new value takes effect only with a new build,
+which Update and redeploy starts. `amplify.yml` is not an environment file, so you may open it.
 
 ```ts
 // lib/customer-host.ts: Edge-safe (the middleware imports it). No server-only import.
@@ -792,7 +878,13 @@ to that same origin, and on a customer's host let the consent bind only the host
 - In development `<slug>.localhost:3000` stands for the customer's host. Browsers resolve every
   `*.localhost` name to the loopback address. Add `allowedDevOrigins: ["*.localhost"]` to
   `next.config.ts` so the dev server serves those origins.
-- Unit tests: the matcher refuses `evil-<domain>`, `<slug>.<domain>.evil.com`, two labels,
+- Development has no branch variable. Ask the developer to put a value in `.env.local`, which is
+  never committed, built from Development's `customers[]`:
+  `BUILDPAD_CUSTOMER_HOSTS={"acme":"<customers[].id>"}`. Without it every customer host answers 404
+  in development.
+- Unit tests: `parseCustomerHosts` keeps a slug and its id, drops a key that is not one DNS label
+  and a value that is not a non-empty string, and gives the empty map for a missing, empty,
+  unparsable or array value, without logging the value. The matcher refuses `evil-<domain>`, `<slug>.<domain>.evil.com`, two labels,
   `http://`, a port, a path and a trailing dot. A mapped slug gives `customer`, an unmapped one
   `unknown`, and any other host `bare`. On a customer's host, the sign-in enters a member who has
   several customers without a chooser. It refuses a non-member with 403 and no sign-out. The list,
@@ -802,13 +894,20 @@ to that same origin, and on a customer's host let the consent bind only the host
   may not resolve `*.localhost`. From the browser, open `http://<slug>.localhost:<port>`. Tests that
   sign in reach the Engine, so ask the developer first.
 
-### 14.6 Adding a customer host
+### 14.6 Adding a customer: Update and redeploy
 
-When the Platform creates a customer, add its `slug`, `id` and `name` from `get_project_detail` to
-`config/customer-hosts.ts` and deploy. Until then its subdomain answers 404. No environment variable
-changes, and the application keeps no list of redirect URLs for its own hosts. After the first
-deploy, open `https://<slug>.<customer domain>` and sign in as a member: no chooser should appear. If
-it does, the hosting is not passing the customer's host name to the application (section 11).
+A Platform member creates the customer on the Customers page, in Development or in Production. The
+page then says that the Environment's host map is out of date and offers **Update and redeploy**: it
+writes `BUILDPAD_CUSTOMER_HOSTS` on that Environment's branch (`main` or `production`) and builds the
+application again. The new customer is served once that deployment is live; until then its
+subdomain answers 404. Nothing changes in the code: no commit, no other variable, and no list of
+redirect URLs for the application's own hosts. Tell the developer so when a new customer's address
+answers 404.
+
+After the deployment, open `https://<slug>.<customer domain>` and sign in as a member: no chooser
+should appear. If it does, the hosting is not passing the customer's host name to the application
+(section 11). If every customer host answers 404, the application read an empty map: its log's
+`customer_hosts.empty` line gives the reason.
 
 ## 15. XAppHub sign-in at customers
 
@@ -827,11 +926,11 @@ of the [`add-external-oauth`](../../add-external-oauth/SKILL.md) skill says. Its
 | `reached: false` | Not available yet: a project Admin confirms on the Platform's Customers page that the application names each customer's tenant at sign-in from its host name. Tell the developer so and stop; call `get_project_detail` again once it is given |
 | `reached: true` | Build it as this section says, and tell the developer that XAppHub sign-in is on for `on` of `total` customers. A customer whose sign-in is off, or not yet on, refuses every XAppHub sign-in at its host (section 11) |
 
-Section 15 stands on section 14: the committed map, the matcher, the middleware's 404 and
-`publicOrigin()`. Build section 14 first if the application does not have it. There is still one
-map, `config/customer-hosts.ts`, copied from `customers[]`. The host label is the customer's
-`slug`, the Platform's own, because the Platform registers each customer's callback from it. A new
-customer is served once its entry is added and the application deployed (14.6).
+Section 15 stands on section 14: the map, the matcher, the middleware's 404 and `publicOrigin()`.
+Build section 14 first if the application does not have it. There is still one map, the one 14.1
+reads from the branch's `BUILDPAD_CUSTOMER_HOSTS`. The host label is the customer's `slug`, the
+Platform's own, because the Platform registers each customer's callback from it. A new customer is
+served once a member has pressed Update and redeploy and that deployment is live (14.6).
 
 | Host | What an XAppHub sign-in does |
 |---|---|
@@ -948,8 +1047,10 @@ the mode `customer-tenants`. After installing it (the `add-external-oauth` skill
 installed start route and callback: they must resolve the host, answer 404 for an unknown customer
 host before the redirect, build `redirect_uri` from the request's origin, and send the host's
 customer as `X-Tenant-Id`. If they still send `NEXT_PUBLIC_BUILDPAD_TENANT_ID` on every host, the CLI
-is older: update it and install again, or change the two routes as 15.2 and 15.3 show. Point the
-module's host lookup at the application's own map of section 14.1, and keep no second copy of it.
+is older: update it and install again, or change the two routes as 15.2 and 15.3 show. A release
+that knows the branch variable reads `BUILDPAD_CUSTOMER_HOSTS` itself, the same value as 14.1. With
+an older one, point the module's host lookup at the application's map of section 14.1. Never fill a
+lookup with tenant ids by hand.
 
 ### 15.8 Tests
 

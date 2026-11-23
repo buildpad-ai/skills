@@ -262,7 +262,7 @@ only a relative `returnTo` path.
 | `sign_in_refused` for one user | One of the refused accounts above; that user signs in with their password |
 | XAppHub shows "redirect_uri does not match any registered redirect URLs" | The callback is on a custom domain, on a customer host, or in a microapp or zone: add it to the client in XAppHub (Step 1) |
 | `sign_in_refused` for every user at one customer's host (mode `customer-tenants`) | That customer's XAppHub sign-in is off or not yet on: the Platform's Customers page shows its state |
-| 404 "There is no customer at this address." when the sign-in starts (mode `customer-tenants`) | The host's slug is not in the application's customer host map: add the customer and deploy |
+| 404 "There is no customer at this address." when the sign-in starts (mode `customer-tenants`) | The host's slug is not in the customer host map, which the application reads from its branch's `BUILDPAD_CUSTOMER_HOSTS` (section 14 of the `add-multitenancy` skill's guide `engine-customer-tenants`): a Platform member presses Update and redeploy on the Customers page, in the customer's Environment |
 | `sign_in_failed` | The code exchange failed (check `OAUTH_CLIENT_SECRET` and that the redirect URI is registered), or the project's Engine has no XAppHub sign-in enabled: ask the Buildpad Platform administrator |
 | `sign_in_expired` | The flow cookie is missing: more than ten minutes passed, or the sign-in started in another browser or on another host name |
 | `configuration_error` | An `OAUTH_*` variable or one of the Engine variables of Step 2 is missing |
