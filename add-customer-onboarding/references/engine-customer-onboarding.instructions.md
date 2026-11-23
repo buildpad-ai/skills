@@ -83,7 +83,7 @@ const ENGINE = process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL!; // the Engine_URL (ES
 const CREATE = "/api/onboarding/customers";
 
 export type OnboardingErrorKind =
-  | "not_configured"   // the key is not set in this deployment
+  | "not_configured"   // no key in this deployment: unset, empty or `off` (404)
   | "key_invalid"      // 401 TOKEN_INVALID: the key is missing, unknown or revoked
   | "closed"           // 403 FORBIDDEN on sign-up, resend or verify
   | "create_closed"    // 403 FORBIDDEN on the create route
@@ -111,9 +111,21 @@ export class OnboardingError extends Error {
   }
 }
 
+/**
+ * The key, or null when this deployment has none: unset, empty, or `off` in any case. The Platform
+ * sets `off` on Production's branch, because Amplify drops an empty value: sign-up is Development's only.
+ */
+export function onboardingKey(): string | null {
+  const k = process.env.BUILDPAD_ONBOARDING_KEY?.trim();
+  return k && k.toLowerCase() !== "off" ? k : null;
+}
+
+/** Whether this deployment offers sign-up: the pages, the link and the routes exist only then. */
+export const signUpOffered = (): boolean => onboardingKey() !== null;
+
 function key(): string {
-  const k = process.env.BUILDPAD_ONBOARDING_KEY;
-  if (!k) throw new OnboardingError("not_configured", 500);
+  const k = onboardingKey();
+  if (!k) throw new OnboardingError("not_configured", 404);
   return k;
 }
 
@@ -323,7 +335,7 @@ export default function HumanCheck({ onToken }: { onToken: (token: string) => vo
 // lib/onboarding/messages.ts — server only. The sentences the pages show; never the Engine's own.
 import "server-only";
 import { NextResponse } from "next/server";
-import { OnboardingError, type OnboardingErrorKind } from "@/lib/onboarding/engine";
+import { OnboardingError, signUpOffered, type OnboardingErrorKind } from "@/lib/onboarding/engine";
 
 // The app's name as people see it: ask the developer (step 10). The mail uses it too.
 export const APP_NAME = "<the app's name>";
@@ -374,11 +386,18 @@ export function refusalResponse(e: unknown): NextResponse {
   if (err.kind === "too_many" && err.retryAfter) {
     message = `Too many attempts. Try again in ${Math.max(1, Math.ceil(err.retryAfter / 60))} minutes.`;
   }
-  // The browser never sees the key's 401 or the Engine's 404 as such.
-  const status = ["not_configured", "key_invalid", "engine_too_old"].includes(err.kind) ? 503
+  // No key: the flow is not offered here (404). The browser never sees the key's 401 or the
+  // Engine's 404 as such.
+  const status = err.kind === "not_configured" ? 404
+    : ["key_invalid", "engine_too_old"].includes(err.kind) ? 503
     : err.status >= 400 && err.status < 600 ? err.status : 502;
   const headers: Record<string, string> = err.retryAfter ? { "Retry-After": String(err.retryAfter) } : {};
   return NextResponse.json({ error: { kind: err.kind, message } }, { status, headers });
+}
+
+/** Each onboarding route's first line: 404 where this deployment has no key, before anything else. */
+export function notOffered(): NextResponse | null {
+  return signUpOffered() ? null : refusalResponse(new OnboardingError("not_configured", 404));
 }
 ```
 
@@ -455,12 +474,14 @@ import { signUp } from "@/lib/onboarding/engine";
 import { clientAddress } from "@/lib/onboarding/client-address";
 import { verifyHuman } from "@/lib/onboarding/human-check";
 import { mailConfirm, mailExisting } from "@/lib/onboarding/mail";
-import { SAY, readJson, refusalResponse } from "@/lib/onboarding/messages";
+import { SAY, notOffered, readJson, refusalResponse } from "@/lib/onboarding/messages";
 
 const bad = (message: string) =>
   NextResponse.json({ error: { kind: "invalid_request", message } }, { status: 400 });
 
 export async function POST(request: NextRequest) {
+  const off = notOffered();
+  if (off) return off;
   const body = (await readJson(request)) as Record<string, unknown> | null;
   const keys = body && typeof body === "object" ? Object.keys(body).sort().join(",") : "";
   if (!body || keys !== "email,humanToken,password"
@@ -497,11 +518,14 @@ If the mail fails, the sign-up stands: the person asks for a new link (section 7
 ```tsx
 // app/(auth)/sign-up/page.tsx — a server component.
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { signUpOffered } from "@/lib/onboarding/engine";
 import SignUpForm from "./SignUpForm";
 
 export const metadata: Metadata = { title: "Sign up" };
 
 export default function SignUpPage() {
+  if (!signUpOffered()) notFound(); // no key in this deployment (Production's is `off`)
   return (
     <main>
       <h1>Create your account</h1>
@@ -585,9 +609,11 @@ with the token. Use the app's existing one when step 6 found it, with the same r
 import { type NextRequest, NextResponse } from "next/server";
 import { verify } from "@/lib/onboarding/engine";
 import { clientAddress } from "@/lib/onboarding/client-address";
-import { SAY, readJson, refusalResponse } from "@/lib/onboarding/messages";
+import { SAY, notOffered, readJson, refusalResponse } from "@/lib/onboarding/messages";
 
 export async function POST(request: NextRequest) {
+  const off = notOffered();
+  if (off) return off;
   const body = (await readJson(request)) as Record<string, unknown> | null;
   if (!body || typeof body !== "object" || Object.keys(body).join(",") !== "code" || typeof body.code !== "string") {
     return NextResponse.json({ error: { kind: "invalid_request", message: SAY.fillIn } }, { status: 400 });
@@ -607,9 +633,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import { resend } from "@/lib/onboarding/engine";
 import { clientAddress } from "@/lib/onboarding/client-address";
 import { mailExisting, mailNewLink } from "@/lib/onboarding/mail";
-import { SAY, readJson, refusalResponse } from "@/lib/onboarding/messages";
+import { SAY, notOffered, readJson, refusalResponse } from "@/lib/onboarding/messages";
 
 export async function POST(request: NextRequest) {
+  const off = notOffered();
+  if (off) return off;
   const body = (await readJson(request)) as Record<string, unknown> | null;
   if (!body || typeof body !== "object" || Object.keys(body).join(",") !== "email" || typeof body.email !== "string") {
     return NextResponse.json({ error: { kind: "invalid_request", message: SAY.fillIn } }, { status: 400 });
@@ -634,12 +662,15 @@ export async function POST(request: NextRequest) {
 ```tsx
 // app/(auth)/verify-email/page.tsx — a server component.
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { signUpOffered } from "@/lib/onboarding/engine";
 import VerifyEmail from "./VerifyEmail";
 
 // No Referer leaves this page, so nothing it links to learns the address it was opened at.
 export const metadata: Metadata = { title: "Confirm your email", referrer: "no-referrer" };
 
 export default function VerifyEmailPage() {
+  if (!signUpOffered()) notFound();
   return (
     <main>
       <VerifyEmail />
@@ -736,8 +767,9 @@ its other refusals:
 ```
 
 **The sign-in page.** It sends the browser where the login route's answer says, shows the
-unverified message with a link to `/verify-email` (which offers a new link), and always offers
-sign-up:
+unverified message with a link to `/verify-email` (which offers a new link), and offers sign-up
+where this deployment has a key. The page, a server component, passes `signUpOffered()` to the form
+as a boolean prop; the form, a client component, imports nothing under `lib/onboarding/`:
 
 ```tsx
   // The sign-in form's handling of POST /api/auth/login (add-customer-onboarding)
@@ -752,8 +784,9 @@ sign-up:
   setError(first?.message ?? "Something went wrong. Try again.");
 
   // Under the form:
-  {unverified && <p><Link href="/verify-email">Send a new confirmation link</Link></p>}
-  <p>New here? <Link href="/sign-up">Create an account</Link></p>
+  // signUpOffered: the prop the server page set from signUpOffered() of lib/onboarding/engine.
+  {signUpOffered && unverified && <p><Link href="/verify-email">Send a new confirmation link</Link></p>}
+  {signUpOffered && <p>New here? <Link href="/sign-up">Create an account</Link></p>}
 ```
 
 **An empty tenant list.** In an app that has this flow, `settleTenant`'s branch for
@@ -767,21 +800,25 @@ export const SELF_ONBOARDING = true;
 
 ```ts
   if (tenants.length === 0) {                                     // belongs to no customer yet
-    if (SELF_ONBOARDING) return { create: true as const };        // add-customer-onboarding
+    // add-customer-onboarding; signUpOffered from "@/lib/onboarding/engine" (both server only)
+    if (SELF_ONBOARDING && signUpOffered()) return { create: true as const };
     await supabase.auth.signOut();
     return { error: "NO_CUSTOMER" as const };
   }
 ```
 
 - `SELF_ONBOARDING` is a constant in code. Never read it from the environment or the request.
+- `signUpOffered()` is false where the deployment has no key, as on Production's branch: there a
+  person with no customer gets `NO_CUSTOMER`, as in an app without this flow, and is never sent to
+  a page that is not found.
 - The login route answers `{data: {create: true}}` as it answers any other settled result, and the
   sign-in page sends the browser to `/create-company` (`window.location.assign`). The layout never
   runs `settleTenant`: with no current customer it redirects to `/choose-customer`, which sends a
   person with no tenant to `/create-company`.
 - An app without this flow keeps the `NO_CUSTOMER` answer.
-- **The chooser** (several tenants) gains a "Create another company" link to `/create-company`. The
-  app cannot read the project's limit of companies per person, so the link is always shown, and the
-  409 at the limit explains itself.
+- **The chooser** (several tenants) gains a "Create another company" link to `/create-company`,
+  shown where `signUpOffered()` is true. The app cannot read the project's limit of companies per
+  person, so the link is shown there whatever the limit, and the 409 at the limit explains itself.
 - **The unbound session's routes.** A session bound to no customer is used for nothing but the four
   routes of section 5 of the guide `engine-customer-tenants` and a fifth,
   `/api/onboarding/customers`, which sends its access token to the Engine's
@@ -841,12 +878,14 @@ which stays within a hosted route's time limit.
 
 ```tsx
 // app/(auth)/create-company/page.tsx — a server component.
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { listTenants } from "@/lib/auth/tenants";
+import { signUpOffered } from "@/lib/onboarding/engine";
 import CreateCompanyForm from "./CreateCompanyForm";
 
 export default async function CreateCompanyPage() {
+  if (!signUpOffered()) notFound();
   const supabase = await createClient();
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) redirect("/login");
@@ -866,13 +905,15 @@ import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createCustomer, OnboardingError } from "@/lib/onboarding/engine";
 import { listTenants, switchTenant } from "@/lib/auth/tenants";
-import { SAY, readJson, refusalResponse } from "@/lib/onboarding/messages";
+import { SAY, notOffered, readJson, refusalResponse } from "@/lib/onboarding/messages";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const isKind = (e: unknown, kind: string) => e instanceof OnboardingError && e.kind === kind;
 
 export async function POST(request: NextRequest) {
+  const off = notOffered();
+  if (off) return off;
   const body = (await readJson(request)) as Record<string, string> | null;
   const shaped = body && typeof body === "object"
     && Object.keys(body).sort().join(",") === "id,name"
@@ -1048,7 +1089,7 @@ skill for Amplify Hosting) before the deployment that uses it:
 
 | Variable | Server only | Who sets it | Unset |
 |---|---|---|---|
-| `BUILDPAD_ONBOARDING_KEY` | yes | the Platform, when sign-up is turned on | "Sign-up is not available right now.", `onboarding.not_configured` |
+| `BUILDPAD_ONBOARDING_KEY` | yes | the Platform: the key on `main` when sign-up is turned on, `off` on `production` | no sign-up link, the pages are not found, and the routes answer 404 "Sign-up is not available right now." with `onboarding.not_configured` (also when the value is `off`) |
 | the mail provider's credentials (an API key, or SMTP host, port, user and password) | yes | the developer | "We could not send the email.", `onboarding.mail_failed` |
 | `TURNSTILE_SECRET_KEY` (or the vendor's secret) | yes | the developer | every check fails, `onboarding.human_check_not_configured` |
 | `HOST_ORIGIN` | yes | the developer | no mail is sent, `onboarding.origin_not_configured` |
@@ -1074,8 +1115,11 @@ Then one line of the same form for each other server-only variable of the table,
         - '[ -z "$HOST_ORIGIN" ] || echo "HOST_ORIGIN=$HOST_ORIGIN" >> .env.production'
 ```
 
-The app reads the key only after the next deployment. A key that is missing at run time answers
-"Sign-up is not available right now." and logs `onboarding.not_configured`.
+The app reads the key only after the next deployment. With no key at run time (unset, empty, or
+`off` in any case) the app offers no sign-up: the sign-in page shows no link, the three pages are not
+found, and the four routes answer 404 "Sign-up is not available right now." and log
+`onboarding.not_configured`. On Development that log means the `amplify.yml` line is missing; on
+Production it is expected, because the Platform sets `off` there.
 
 A kit's `amplify.yml` may also carry a line for `BUILDPAD_SIGNUP_MAIL`. It belongs to mail that the
 Engine sends, which this flow does not use: leave the line as it is.

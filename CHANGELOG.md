@@ -14,6 +14,57 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
+## v10.5.0
+
+Customers in Production: on an Engine project with Customer tenants, customers can now exist in
+Production as well as in Development, and the application reads its customer host map from a
+variable the Buildpad platform writes on each branch, in place of a committed file. Install it with
+`npx skills add buildpad-ai/skills#v10.5.0`. It is a MINOR release: every changed text is for Engine
+projects only, no skill is added, removed or renamed, and the "Establish the backend first"
+procedure stays at version 1.
+
+The Platform writes `BUILDPAD_CUSTOMER_HOSTS` (JSON slug → tenant id) as a server variable on each
+Amplify branch of the main app: Development's customers on `main`, Production's on `production`. A
+member writes it and redeploys with **Update and redeploy** on the Customers page. `get_project_detail`
+lists Production's customers as `productionCustomers` beside `customers`. The Platform also sets
+`BUILDPAD_ONBOARDING_KEY=off` on `production` (Amplify drops an empty value): self-onboarding is
+Development's only. TS-H1 is reworded in place: the map is the one the Platform writes, read on the
+server and never committed.
+
+- **`add-multitenancy`:** section 14 of the guide `engine-customer-tenants` reads the map from
+  `process.env.BUILDPAD_CUSTOMER_HOSTS` (`parseCustomerHosts`: one-label slugs and non-empty string
+  ids only; a missing, empty, unparsable or non-object value is the empty map, logged once as
+  `customer_hosts.empty` without the value), with the `amplify.yml` line that writes it into
+  `.env.production`. It says that one piece of code serves both Environments, that a new customer is
+  served after Update and redeploy (14.6, rewritten), that `productionCustomers` sits beside
+  `customers`, that the variable is the Platform's and never set with `amplify_set_env_vars`, how to
+  give development a value (`.env.local`), and that display names are optional. An application that
+  committed `config/customer-hosts.ts` with tenant ids replaces it. Sections 1, 11 (three symptoms
+  changed, one new), 12, 13 (self-onboarding is Development's only), 15 and 15.7 follow.
+- **`add-customer-onboarding`:** an onboarding key of `off`, in any case, is no key, as an unset or
+  empty one is. With no key the sign-in page shows no sign-up link, the three pages are not found,
+  the four routes answer 404 before anything else (they answered 503 before), and `settleTenant`
+  keeps `NO_CUSTOMER` for a person with no customer. The skill says self-onboarding is
+  Development's only, and that the Platform manages the key and `BUILDPAD_SIGNUP_MAIL`.
+- **`add-external-oauth`:** the unknown-host troubleshooting row says the map comes from
+  `BUILDPAD_CUSTOMER_HOSTS` and Update and redeploy.
+- **`create-api-route`, `authentication-proxy`:** TS-H1's new wording.
+- **`debugging-and-error-recovery`:** the customer-host and sign-up rows follow.
+- **Repository check:** `CONTRIBUTING.md` gains "Variables the Platform manages"
+  (`BUILDPAD_ONBOARDING_KEY`, `BUILDPAD_SIGNUP_MAIL`, `BUILDPAD_CUSTOMER_HOSTS`). A new test runs
+  the guide's own map parser and the onboarding module's key reader, with their types stripped, and
+  checks that no guide commits a slug-to-tenant map, that the pages and routes are gated on the key,
+  and that no file names the host map with the `NEXT_PUBLIC_` prefix. Spec
+  `.kiro/specs/production-customers/`.
+
+Apps built with the CLI's `external-oauth-engine` module get the same reader from the CLI release
+that knows `BUILDPAD_CUSTOMER_HOSTS`.
+
+### Supabase projects
+
+No file that a Supabase project's agent reads changes. The changed files are Engine-only, or the
+change stands in an Engine passage.
+
 ## v10.4.0
 
 XAppHub sign-in at customers: on an Engine project with Customer tenants, XAppHub sign-in now

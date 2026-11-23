@@ -82,6 +82,11 @@ The answer `false` stops here, as the paragraph above says. A project Admin can 
 only once a host administrator has turned on the premium flag Customer self-onboarding for the
 project. With the answer `true`, go on with steps 4 to 11.
 
+Self-onboarding is Development's only. Where the project also has customers in Production, a
+Platform member creates each of them on the Customers page, and Production's application offers no
+sign-up: the Platform sets the key to `off` on the `production` branch (step 7). The same code serves
+both, so build the flow once.
+
 ## Step 4. Sign-in comes first
 
 If the app has no `lib/auth/tenants.ts` with `settleTenant`, build the sign-in of the mode
@@ -118,6 +123,14 @@ under `lib/`).
 The Buildpad platform sets `BUILDPAD_ONBOARDING_KEY` in the app's hosting when a project Admin
 turns sign-up on, or shows it once on the Customers page for another host. It is a server
 variable: never give it a `NEXT_PUBLIC_` prefix and never read it in a client component.
+
+The value `off`, in any case, means no key, as an unset or empty value does. The Platform sets it on
+the `production` branch, because Amplify drops an empty value. With no key the app offers no
+sign-up: the sign-in page shows no link to it, its pages are not found, and its routes answer 404
+before anything else (the reference file, sections 2 and 10).
+
+The Platform manages this variable, and `BUILDPAD_SIGNUP_MAIL` beside it: never set, change or remove
+either with `amplify_set_env_vars`, which refuses them.
 
 Never open an environment file to check that it is set.
 
@@ -195,7 +208,7 @@ Keyed by the Engine's status and code. The person-facing text never repeats the 
 | customers | 409 `CONFLICT`, message `MsgOnboardingPerIdentity` | The person's company limit (`per_identity`), or a same-id request that raced the first | "You have reached the number of companies you can create." | The route first looks for its own `id` among the person's tenants and lands there when it is found; otherwise no retry |
 | customers | 409 `CONFLICT`, message `MsgOnboardingIDTaken` | The id belongs to another tenant | (never seen by a person: the form makes a new id and resubmits once) | New id, once |
 | customers | 503 `SERVICE_UNAVAILABLE` | The template-copy lock's deadline | "Creating your company is taking longer than usual…" | Same id: 2 s (route), 5 s, 10 s (form) |
-| any | (none: the app's own setup) | `BUILDPAD_ONBOARDING_KEY` is not in the running app | "Sign-up is not available right now." | Log `onboarding.not_configured`; the `amplify.yml` line and a new deployment |
+| any | (none: the app's own setup; 404) | No key in the running app: `BUILDPAD_ONBOARDING_KEY` is unset, empty or `off` (Production's branch) | "Sign-up is not available right now." (the pages are not found, and the sign-in page shows no link) | Log `onboarding.not_configured`; on Development, the `amplify.yml` line and a new deployment; on Production, expected |
 | any | 5xx other, or no answer | The Engine is down | "Something went wrong. Try again." | The person retries |
 
 The three 409s on the create route share the code `CONFLICT` and carry no `extensions`. The module

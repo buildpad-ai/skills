@@ -1,0 +1,23 @@
+{
+  "feature_name": "production-customers",
+  "created_at": "2026-11-23T10:00:00Z",
+  "updated_at": "2026-11-23T12:00:00Z",
+  "language": "en",
+  "phase": "implemented",
+  "phase_note": "Lightweight spec (requirements and design in one file), written 2026-11-23 before any skill change, from the Platform's companion brief companion-skills.md (buildpad-platform spec production-customers, P-7 (a) and P-9 (a)). Read at origin/main 4cd99e6 (v10.4.0). Decisions D-1 to D-7 settled as recommended by the session the Platform work started; the user reviews them in the pull request. IMPLEMENTED 2026-11-23 on feat/production-customers. Not tagged or released.",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true
+}
