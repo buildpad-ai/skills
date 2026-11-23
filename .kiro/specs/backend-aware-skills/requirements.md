@@ -719,6 +719,7 @@ NY 2, RW 9, RW+G 2, UC 20. The Counts line below is still kept as the record of 
 | `subagent-delegation` | wording only | reworded to be true for both | small |
 | `buildpad-steering` | none | reworded to be true for both | small |
 | `worker-messaging` | none | both paths, chosen by backend, with an Engine passage only (amended 16 October 2026) | small |
+| `worker-http` | none | new skill, true for both kinds of project (the worker checks a user's token through the data API's /api/users/me, a worker key or a webhook signature; no backend-specific step) | small |
 | `add-mobile-app` | none | new skill, true for both kinds of project (wraps the deployed web app; no backend-specific step) | small |
 | `add-mcp-server` | none | new skill, true for both kinds of project (the MCP route forwards the caller's own token to the data API; no backend-specific step) | small |
 | `add-comments` | partial | both paths, chosen by backend; Engine passages for Customer_Tenants (customer-tenant-skills) | small |

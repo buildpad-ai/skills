@@ -140,6 +140,7 @@ The core methodology: every feature is specified as `requirements.md` (EARS) →
 | [add-comments](add-comments) | The standard comment field: social @mentions, images (paste from the clipboard), replies at any depth, an emoji picker, one-click reactions, mention and reply emails; with the hooks, the shared editor, the thread list and how to prove it |
 | [add-notifications](add-notifications) | The standard in-app notifications: a header bell with an unread badge, a /notifications inbox with inline reply, deep links, mark read, a daily email digest; with the standard collection, recipient-only permissions, the notify service and hooks, migrating an existing bell, and how to prove it |
 | [worker-messaging](worker-messaging) | Offload long-running work to a Buildpad runtime worker over RabbitMQ (topic-exchange job convention; Next.js producer + worker consumer/chaining; connection via Platform MCP) |
+| [worker-http](worker-http) | Give a worker its own opt-in HTTP endpoint: when to use it instead of the queue (streaming, long requests, webhooks), PORT and /health, /openapi.json with x-buildpad-auth, user/key/webhook callers, CORS, SSE pings |
 | [migrate-to-engine](migrate-to-engine) | Engine projects only: finish moving a project from Supabase to the Buildpad Engine — rewrite the hooks, cron jobs and custom services the Engine could not run, and port the app's code (environment, sign-in, data calls, files, administrator code, access rules); on a Supabase project it explains the move and stops |
 
 ### DaaS platform reference

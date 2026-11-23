@@ -1,0 +1,8 @@
+[
+  {
+    "path": "worker-http/SKILL.md",
+    "kind": "new-file",
+    "reason": "New skill worker-http: an opt-in HTTP endpoint for a runtime worker, when to use it instead of the queue, PORT and /health, /openapi.json extensions, user/key/webhook callers, CORS and SSE streaming rules.",
+    "release": "unreleased"
+  }
+]
