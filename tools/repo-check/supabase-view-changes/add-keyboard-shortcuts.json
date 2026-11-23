@@ -1,0 +1,8 @@
+[
+  {
+    "path": "add-keyboard-shortcuts/SKILL.md",
+    "kind": "new-file",
+    "reason": "New skill add-keyboard-shortcuts: Atlassian-style keyboard shortcuts with one registry, a ? help dialog, sequences, Esc by layer and a per-user off switch.",
+    "release": "unreleased"
+  }
+]

@@ -724,6 +724,7 @@ NY 2, RW 9, RW+G 2, UC 20. The Counts line below is still kept as the record of 
 | `add-comments` | partial | both paths, chosen by backend; Engine passages for Customer_Tenants (customer-tenant-skills) | small |
 | `migrate-to-engine` | partial | new skill, both paths, chosen by backend: on an Engine project it ports the automation and app code of a project moved from Supabase; on a Supabase project it says the skill applies after the move and stops | medium |
 | `add-ai-chat` | none | new skill, true for both kinds of project (the chat talks only to the Chocolate Factory agent, never to the data API; no backend-specific step) | small |
+| `add-keyboard-shortcuts` | none | new skill, true for both kinds of project (shortcuts live in the browser and call the same actions as the buttons; no backend-specific step) | small |
 | `atomic-writes` | core | new skill, both paths, chosen by backend: on an Engine project it teaches conditional updates, optimistic locking and transactional hooks; on a Supabase project it says the feature is not available and stops | medium |
 | `add-customer-onboarding` | core | Engine only: on Supabase it says the flow needs an Engine project and stops; in the mode scope it says workspaces are not available yet (ES-17n) and stops; in the mode customer-tenants it builds the flow while Self-onboarding is on | medium |
 
