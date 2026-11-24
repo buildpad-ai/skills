@@ -1,1 +1,8 @@
-[]
+[
+  {
+    "path": "worker-messaging/SKILL.md",
+    "kind": "text",
+    "reason": "A note before Step 1 points to the new worker-http skill for work that must answer a request directly (streaming, long requests, webhooks) rather than run as a queued job.",
+    "release": "unreleased"
+  }
+]

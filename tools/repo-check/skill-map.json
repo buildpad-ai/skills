@@ -43,6 +43,7 @@
   {"folder":"subagent-delegation","dependence":"wording only","treatment":"reworded to be true for both","size":"small","plan":"RW"},
   {"folder":"buildpad-steering","dependence":"none","treatment":"reworded to be true for both","size":"small","plan":"RW+G"},
   {"folder":"worker-messaging","dependence":"none","treatment":"both paths, chosen by backend, with an Engine passage only (amended 16 October 2026)","size":"small","plan":"BP"},
+  {"folder":"worker-http","dependence":"none","treatment":"new skill, true for both kinds of project (the worker checks a user's token through the data API's /api/users/me, a worker key or a webhook signature; no backend-specific step)","size":"small","plan":"RW"},
   {"folder":"add-mobile-app","dependence":"none","treatment":"new skill, true for both kinds of project (wraps the deployed web app; no backend-specific step)","size":"small","plan":"RW"},
   {"folder":"add-mcp-server","dependence":"partial","treatment":"both paths, chosen by backend: the MCP route is shared; step 6 makes the hosted connector's data API session with the service key on Supabase and with a second sign-in at consent on the Engine","size":"small","plan":"BP"},
   {"folder":"add-comments","dependence":"partial","treatment":"both paths, chosen by backend; Engine passages for Customer_Tenants (customer-tenant-skills)","size":"small","plan":"BP"},

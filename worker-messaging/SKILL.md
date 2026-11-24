@@ -71,6 +71,10 @@ convention so producers never need to know which worker handles a job.
 > the matching side exactly. Do not assume the other agent can see your code — it
 > can't.
 
+> **Need an answer, not a job?** When the browser or another service must call a worker and
+> wait for its reply (a streamed AI answer, a long request, a webhook), give the worker an HTTP
+> endpoint instead: see the `worker-http` skill.
+
 ## Step 1 — Get the connection from the Platform MCP (do NOT hardcode)
 
 The RabbitMQ connection string is **not** committed anywhere. Fetch it live from
