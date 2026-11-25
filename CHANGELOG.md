@@ -14,6 +14,47 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
+## v11.0.0
+
+Two skills are added, `add-keyboard-shortcuts` and `worker-http`. Install it with
+`npx skills add buildpad-ai/skills#v11.0.0`. It is a MAJOR release, because an existing file that a
+Supabase project's agent reads changes (see **Supabase projects** below). No skill is removed or
+renamed, and the "Establish the backend first" procedure stays at version 1.
+
+- **New skill `add-keyboard-shortcuts`:** Atlassian-style keyboard shortcuts for a Buildpad app, or
+  existing ones brought up to the standard: one shortcut registry and a shared hook, a `?` dialog
+  that lists every shortcut, `/` to search, `c` to create, `g` then a key to navigate, Ctrl/Cmd+K,
+  `j`/`k` to move through lists, Esc that closes only the topmost layer, no shortcut while the person
+  is typing, macOS and Windows labels, `aria-keyshortcuts` and tooltips, keys pressed inside
+  sandboxed iframes, a per-user switch to turn shortcuts off, and a Playwright proof checklist. True
+  for both kinds of project; no backend-specific step.
+- **New skill `worker-http`:** an opt-in HTTP endpoint for a Buildpad runtime worker, called from the
+  app: when to use it instead of the RabbitMQ queue (streaming, long requests, webhooks, a small
+  stateful API), the worker's code contract (listen on `PORT`, `GET /health`, an optional
+  `GET /openapi.json` with the `x-buildpad-auth` and `x-buildpad-stream` extensions), the three kinds
+  of caller and how the worker checks each (a signed-in user's token through the data API's
+  `/api/users/me`, a server-side worker key, a provider-signed webhook), CORS from
+  `ALLOWED_ORIGINS`, and the streaming rules (SSE, a ping every 15 seconds, stop work when the
+  client leaves). True for both kinds of project; no backend-specific step.
+- **`worker-messaging`:** a note before Step 1 points to `worker-http` for work that must answer a
+  request directly rather than run as a queued job.
+
+### Supabase projects
+
+These files are new:
+
+- `add-keyboard-shortcuts/SKILL.md` (new-file): Atlassian-style keyboard shortcuts with one
+  registry, a `?` help dialog, sequences, Esc by layer and a per-user off switch.
+- `worker-http/SKILL.md` (new-file): an opt-in HTTP endpoint for a runtime worker, when to use it
+  instead of the queue, `PORT` and `/health`, `/openapi.json` extensions, user, key and webhook
+  callers, CORS and SSE streaming rules.
+
+This file changes, with its reason:
+
+- `worker-messaging/SKILL.md` (text): a note before Step 1 points to the new `worker-http` skill for
+  work that must answer a request directly (streaming, long requests, webhooks) rather than run as
+  a queued job.
+
 ## v10.5.0
 
 Customers in Production: on an Engine project with Customer tenants, customers can now exist in
