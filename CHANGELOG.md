@@ -14,6 +14,24 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
+## v11.1.0
+
+On an Engine project, a JSON-string value for a `json` field is sent JSON-encoded. Install it with
+`npx skills add buildpad-ai/skills#v11.1.0`. It is a MINOR release: the changed text is for Engine
+projects only, no skill is added, removed or renamed, and the "Establish the backend first"
+procedure stays at version 1.
+
+- **`migrate-to-engine`, Part B step 3 (data calls):** a value for a `json` field that is a JSON
+  string (a bare text, not an object or array) is sent JSON-encoded (`JSON.stringify("hello")`).
+  Engines up to 0.1.0-dev.36 read a string sent to a `json` field as JSON text and refuse `hello`
+  as invalid JSON (22P02), where Supabase stored it as a JSON string; the encoded form works on
+  every version. Objects, arrays, numbers, booleans and null are sent as they are. Found moving a
+  project whose app wrote bare strings to a `json` field.
+
+### Supabase projects
+
+Nothing a Supabase project's agent reads changes: the changed text is for Engine projects only.
+
 ## v11.0.0
 
 Two skills are added, `add-keyboard-shortcuts` and `worker-http`. Install it with
