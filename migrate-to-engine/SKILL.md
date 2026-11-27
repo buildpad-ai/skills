@@ -196,6 +196,7 @@ On an Engine project the data API's address is the Engine_URL, which both `NEXT_
   calls and PostgREST addresses with the items API, through the app's forwarding routes
   ([create-api-route](../create-api-route/SKILL.md)) or the Buildpad SDK. Send no cookie and no
   tenant header after sign-in.
+  A value for a `json` field that is a JSON string (a bare text, not an object or array) is sent JSON-encoded: send `JSON.stringify("hello")`, which is the text `"hello"`, not `hello`. Engines up to 0.1.0-dev.36 read a string sent to a `json` field as JSON text and refuse `hello` as invalid JSON, where Supabase stored it; the encoded form works on every version. Objects, arrays, numbers, booleans and null are sent as they are. Check each place the app writes to a `json` field.
   On an Engine project every data call carries the signed-in user's access token as `Authorization: Bearer <access token>`, from the application's own server route or from the SDK. The Engine accepts no cookie session on its data API. The token in the project's MCP configuration is accepted only on the MCP endpoint `/api/mcp`: never send it, or any other administrator token, to the data API.
 - [ ] **4. Administrator code** (`service-role`, `auth-admin`). Remove every Supabase client built
   with the service-role key. Do administrator tasks in the Studio, or in a server route that
