@@ -93,7 +93,7 @@ Bootstrap creates a complete project skeleton:
 - `package.json` with all dependencies
 - `tsconfig.json` with path aliases
 - `next.config.ts`
-- `app/layout.tsx` and `app/page.tsx`
+- `app/[lang]/layout.tsx` (the root layout) and `app/[lang]/(authenticated)/page.tsx` (the home page)
 - All 40+ Buildpad UI components
 - API proxy routes
 - Supabase auth utilities
@@ -104,7 +104,7 @@ Bootstrap creates a complete project skeleton:
 - `package.json` with all dependencies
 - `tsconfig.json` with path aliases
 - `next.config.ts`
-- `app/layout.tsx` and `app/page.tsx`
+- `app/[lang]/layout.tsx` (the root layout) and `app/[lang]/(authenticated)/page.tsx` (the home page)
 - All 40+ Buildpad UI components
 - API proxy routes
 - Supabase client utilities, which an Engine project keeps for sign-in only
@@ -140,7 +140,7 @@ See [prerequisites.instructions.md](prerequisites.instructions.md) for full deta
    (or from local clone: pnpm cli bootstrap --cwd /path/to/project)
    (creates Next.js skeleton, installs ALL components, installs ALL npm deps)
 4. Create .env.local               → Only NOW create project-specific files
-5. Create app pages                → app/login/page.tsx, etc.
+5. Create app pages                → app/[lang]/(authenticated)/<page>/page.tsx, etc. (login is the CLI's app/[lang]/login/page.tsx)
 6. Create AI tool config folders  → Copy AI tools LAST (not first!)
 7. Run Buildpad-First validation   → grep for forbidden Mantine imports (see below)
 ```
@@ -153,7 +153,7 @@ See [prerequisites.instructions.md](prerequisites.instructions.md) for full deta
    (or from local clone: pnpm cli bootstrap --cwd /path/to/project)
    (creates Next.js skeleton, installs ALL components, installs ALL npm deps)
 4. Create .env.local               → Only NOW create project-specific files (the four Engine values: environment.instructions.md)
-5. Create app pages                → app/login/page.tsx, etc.
+5. Create app pages                → app/[lang]/(authenticated)/<page>/page.tsx, etc. (login is the CLI's app/[lang]/login/page.tsx)
 6. Create AI tool config folders  → Copy AI tools LAST (not first!)
 7. Run Buildpad-First validation   → grep for forbidden Mantine imports (see below)
 ```
@@ -170,7 +170,7 @@ See [prerequisites.instructions.md](prerequisites.instructions.md) for full deta
    (or from local clone: pnpm cli add --all --with-api --cwd /path/to/project-name)
 5. Install dependencies            → cd /path/to/project-name && pnpm install
 6. Create .env.local               → Only NOW create project-specific files
-7. Create app pages                → app/login/page.tsx, etc.
+7. Create app pages                → app/[lang]/(authenticated)/<page>/page.tsx, etc. (login is the CLI's app/[lang]/login/page.tsx)
 8. Create AI tool config folders  → Copy AI tools LAST (not first!)
 9. Run Buildpad-First validation   → grep for forbidden Mantine imports (see below)
 ```
@@ -184,7 +184,7 @@ See [prerequisites.instructions.md](prerequisites.instructions.md) for full deta
    (or from local clone: pnpm cli add --all --with-api --cwd /path/to/project-name)
 5. Install dependencies            → cd /path/to/project-name && pnpm install
 6. Create .env.local               → Only NOW create project-specific files (the four Engine values: environment.instructions.md)
-7. Create app pages                → app/login/page.tsx, etc.
+7. Create app pages                → app/[lang]/(authenticated)/<page>/page.tsx, etc. (login is the CLI's app/[lang]/login/page.tsx)
 8. Create AI tool config folders  → Copy AI tools LAST (not first!)
 9. Run Buildpad-First validation   → grep for forbidden Mantine imports (see below)
 ```

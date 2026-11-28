@@ -88,7 +88,7 @@ npx @buildpad/cli@latest add api-routes --cwd /path/to/project
 
 > **If the CLI command fails, `@buildpad/cli` IS published to npm** — verify with `npm view @buildpad/cli version` before assuming otherwise or reaching for a local clone. The CLI fetches its registry from `raw.githubusercontent.com`, so confirm the environment can reach **both** npm and the GitHub raw CDN. A local clone is only needed for CLI development, never to consume components.
 
-The module must render under the authenticated layout (`app/(authenticated)/` with a `DaaSProviderWrapper`) so `DaaSProvider` header injection (the signed-in user's session token) is in scope — the hooks call `/api/items/*` (and, when provisioning in **proxy** mode, `/api/fields/*` and `/api/collections/*`).
+The module must render under the authenticated layout (`app/[lang]/(authenticated)/` with a `DaaSProviderWrapper`) so `DaaSProvider` header injection (the signed-in user's session token) is in scope — the hooks call `/api/items/*` (and, when provisioning in **proxy** mode, `/api/fields/*` and `/api/collections/*`).
 
 > **On a Supabase project, DaaS CORS must be configured first.** `DynamicForm` (via `CollectionForm`) fetches `/users/me`, `/permissions/me`, and item endpoints from the browser with `credentials: 'include'`. DaaS's default `cors_origins: ["*"]` is **incompatible** with credentialed requests — the browser blocks every preflight (`Access-Control-Allow-Origin header must not be the wildcard '*'`). Set explicit origins first (see [daas-platform](../daas-platform/SKILL.md) "CORS must use explicit origins" — Bugs 17+25 — and [debugging-and-error-recovery](../debugging-and-error-recovery/SKILL.md)). This is not form-builder-specific: it affects every authenticated Buildpad component.
 >

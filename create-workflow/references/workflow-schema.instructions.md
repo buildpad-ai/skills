@@ -1323,20 +1323,22 @@ The workflow itself is unaffected: instances exist and transitions work, because
 **Causes & Fixes:**
 
 1. **No instance** - see "Items Created Without Any Instance" above; the button shows no state
-2. **The button is inert** - on Buildpad UI 3.0.0 a `readonly` state field disables the button inside a form; render it outside the form (see the create-workflow skill, step 5)
-3. **404 on the transition** - the app has no route for `POST /api/workflow/transition`; on Buildpad UI 3.0.0 the button posts to the app's own origin, which needs a proxy to DaaS
-4. **403 "not authorized"** - the user holds none of the command's `policies` (policy ids, not access-row ids) or `module_access_keys`; on DaaS 0.1.98 that includes administrators
+2. **The button is inert** - inside a form, the user has no `update` permission on the collection or the permissions could not be loaded (`CollectionForm` disables the whole form); render the form without the state field and the button beside it (see the create-workflow skill, step 5). On Buildpad UI 3.0.0 a `readonly` state field also disabled it: update to 3.1.0 or later
+3. **404 on the transition** - the request went to the app's own origin, which has no route for `POST /api/workflow/transition`: the app has no DaaS URL configured in `DaaSProvider`, or runs Buildpad UI 3.0.0, which always posted to the app's own origin. Configure the URL (or update), or add a same-origin route that forwards to DaaS
+4. **403 "not authorized"** - the user holds none of the command's `policies` (policy ids, not access-row ids) or `module_access_keys`; on DaaS 0.1.98 and earlier that included administrators, and from 0.1.99 an administrator passes every gate
 5. **403 on load** - the user has no read permission on `daas_wf_instance` / `daas_wf_definition`
 
 ### Workflow State Not Updating After Transition
 
 **Symptoms:** Transition succeeds but `workflow_state` doesn't change
 
-**Causes** (observed on DaaS 0.1.98 — the endpoint answers 200 in every one of them, because a failure to write the item's state field is logged, not returned):
+**Causes** (on DaaS 0.1.98 and earlier the endpoint answered 200 in every one of them, because a failure to write the item's state field was logged, not returned):
 
-1. The `workflow_state` field is missing the `xtr-interface-workflow` interface (fix below).
-2. A filter extension on `<collection>.items.update` threw while the engine wrote the state.
-3. The collection is scope-enabled and the request carried no `X-Resource-Uri`: the engine's write is filtered to the root scope and matches no row.
+1. The `workflow_state` field is missing the `xtr-interface-workflow` interface (fix below). The endpoint still answers 200 on DaaS 0.1.99 and later: a collection with no state field is not a failure.
+2. A filter extension on `<collection>.items.update` threw while the engine wrote the state. From DaaS 0.1.99 that refuses the transition instead: the instance is put back and the extension's error is the answer.
+3. The collection is scope-enabled and the request carried no `X-Resource-Uri`: on DaaS 0.1.98 and earlier the engine's write was filtered to the root scope and matched no row. Fixed in DaaS 0.1.99.
+
+From DaaS 0.1.99 any other failure to write the state keeps the transition and is reported in the response's `warning`.
 
 Compare `daas_wf_instance.current_state` with the item's `workflow_state` to see whether they have drifted.
 
@@ -1423,8 +1425,8 @@ The workflow itself is unaffected: instances exist and transitions work, because
 **Causes & Fixes:**
 
 1. **No instance** - see "Items Created Without Any Instance" above; the button shows no state
-2. **The button is inert** - on Buildpad UI 3.0.0 a `readonly` state field disables the button inside a form; render it outside the form (see the create-workflow skill, step 5)
-3. **404 on the transition** - the app has no route for `POST /api/workflow/transition`; on Buildpad UI 3.0.0 the button posts to the app's own origin, which needs a route that forwards to the Engine
+2. **The button is inert** - inside a form, the user has no `update` permission on the collection or the permissions could not be loaded (`CollectionForm` disables the whole form); render the form without the state field and the button beside it (see the create-workflow skill, step 5). On Buildpad UI 3.0.0 a `readonly` state field also disabled it: update to 3.1.0 or later
+3. **404 on the transition** - the app has no route for `POST /api/workflow/transition`: on an Engine project the button posts to the app's own origin, and the CLI's catch-all `app/api/[...path]/route.ts` (CLI 3.5.2 and later) is missing; add it, or a route that forwards to the Engine
 4. **403 "not authorized"** - the user holds none of the command's `policies` (policy ids, not access-row ids) or `module_access_keys`
 5. **403 on load** - the user has no read permission on `daas_wf_instance` / `daas_wf_definition`
 

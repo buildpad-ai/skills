@@ -28,5 +28,11 @@
     "kind": "text",
     "reason": "The Opt-in Modules table gains a row for the Notifications module (@buildpad/ui-notifications, CLI target notifications) and its skill add-notifications.",
     "release": "v10.0.0"
+  },
+  {
+    "path": "buildpad-reference/references/react-components.instructions.md",
+    "kind": "text",
+    "reason": "The content module pattern uses the paths `add content-routes` writes (`app/[lang]/content/…`), `useLocaleRouter` and `stripLocale` as the CLI templates do, and says what the list shows when `/api/permissions/me` fails.",
+    "release": "v12.0.0"
   }
 ]

@@ -10,5 +10,11 @@
     "kind": "text",
     "reason": "Scope wording: per-scope overrides instead of per-tenant, and on an Engine project permission presets are not applied, so the scope comes from the create-time default.",
     "release": "v2.0.0"
+  },
+  {
+    "path": "create-form-builder/SKILL.md",
+    "kind": "text",
+    "reason": "Every page the Buildpad CLI scaffolds is under `app/[lang]/` since CLI 2.3: the authenticated route group is `app/[lang]/(authenticated)/`.",
+    "release": "v12.0.0"
   }
 ]

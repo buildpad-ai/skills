@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
 ## Layouts and Templates
 
 ```tsx
-// app/layout.tsx - Root layout
+// app/[lang]/layout.tsx - Root layout (app/layout.tsx in an app without locale routing)
 import {
   ColorSchemeScript,
   MantineProvider,

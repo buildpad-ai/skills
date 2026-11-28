@@ -321,7 +321,7 @@ There is no SQL equivalent on an Engine project.
   1. Create a workflow definition in `daas_wf_definition`
   2. Create a workflow assignment in `daas_wf_assignment`
   3. Grant the users who run transitions read on `daas_wf_instance` and `daas_wf_definition`, and gate the commands
-  4. Add the `WorkflowButton` component to the UI
+  4. Check the UI: `CollectionForm` renders `workflow_state` as the workflow button itself, so a content form needs no workflow code; `WorkflowButton` is placed by hand only on a page without a form
 
 ---
 

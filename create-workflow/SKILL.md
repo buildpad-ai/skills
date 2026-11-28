@@ -147,7 +147,7 @@ Three things that go wrong here, all of them silently:
 
 - **Declare the relation with `meta.options.related_collection`, not `schema.foreign_key_table`.** `schema.foreign_key_table` is not read on create (and the Go engine refuses it with 400). The field is created as a bare column with no foreign key and no relation, so `workflow_instance` is never filled.
 - **Do not list `workflow_instance` inline in `collections` create (observed on DaaS 0.1.98).** That path gives every `uuid` column `DEFAULT gen_random_uuid()`. Without a relation the column fills with random UUIDs that reference nothing; with a relation every insert fails on the foreign key. Create the collection first, then add the field with the `fields` tool as above.
-- **`workflow_state` stays `readonly: true`.** The state must only change through a transition. (On Buildpad UI 3.0.0 a readonly state field renders an inert `WorkflowButton` inside `VForm`/`CollectionForm` — see step 5.)
+- **`workflow_state` stays `readonly: true`.** The state must only change through a transition. (From Buildpad UI 3.1.0 the field's `readonly` does not disable the workflow button inside `VForm`/`CollectionForm`: a transition is not an edit — see step 5.)
 
 <!-- buildpad-backend: supabase -->
 ### 2. Create Workflow Definition
@@ -299,7 +299,11 @@ Create it with `POST /api/workflow-assignments` and an administrator's session. 
 An Engine project has no migrations: the fields created in step 1 are the columns. Write no migration file.
 <!-- /buildpad-backend -->
 
-### 5. Add WorkflowButton to UI
+### 5. The Workflow Button in the UI
+
+Inside a Buildpad form (`VForm` / `CollectionForm`) the `workflow_state` field (interface `xtr-interface-workflow`) renders the workflow button by itself and gets the record key from the form as `primaryKey`. The content module's item page therefore needs no workflow code. Do not also put a standalone `WorkflowButton` on a page that shows the item's `CollectionForm` with the state field: the user would see two buttons for one state.
+
+Render `WorkflowButton` yourself only where no form shows the state field:
 
 ```tsx
 import { WorkflowButton } from "@/components/ui/workflow-button";
@@ -311,25 +315,28 @@ import { WorkflowButton } from "@/components/ui/workflow-button";
 />;
 ```
 
-Inside a Buildpad form (`VForm` / `CollectionForm`) the state field renders this button by itself and gets the record key from the form as `primaryKey` — a page needs no workflow code. Outside a form, pass `itemId` yourself. Without either, the button treats the item as new and shows no state.
+- **A page without a form** (a detail view, a card, a dashboard): pass `itemId` and `collection`. Without an id the button treats the item as new and shows no state.
+- **Approvers who may not edit the record:** `CollectionForm` disables the whole form, the button included, for a user with no `update` permission on the collection, and while the permissions cannot be loaded. Render the form with `excludeFields={["workflow_state", "workflow_instance"]}` and put the standalone button beside it, so the page still has one button.
+
+How the button behaves (Buildpad UI 3.1.0 and later):
+
+- **No confirmation step.** A command runs as soon as it is picked from the menu. Name commands so the menu is unambiguous ("Reject to Draft", not "Back").
+- **Only the commands the user may run.** A command with neither `policies` nor `module_access_keys` is offered to everyone. A gated command is offered to an administrator, and to a user who holds one of its `policies` (ids of `daas_policies` rows, read from `GET /api/policies/me`) or one of its `module_access_keys` (read from `GET /api/permissions/me`). The server checks the gate again on the transition.
+- **Field locks do not reach it.** The field's `readonly`, and an update permission that leaves `workflow_state` out of its `fields`, do not disable the button: a transition is not an edit. The form-level `disabled` still does.
+- **A refused transition** shows the server's reason under the button.
+- **Its requests:** it reads the item's `daas_wf_instance` row (by `collection` and `item_id`) and its `daas_wf_definition` through `/api/items/…`, reads `GET /api/policies/me` and `GET /api/permissions/me`, and runs `POST /api/workflow/transition` with `{ workflowInstanceId, commandName, workflowField }`.
+
+<!-- buildpad-backend: supabase -->
+The button sends these requests to the configured DaaS URL (`NEXT_PUBLIC_BUILDPAD_DAAS_URL`, through `DaaSProvider`) with the session token and the scope header, as the other data hooks do, so the app needs no proxy route for them. Only without a configured DaaS URL do the paths stay relative to the app; then each needs a same-origin route that forwards to `${DAAS_URL}` with the session's bearer token, as `app/api/items/[collection]/route.ts` does.
+<!-- /buildpad-backend -->
+<!-- buildpad-backend: engine -->
+The CLI's `DaaSProviderWrapper` gives `DaaSProvider` an empty URL, so the button calls the app's own `/api/…` paths, and the catch-all `app/api/[...path]/route.ts` of `api-routes-engine` (CLI 3.5.2 and later) forwards `/api/policies/me` and `/api/workflow/transition` to the Engine with the signed-in user's access token as `Authorization: Bearer`. If the app has no catch-all, add a forwarder for each: `app/api/workflow/transition/route.ts` as the [create-api-route](../create-api-route/SKILL.md) skill shows, and `app/api/policies/me/route.ts` built the same way.
+<!-- /buildpad-backend -->
 
 What the button needs in order to work for a **non-admin** user:
 
-- **Read on `daas_wf_instance` and `daas_wf_definition`.** The button reads the item's instance and its definition as the signed-in user. Without these grants it shows `HTTP error! status: 403` and no state. Scope the instance read to the user's own items where that matters (e.g. `{"user_created": {"_eq": "$CURRENT_USER"}}`). Add read on `daas_wf_history` if the app shows history.
+- **Read on `daas_wf_instance` and `daas_wf_definition`.** The button reads the item's instance and its definition as the signed-in user. Without these grants it shows the read error and no state. Scope the instance read to the user's own items where that matters (e.g. `{"user_created": {"_eq": "$CURRENT_USER"}}`). Add read on `daas_wf_history` if the app shows history.
 - **Nothing on the collection beyond what the user already has.** The transition itself runs with elevated permissions on the server; the command's `policies` / `module_access_keys` are the gate.
-
-Behaviour observed on Buildpad UI 3.0.0 — re-check on a later version before relying on the workarounds:
-
-- A `readonly` (or permission-locked) state field makes the in-form button inert. Exclude the field from the form (`excludeFields={["workflow_state", "workflow_instance"]}`) and render `<WorkflowButton itemId={id} collection="…" />` next to it.
-<!-- buildpad-backend: supabase -->
-- The button calls relative `/api/…` paths, so the app needs a same-origin proxy for `POST /api/workflow/transition` (the CLI's `api-routes` does not ship one): forward the body to `${DAAS_URL}/api/workflow/transition` with the session's bearer token, as `app/api/items/[collection]/route.ts` does.
-<!-- /buildpad-backend -->
-<!-- buildpad-backend: engine -->
-- The button calls relative `/api/…` paths, so the app needs a same-origin proxy for `POST /api/workflow/transition` (the CLI's `api-routes` does not ship one): forward the body to `<Engine_URL>/api/workflow/transition` with the headers of `getAuthHeaders()` (the signed-in user's access token as `Authorization: Bearer`), as `app/api/items/[collection]/route.ts` does, and pass the Engine's status and body back.
-<!-- /buildpad-backend -->
-- Commands gated only by `module_access_keys` are offered to every user (the server still refuses them), and commands gated by `policies` are hidden from everyone. Gate with module access keys and expect the 403 for users without the key.
-
-`CollectionForm` disables the whole form — the button included — for a user with no `update` permission on the collection. Approvers who may not edit the record need the standalone button.
 
 To give administrators screens for designing definitions on a diagram, assigning workflows to collections, and inspecting instances and their history, scaffold the Workflows module instead of building pages: see [add-workflows](../add-workflows/SKILL.md).
 
@@ -375,7 +382,7 @@ Instead of (or alongside) policy UUIDs, commands can be gated by named module-le
 
 Use the seeded `workflow:approve` / `workflow:reject` for generic approvals and register your own key (`<domain>:<capability>`, e.g. `purchase:finance_approve`) when a step needs a narrower audience. The Command dialog of the Workflows module edits `policies` only; `module_access_keys` are set through the API and are preserved when a definition is saved from the diagram.
 
-> **Administrators (observed on DaaS 0.1.98):** the transition endpoint checks the grant map only, so an administrator who does not hold the key (or policy) is refused with 403. Grant the key on the admin's policy if admins must run gated commands.
+> **Administrators:** from DaaS 0.1.99 an administrator passes every gate, and the workflow button offers an administrator every command. On DaaS 0.1.98 and earlier the transition endpoint checked the grant map only, so an administrator who did not hold the key (or policy) was refused with 403: there, grant the key on the admin's policy if admins must run gated commands.
 
 To grant a key to a role:
 1. Confirm the key exists in `daas_module_access_keys` (the platform seeds `workflow:approve` and `workflow:reject` by default).
@@ -402,7 +409,8 @@ If the user explicitly opts out of role gating, mention it once in your final su
 A transition is the only legitimate way to change `workflow_state`. Check that a plain item update cannot do it — otherwise anyone with `update` on the collection can PATCH the state to "Approved" and skip every gate.
 
 - **Go engine:** restrict the role's `update` permission `fields` to the business fields (leave out `workflow_state` and `workflow_instance`). The engine applies the field list to every write.
-- **Next.js backend (observed on 0.1.98):** the field list is **not enforced** on `/api/items/*` writes, so restricting `fields` is not enough. Add a filter extension on `<collection>.items.update` that rejects a `workflow_state` different from the instance's `current_state` (the engine writes the state *after* it updates the instance, so its own write passes):
+- **Next.js backend, DaaS 0.1.99 and later:** the items API drops `workflow_state` and `workflow_instance` from a non-administrator's create or update before it writes, so a plain item update cannot move the state. It finds them by the interface `xtr-interface-workflow` and the many-to-one to `daas_wf_instance`, so keep both as step 1 sets them. Nothing more is needed.
+- **Next.js backend, DaaS 0.1.98 and earlier:** the field list is **not enforced** on `/api/items/*` writes, so restricting `fields` is not enough. Add a filter extension on `<collection>.items.update` that rejects a `workflow_state` different from the instance's `current_state` (the engine writes the state *after* it updates the instance, so its own write passes):
 
 ```javascript
 // mcp_daas_extensions: type "filter", event "<collection>.items.update"
@@ -421,7 +429,7 @@ for (const key of keys) {
 return payload;
 ```
 
-Do not use a filter extension on this event to *veto* a transition on 0.1.98: an error thrown while the engine writes the state is swallowed, so the instance advances and the item keeps its old state.
+On DaaS 0.1.98 and earlier, do not use a filter extension on this event to *veto* a transition: an error thrown while the engine writes the state is swallowed, so the instance advances and the item keeps its old state. From DaaS 0.1.99 such an error refuses the transition: the instance is put back, no history entry is written, and the error is the answer.
 
 ## Verify the Workflow Was Set Up Correctly
 

@@ -4,5 +4,17 @@
     "kind": "description",
     "reason": "The front-matter description now names both kinds of project (Engine projects and Supabase projects) instead of describing a Supabase integration only.",
     "release": "v2.0.0"
+  },
+  {
+    "path": "daas-platform/SKILL.md",
+    "kind": "text",
+    "reason": "Every page the Buildpad CLI scaffolds is under `app/[lang]/` since CLI 2.3: the Bug 22 rule names the root layout `app/[lang]/layout.tsx` and `app/[lang]/(authenticated)/layout.tsx`.",
+    "release": "v12.0.0"
+  },
+  {
+    "path": "daas-platform/references/nextjs.instructions.md",
+    "kind": "text",
+    "reason": "Every page the Buildpad CLI scaffolds is under `app/[lang]/` since CLI 2.3: the root layout sample is `app/[lang]/layout.tsx`.",
+    "release": "v12.0.0"
   }
 ]

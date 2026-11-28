@@ -61,7 +61,7 @@ Every edit was verified on `@buildpad/cli` 1.11.1 / Next.js 16.3.3 in the
 | Z-M1 | `lib/supabase/middleware.ts` | zone | Unauthenticated → Main App `/login?next=<public path>` |
 | Z-M1h | `lib/supabase/middleware.ts` | Main App | Unauthenticated → `/login?next=<path+query>` (deep links into zones survive) |
 | Z-M2 | `middleware.ts` | Main App | Matcher skips `<prefix>/_next/static` and `<prefix>/_next/image` |
-| Z-P1 | `app/login/page.tsx` | Main App | After sign-in, hard-navigate to `?next=` (guarded) |
+| Z-P1 | `app/[lang]/login/page.tsx` | Main App | After sign-in, hard-navigate to `?next=` (guarded) |
 | Z-W1 | `components/DaaSProviderWrapper.tsx` | zone | URL-state writer strips `basePath` before `router.replace` |
 
 ---
@@ -194,7 +194,7 @@ Verify after the edit: a zone chunk fetched through the Main App must answer
 
 ---
 
-## Z-P1 — `app/login/page.tsx` (Main App)
+## Z-P1 — `app/[lang]/login/page.tsx` (Main App)
 
 ```diff
 -import { useRouter } from 'next/navigation';

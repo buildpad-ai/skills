@@ -22,7 +22,7 @@ setup('authenticate', async ({ page }) => {
 
   await page.goto('/login');
   // The CLI login form labels its fields Email / Password.
-  // AGENT: verify against app/login/page.tsx if the form was customized.
+  // AGENT: verify against app/[lang]/login/page.tsx if the form was customized.
   await page.getByLabel(/email/i).fill(email);
   await page.getByLabel(/password/i).fill(password);
   await page.getByRole('button', { name: /sign in|log in|login/i }).click();

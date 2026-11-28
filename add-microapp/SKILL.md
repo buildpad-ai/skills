@@ -290,12 +290,15 @@ Full implementation and the security checklist:
 Buildpad UI components call DaaS directly from the browser. Hand-written fetches use a proxy route in the same app (Rule 3). Supply the DaaS URL and the Supabase JWT with `DaaSProvider`:
 
 In a Buildpad starter the CLI already installs `components/DaaSProviderWrapper.tsx`
-mounted from `app/(authenticated)/layout.tsx` — keep that. Never move the provider to
-the root layout: root layouts never unmount, so a logout → login cycle delivers a
+mounted from `app/[lang]/(authenticated)/layout.tsx` — keep that. Never move the provider to
+the root layout (`app/[lang]/layout.tsx`): root layouts never unmount, so a logout → login cycle delivers a
 stale token (daas-platform Bug 22). The hand-rolled shape, for reference:
 
-```typescript
-// app/(authenticated)/layout.tsx-style wiring — NEVER app/layout.tsx (Bug 22)
+```tsx
+// components/DaaSProviderWrapper.tsx — the provider is a client component, because getToken is a function
+'use client';
+
+import { useMemo, type ReactNode } from 'react';
 import { DaaSProvider } from '@/lib/buildpad/services';
 import { createBrowserClient } from '@supabase/ssr';
 
@@ -304,23 +307,30 @@ const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html>
-      <body>
-        <DaaSProvider
-          config={{
-            url: process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL!,
-            getToken: () => supabase.auth.getSession().then(({ data }) => data.session?.access_token ?? null),
-          }}
-        >
-          {children}
-        </DaaSProvider>
-      </body>
-    </html>
+export function DaaSProviderWrapper({ children }: { children: ReactNode }) {
+  const config = useMemo(
+    () => ({
+      url: process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL!,
+      getToken: () => supabase.auth.getSession().then(({ data }) => data.session?.access_token ?? null),
+    }),
+    [],
   );
+  return <DaaSProvider config={config}>{children}</DaaSProvider>;
 }
 ```
+
+```tsx
+// app/[lang]/(authenticated)/layout.tsx — a route-group layout: no <html> or <body>,
+// which only the root layout app/[lang]/layout.tsx renders. Never mount the provider there (Bug 22).
+import type { ReactNode } from 'react';
+import { DaaSProviderWrapper } from '@/components/DaaSProviderWrapper';
+
+export default function AuthenticatedLayout({ children }: { children: ReactNode }) {
+  return <DaaSProviderWrapper>{children}</DaaSProviderWrapper>;
+}
+```
+
+The CLI's authenticated layout also wraps `CollectionsRelationalProvider` and `AuthenticatedShell` inside the wrapper: keep them.
 
 DaaS CORS is a **settings singleton**, not env vars, and the default
 (`cors_origins: ["*"]`, `cors_allow_credentials: false`) blocks every credentialed
@@ -370,16 +380,19 @@ address and signs its users in itself; the steps below hold for every app.
 
 ### Step 5: Configure Direct DaaS Access (Both Apps)
 
-Buildpad UI components call the Engine directly from the browser. Hand-written fetches use a proxy route in the same app (Rule 3). On an Engine project the data API's address is the Engine_URL, which both `NEXT_PUBLIC_BUILDPAD_DAAS_URL` and `NEXT_PUBLIC_SUPABASE_URL` hold. The Studio's address is an administration interface: send no data call to it.
+On an Engine project Buildpad UI components call the app's own `/api` routes, which forward the user's access token to the Engine: the Engine refuses credentialed cross-origin requests from the browser. Hand-written fetches use a proxy route in the same app too (Rule 3). On an Engine project the data API's address is the Engine_URL, which both `NEXT_PUBLIC_BUILDPAD_DAAS_URL` and `NEXT_PUBLIC_SUPABASE_URL` hold. The Studio's address is an administration interface: send no data call to it.
 
-Supply the Engine_URL and the signed-in user's access token with `DaaSProvider`.
+Supply an empty URL (same origin) and the signed-in user's access token with `DaaSProvider`.
 In a Buildpad starter the CLI already installs `components/DaaSProviderWrapper.tsx`
-mounted from `app/(authenticated)/layout.tsx` — keep that. Never move the provider to
-the root layout: root layouts never unmount, so a logout → login cycle delivers a
+mounted from `app/[lang]/(authenticated)/layout.tsx` — keep that. Never move the provider to
+the root layout (`app/[lang]/layout.tsx`): root layouts never unmount, so a logout → login cycle delivers a
 stale token (daas-platform Bug 22). The hand-rolled shape, for reference:
 
-```typescript
-// app/(authenticated)/layout.tsx-style wiring — NEVER app/layout.tsx (Bug 22)
+```tsx
+// components/DaaSProviderWrapper.tsx — the provider is a client component, because getToken is a function
+'use client';
+
+import { useMemo, type ReactNode } from 'react';
 import { DaaSProvider } from '@/lib/buildpad/services';
 import { createBrowserClient } from '@supabase/ssr';
 
@@ -388,27 +401,39 @@ const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html>
-      <body>
-        <DaaSProvider
-          config={{
-            url: process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL!,
-            getToken: () => supabase.auth.getSession().then(({ data }) => data.session?.access_token ?? null),
-          }}
-        >
-          {children}
-        </DaaSProvider>
-      </body>
-    </html>
+export function DaaSProviderWrapper({ children }: { children: ReactNode }) {
+  const config = useMemo(
+    () => ({
+      url: "", // same origin: the app's /api routes forward to the Engine
+      getToken: () => supabase.auth.getSession().then(({ data }) => data.session?.access_token ?? null),
+    }),
+    [],
   );
+  return <DaaSProvider config={config}>{children}</DaaSProvider>;
 }
 ```
+
+```tsx
+// app/[lang]/(authenticated)/layout.tsx — a route-group layout: no <html> or <body>,
+// which only the root layout app/[lang]/layout.tsx renders. Never mount the provider there (Bug 22).
+import type { ReactNode } from 'react';
+import { DaaSProviderWrapper } from '@/components/DaaSProviderWrapper';
+
+export default function AuthenticatedLayout({ children }: { children: ReactNode }) {
+  return <DaaSProviderWrapper>{children}</DaaSProviderWrapper>;
+}
+```
+
+The CLI's authenticated layout also wraps `CollectionsRelationalProvider` and `AuthenticatedShell` inside the wrapper: keep them.
 
 On an Engine project both environment variables hold the Engine_URL, so the Supabase
 client signs the user in against the Engine and `getToken` returns the Engine's access
 token.
+
+The CLI's `DaaSProviderWrapper` does this since CLI 3.5.2, and its catch-all route
+`app/api/[...path]/route.ts` forwards every `/api` path that has no route of its own to the
+Engine. If the starter's wrapper still passes the Engine_URL, run
+`npx @buildpad/cli@latest upgrade` instead of editing the CLI-owned file.
 
 **Leave the cross-origin settings as they are.** On an Engine project the data API accepts requests from any origin and never with cookies, as the project is provisioned. Change no cross-origin setting, and do not add the application's origin anywhere. The components send the user's
 access token as `Authorization: Bearer`, never a cookie, so there is nothing to configure.
@@ -1108,7 +1133,7 @@ The complete agent workflow with zero user input for URLs/credentials:
 7.  Auto-generate lib/services.ts importing from config/app-urls.ts
 8.  Create domain collections in DaaS via MCP
 9.  Set up RBAC for cross-domain access
-10. Set up DaaSProvider in (authenticated)/layout.tsx (URL + token + getHeaders)
+10. Set up DaaSProvider in app/[lang]/(authenticated)/layout.tsx (URL + token + getHeaders)
 11. Write tests
 12. git push → Amplify deploys automatically
 13. Update Main App with new service integration → push → deploy
@@ -1125,7 +1150,7 @@ The complete agent workflow with zero user input for URLs/credentials:
 5.  Auto-generate config/app-urls.ts with deployed URLs (committed to git)
 6.  Create domain collections in the Engine via MCP
 7.  Set up roles, policies and permissions for cross-domain access
-8.  Set up DaaSProvider in (authenticated)/layout.tsx (URL + token + getHeaders)
+8.  Set up DaaSProvider in app/[lang]/(authenticated)/layout.tsx (URL + token + getHeaders)
 9.  Write tests
 10. git push → Amplify deploys automatically
 11. Add the new microapp URL to the Main App's config/app-urls.ts → push → deploy

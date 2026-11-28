@@ -1,1 +1,8 @@
-[]
+[
+  {
+    "path": "add-files/SKILL.md",
+    "kind": "text",
+    "reason": "Every page the Buildpad CLI scaffolds is under `app/[lang]/` since CLI 2.3: the authenticated route group is `app/[lang]/(authenticated)/`.",
+    "release": "v12.0.0"
+  }
+]

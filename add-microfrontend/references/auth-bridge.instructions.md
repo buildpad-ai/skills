@@ -192,7 +192,7 @@ cookieStore.set(SCOPE_COOKIE, '', framedCookieOptions(0, false));
 Keep everything else: the **GET handler** (the shell navigates to it), the OAuth SLO
 logic, and the `oauth_provider` cleanup.
 
-### P1 · `app/login/page.tsx` (micro-app)
+### P1 · `app/[lang]/login/page.tsx` (micro-app)
 
 Rename the CLI page's default export to `LoginForm` (change nothing inside it), then
 add a new default export. `LoginBridge` reads `useSearchParams`, so the page needs a
@@ -310,7 +310,7 @@ lies), re-requests through the bridge on failure, and re-reads whenever
 `MicroappBridgeProvider` stores a fresh token. It returns `{ token, ready }`, and
 `ready` turns true on **both** outcomes — a token and a genuine sign-out — so an
 unauthenticated frame still renders instead of hanging on the skeleton. All other
-`daas-platform` rules stand: wrapper in `(authenticated)/layout.tsx`, never null the
+`daas-platform` rules stand: wrapper in `app/[lang]/(authenticated)/layout.tsx`, never null the
 global config on unmount, `getHeaders` reads the scope cookie.
 
 Cold-start note: the first framed load logs several `GET /api/auth/token` 401s before
@@ -376,7 +376,7 @@ grep -rn "fetch('/api/" components lib           # → H1 is load-bearing
 Apply both edits in every micro-app. A perfect H1 with a missing W1 gate looks like a
 permissions failure and reads like a backend fault.
 
-### E1 · `app/(authenticated)/layout.tsx` (micro-app)
+### E1 · `app/[lang]/(authenticated)/layout.tsx` (micro-app)
 
 Rule 15: a framed micro-app renders **content only** — the host already provides the
 sidebar, header, breadcrumb, and profile menu. Without this edit the frame shows a

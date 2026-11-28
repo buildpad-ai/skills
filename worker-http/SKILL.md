@@ -36,6 +36,10 @@ that must do slow work answers `200` quickly and publishes a job to the queue fo
 
 ## Step 2 — The code contract
 
+The worker starter's `src/http.ts` already implements this contract (Fastify, `GET /health`,
+`GET /openapi.json`, the caller checks and CORS); add a route with its `addRoute()`, which
+declares the route's callers. The rest of this step is what any worker must do.
+
 The Platform starts the worker with these environment variables when the endpoint is on:
 
 | Variable | Meaning |
@@ -44,6 +48,7 @@ The Platform starts the worker with these environment variables when the endpoin
 | `DAAS_URL` | The project's data API address, used to check a user's token. |
 | `WORKER_SERVICE_KEY` | The secret a trusted server presents as `X-Worker-Key`. |
 | `ALLOWED_ORIGINS` | Comma-separated origins the browser may call from (the app's domains). |
+| `WORKER_AUTH_USER`, `WORKER_AUTH_KEY`, `WORKER_AUTH_PUBLIC` | `true` or `false`: which kinds of caller the endpoint accepts at all, from **Who can call it** in the Platform. User and key default to `true`, public to `false`. A route whose kind is switched off answers `401`. |
 
 Routes the worker must serve:
 
@@ -51,7 +56,8 @@ Routes the worker must serve:
   load balancer use it; a worker that fails it is marked unhealthy and receives no traffic.
 - **`GET /openapi.json`** (optional, no authentication) returns an OpenAPI 3 document of the
   worker's routes, so the Platform can list them on the worker's page. On each operation set:
-  - `x-buildpad-auth`: `user`, `key`, `webhook` or `public` — who may call it (Step 3);
+  - `x-buildpad-auth`: `user`, `key` or `public`, or an array of them — who may call it (Step 3).
+    Absent means `user` and `key`. A webhook route is `public`;
   - `x-buildpad-stream: true` on a route that answers with Server-Sent Events.
 
 ```json
@@ -61,7 +67,7 @@ Routes the worker must serve:
   "paths": {
     "/chat": { "post": { "summary": "Stream a reply", "x-buildpad-auth": "user", "x-buildpad-stream": true } },
     "/reindex": { "post": { "summary": "Rebuild the index", "x-buildpad-auth": "key" } },
-    "/webhooks/stripe": { "post": { "summary": "Stripe events", "x-buildpad-auth": "webhook" } }
+    "/webhooks/stripe": { "post": { "summary": "Stripe events", "x-buildpad-auth": "public" } }
   }
 }
 ```
@@ -83,11 +89,12 @@ permissions apply; never widen access with another credential.
 the worker compares it with `WORKER_SERVICE_KEY` in constant time. The key is a server-side
 secret: never put it in a `NEXT_PUBLIC_*` variable, the browser, or a mobile app.
 
-**`webhook` — an outside service.** The route accepts no user token; it verifies the provider's
+**`public` — an outside service, such as a webhook.** The route takes no token or key, and it
+works only when `WORKER_AUTH_PUBLIC` is `true` (**Who can call it** in the Platform). A webhook
+route verifies the provider's
 signature over the **raw** request body with the provider's signing secret (for example
 Stripe's `Stripe-Signature`, GitHub's `X-Hub-Signature-256`) before it reads or acts on the
-body, and answers `401` when the signature is wrong. A route with no signature to verify is
-`public` and must do nothing that changes data.
+body, and answers `401` when the signature is wrong. A `public` route with no signature to verify must do nothing that changes data.
 
 ```ts
 import http from 'node:http';
@@ -131,7 +138,7 @@ function cors(req: http.IncomingMessage, res: http.ServerResponse) {
 
 Allow only the origins in `ALLOWED_ORIGINS`, echoing the request's `Origin` when it is listed,
 and answer the `OPTIONS` preflight with `204`. Never answer `*` on a `user` route. `key` and
-`webhook` routes are called server to server and need no CORS headers.
+webhook routes are called server to server and need no CORS headers.
 
 ## Step 5 — Streaming
 

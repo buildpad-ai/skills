@@ -58,7 +58,7 @@ Like all Buildpad UI, the Users module is CLI-installed and owned as source. Do 
 node --version && pnpm --version && npx --version
 ```
 
-Requires Node.js v24 LTS and pnpm v10+ (see [add-buildpad](../add-buildpad/SKILL.md) for install guidance). The module **must** render under the authenticated layout (`buildpad init` generates `app/(authenticated)/` with a `DaaSProviderWrapper`) so `DaaSProvider` header injection (the signed-in user's session token) is in scope — the hooks call your `app/api/users/*`, `app/api/roles/*`, `app/api/policies/*`, `app/api/permissions/*`, and `app/api/collections/*` proxy routes.
+Requires Node.js v24 LTS and pnpm v10+ (see [add-buildpad](../add-buildpad/SKILL.md) for install guidance). The module **must** render under the authenticated layout (`buildpad init` generates `app/[lang]/(authenticated)/` with a `DaaSProviderWrapper`) so `DaaSProvider` header injection (the signed-in user's session token) is in scope — the hooks call your `app/api/users/*`, `app/api/roles/*`, `app/api/policies/*`, `app/api/permissions/*`, and `app/api/collections/*` proxy routes.
 
 **On a Supabase project, DaaS CORS must be configured first.** The managers fetch authenticated DaaS endpoints from the browser with `credentials: 'include'`. DaaS's default `cors_origins: ["*"]` is **incompatible** with credentialed requests — the browser blocks every preflight. Set explicit origins before mounting the module (see [daas-platform](../daas-platform/SKILL.md) "CORS must use explicit origins"). This is not Users-specific: it affects every authenticated Buildpad component.
 

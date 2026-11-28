@@ -10,5 +10,17 @@
     "kind": "text",
     "reason": "The front-matter description and argument-hint are now quoted, so the front matter parses as YAML; the values are unchanged. At v1.0.0 the unquoted argument-hint did not parse, and the skills CLI skipped the skill on install.",
     "release": "v2.0.0"
+  },
+  {
+    "path": "add-microfrontend-zones/SKILL.md",
+    "kind": "text",
+    "reason": "Every page the Buildpad CLI scaffolds is under `app/[lang]/` since CLI 2.3: the CLI-owned file table, the `basePath` rule (a page serves `{{prefix}}/<lang>/…`, and the CLI's locale redirect leaves out `basePath`) and both file trees.",
+    "release": "v12.0.0"
+  },
+  {
+    "path": "add-microfrontend-zones/references/pinned-edits.instructions.md",
+    "kind": "text",
+    "reason": "Every page the Buildpad CLI scaffolds is under `app/[lang]/` since CLI 2.3: Z-P1 edits `app/[lang]/login/page.tsx`.",
+    "release": "v12.0.0"
   }
 ]

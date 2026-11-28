@@ -10,5 +10,35 @@
     "kind": "text",
     "reason": "The table of domains that must use a module gains a row for an AI chat or assistant (add-ai-chat).",
     "release": "v7.0.0"
+  },
+  {
+    "path": "add-microfrontend/SKILL.md",
+    "kind": "text",
+    "reason": "Every page the Buildpad CLI scaffolds is under `app/[lang]/` since CLI 2.3: the CLI-owned file table (P1, E1), the host page paths, the module install note and the file tree name `app/[lang]/…`.",
+    "release": "v12.0.0"
+  },
+  {
+    "path": "add-microfrontend/assets/microapp/LoginBridge.tsx",
+    "kind": "text",
+    "reason": "Every page the Buildpad CLI scaffolds is under `app/[lang]/` since CLI 2.3: the comment names `app/[lang]/login/page.tsx`.",
+    "release": "v12.0.0"
+  },
+  {
+    "path": "add-microfrontend/assets/tests/auth.setup.ts",
+    "kind": "text",
+    "reason": "Every page the Buildpad CLI scaffolds is under `app/[lang]/` since CLI 2.3: the comment names `app/[lang]/login/page.tsx`.",
+    "release": "v12.0.0"
+  },
+  {
+    "path": "add-microfrontend/references/auth-bridge.instructions.md",
+    "kind": "text",
+    "reason": "Every page the Buildpad CLI scaffolds is under `app/[lang]/` since CLI 2.3: pinned edits P1 and E1 and the wrapper rule name `app/[lang]/login/page.tsx` and `app/[lang]/(authenticated)/layout.tsx`.",
+    "release": "v12.0.0"
+  },
+  {
+    "path": "add-microfrontend/references/troubleshooting.instructions.md",
+    "kind": "text",
+    "reason": "Every page the Buildpad CLI scaffolds is under `app/[lang]/` since CLI 2.3: the P1 and E1 checks name the `app/[lang]/` files.",
+    "release": "v12.0.0"
   }
 ]

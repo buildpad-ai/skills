@@ -1,1 +1,26 @@
-[]
+[
+  {
+    "path": "create-workflow/SKILL.md",
+    "kind": "text",
+    "reason": "Step 5 follows Buildpad UI 3.11: `CollectionForm` renders `workflow_state` as the button, so no second `WorkflowButton` on that page; no confirmation dialog; the button offers policy- and key-gated commands to their holders and to administrators; no proxy route with a DaaS URL. From DaaS 0.1.99 an administrator passes every gate. \"Protect the State Field from Direct Writes\": from DaaS 0.1.99 the items API drops a non-administrator's `workflow_state` and `workflow_instance`, so the filter-extension guard is for 0.1.98 and earlier, and from 0.1.99 a filter hook that throws while the state is written refuses the transition.",
+    "release": "v12.0.0"
+  },
+  {
+    "path": "create-workflow/references/workflow-components.instructions.md",
+    "kind": "text",
+    "reason": "The `WorkflowButton` props and features follow Buildpad UI 3.11 (the form renders it for `workflow_state`, gated commands filtered, no confirmation dialog, the server's reason on a refusal).",
+    "release": "v12.0.0"
+  },
+  {
+    "path": "create-workflow/references/workflow-schema.instructions.md",
+    "kind": "text",
+    "reason": "The \"Transitions Don't Execute\" causes follow Buildpad UI 3.1.0 and later: a read-only state field no longer disables the button, and the 404 comes from an app without a DaaS URL. \"Workflow State Not Updating After Transition\" says which causes DaaS 0.1.99 fixed (a filter hook's error refuses the transition, the unscoped write, the `warning` in the response) and that administrators pass every gate from 0.1.99.",
+    "release": "v12.0.0"
+  },
+  {
+    "path": "create-workflow/references/workflow-versioning.instructions.md",
+    "kind": "text",
+    "reason": "The `WorkflowButton` sample drops `canCompare`, which Buildpad UI 3.11 does not have, and says the form renders the button and there is no confirmation dialog.",
+    "release": "v12.0.0"
+  }
+]

@@ -101,7 +101,9 @@ The CLI reads `.buildpad/project.json`. On an Engine project it installs the mod
 `external-oauth-engine` in place of `external-oauth`, and `bootstrap` does the same. Check that
 `buildpad.json` lists `external-oauth-engine` in `installedLib`. If it lists `external-oauth`
 instead, the CLI is older than the Engine variant: do not use its OAuth routes, update the CLI and
-run the command again. The module writes:
+run the command again. In the mode `customer-tenants` (`"tenancy": "customer-tenants"` in the same
+file) CLI 3.9.0 and later installs `external-oauth-engine-customers` instead: then `installedLib`
+lists that module. The module writes:
 
 | File | What it does |
 |---|---|
@@ -111,6 +113,8 @@ run the command again. The module writes:
 | `components/auth/OAuthLoginButtons.tsx` | The XAppHub sign-in button, and the message for each error code |
 | `app/[lang]/auth/pending-access/page.tsx` | The page for an account that has no role yet |
 | `lib/oauth/config.ts`, `pkce.ts`, `validate.ts`, `index.ts` | The shared OAuth helpers; the routes use the generic `OAUTH_*` configuration |
+| `lib/oauth/tenant.ts` (mode `customer-tenants` only) | Resolves the request's host to a customer, the Blueprint or an unknown host |
+| `lib/customer-hosts.ts` (mode `customer-tenants` only) | The customer host map, read from the server variable `BUILDPAD_CUSTOMER_HOSTS` (CLI 3.10.0 and later). The app owns it: the CLI writes it once and never overwrites it |
 
 The CLI replaces the copies of these files that an earlier `external-oauth` install wrote, if they
 are unchanged. It keeps a changed copy and warns: then compare it with the Engine version, or run
@@ -118,8 +122,9 @@ the command again with `--overwrite`.
 
 In the mode `customer-tenants`, read the installed start route and callback as section 15.7 of the
 `add-multitenancy` skill's guide `engine-customer-tenants` says: they must take the tenant from the
-request's host. A CLI that does not know the mode yet sends `NEXT_PUBLIC_BUILDPAD_TENANT_ID` on
-every host.
+request's host. The `external-oauth-engine` module, and a CLI older than 3.9.0, send
+`NEXT_PUBLIC_BUILDPAD_TENANT_ID` on every host. `upgrade` does not switch modules: on a project that
+still lists `external-oauth-engine`, run the `add` command it prints.
 
 Other skills say that the CLI's OAuth callback and provider routes cannot be used on an Engine
 project. Those are the files of the `external-oauth` module. The files of `external-oauth-engine`

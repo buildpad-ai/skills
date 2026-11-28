@@ -14,6 +14,183 @@ Versions follow these rules:
 From `v2.0.0` on, each section has a subsection **Supabase projects** that lists every change to
 what a Supabase project's agent reads, with its reason.
 
+## v12.0.0
+
+The skills catch up with the Buildpad UI library and CLI 3.11.0. Install it with
+`npx skills add buildpad-ai/skills#v12.0.0`. It is a MAJOR release, because files that a Supabase
+project's agent reads change (see **Supabase projects** below): the CLI facts they correct hold for
+both kinds of project. No skill is added, removed or renamed, and the "Establish the backend first"
+procedure stays at version 1.
+
+- **Locale-prefixed pages (CLI 2.3 and later):** every page and layout the CLI scaffolds is under
+  `app/[lang]/`: the root layout `app/[lang]/layout.tsx`, the authenticated group
+  `app/[lang]/(authenticated)/`, the login page `app/[lang]/login/page.tsx`, the scope picker
+  `app/[lang]/select-scope/page.tsx` and the content module `app/[lang]/content/`. `create-collection`,
+  `create-project`, `daas-platform`, `buildpad-reference`, `add-files`, `add-users`,
+  `create-form-builder`, `add-microapp`, `add-microfrontend`, `add-microfrontend-zones`,
+  `manage-scope` and `create-service` said `app/content/[name]/`, `app/(authenticated)/` or
+  `app/layout.tsx`. An app scaffolded before 2.3 is moved with `npx @buildpad/cli@latest migrate
+  i18n` (`add-i18n`).
+- **`create-collection`:** a collection gets no pages of its own: the CLI's content module
+  (`add content-routes`) serves every collection at `app/[lang]/content/[collection]/` and
+  `[collection]/[id]/`; a custom view goes under `app/[lang]/(authenticated)/`. The list sample uses
+  `useLocaleRouter`, and `CollectionList`'s `limit` default is 10.
+- **`create-rbac`:** a missing or failed `/api/permissions/me` no longer means full UI access. From
+  Buildpad UI 3.4.0 `CollectionList` and `CollectionForm` show "Your permissions could not be
+  loaded, …" with **Retry** and keep create, edit, delete and archive off, for an administrator
+  too, until a load succeeds. Non-CRUD actions are gated with `hasModuleAccess` (fails closed), not
+  `canPerform` or `isAdmin`. `CollectionForm` does not evaluate a rule's item filter: the backend
+  refuses the save. The Supabase route sample now matches the CLI's (`getDaasUrl`,
+  `/api/permissions/me`).
+- **`create-workflow` and the workflow button:** with Buildpad UI 3.1.0 and later `CollectionForm`
+  renders the `workflow_state` field as the workflow button, so a page with that form gets no second
+  `WorkflowButton`; a standalone button is for pages without a form, or beside a form that excludes
+  the state field for approvers without `update`. The button has no confirmation dialog, offers a
+  gated command to an administrator and to holders of one of its `policies` (`daas_policies` ids,
+  from `GET /api/policies/me`) or `module_access_keys`, ignores the field's `readonly`, and needs no
+  proxy route where `DaaSProvider` has a DaaS URL; on an Engine project the CLI's catch-all
+  `app/api/[...path]` forwards `/api/workflow/transition` and `/api/policies/me`. From DaaS 0.1.99
+  an administrator passes every gate. `grant-module-access`, `add-workflows`, `add-buildpad`,
+  `create-api-route` and `create-collection` follow.
+- **`add-microapp`, Engine text:** Buildpad components call the app's own `/api` routes with an
+  empty `DaaSProvider` URL (the CLI's wrapper since 3.5.2), because the Engine refuses credentialed
+  cross-origin requests from the browser.
+- **`create-workflow`, DaaS 0.1.99:** the 0.1.98 notes are marked as such. From DaaS 0.1.99 the items
+  API drops a non-administrator's `workflow_state` and `workflow_instance`, so the filter-extension
+  guard is needed on 0.1.98 and earlier only; a filter hook that throws while the state is written
+  refuses the transition (the instance is put back); a request without `X-Resource-Uri` updates the
+  item on a scoped collection; any other failed state write is returned as `warning`.
+- **`manage-scope`:** the scope picker and the scope error samples navigate with the CLI's
+  `useLocaleRouter`. A picker that reads `useDaaSContext` goes in
+  `app/[lang]/(authenticated)/select-scope/page.tsx`, where its provider is mounted (the CLI 3.11
+  `scope-routes` module writes it outside that group). The missing-scope redirect moves from the root
+  layout, where `redirect('/select-scope')` would loop on the picker itself, to the CLI's middleware.
+- **`add-microapp`:** the hand-rolled `DaaSProvider` sample is a client `DaaSProviderWrapper` and a
+  route-group `app/[lang]/(authenticated)/layout.tsx` without `<html>` or `<body>`, as CLI 3.11
+  scaffolds them, not a `RootLayout`.
+- **README:** the install section names the agents with `--skill '*' -a <agent>` instead of `--all`,
+  which installs every skill to every agent the skills CLI supports (more than 70), and says that
+  only the interactive picker detects your agents.
+- **`add-external-oauth` and `add-multitenancy`, Engine text:** in the mode `customer-tenants` the
+  CLI (3.9.0 and later) installs `external-oauth-engine-customers`, with `lib/oauth/tenant.ts` and
+  the app-owned `lib/customer-hosts.ts` (which reads `BUILDPAD_CUSTOMER_HOSTS` from 3.10.0);
+  `upgrade` does not switch modules. XAppHub sign-in at customers itself was already covered by
+  TS-N3m and TS-X1 (v10.4.0).
+- **`worker-http`:** `x-buildpad-auth` takes `user`, `key` or `public`, as the Platform and the
+  worker starter read it; a webhook route is `public`, verifies the provider's signature, and needs
+  `WORKER_AUTH_PUBLIC`. The variable table lists `WORKER_AUTH_USER`, `WORKER_AUTH_KEY` and
+  `WORKER_AUTH_PUBLIC`, and the skill points to the starter's `src/http.ts` and `addRoute()`.
+
+### Supabase projects
+
+These files change, each with its reason:
+
+- `add-buildpad/references/buildpad.instructions.md` (text): The Workflow Button section says
+  `CollectionForm` renders the `workflow_state` field as the button itself, that the button needs no
+  `WorkflowProvider` and has no confirmation dialog, and drops the `canCompare` prop, which Buildpad
+  UI 3.11 does not have.
+- `add-files/SKILL.md` (text): Every page the Buildpad CLI scaffolds is under `app/[lang]/` since
+  CLI 2.3: the authenticated route group is `app/[lang]/(authenticated)/`.
+- `add-microapp/SKILL.md` (text): Every page the Buildpad CLI scaffolds is under `app/[lang]/` since
+  CLI 2.3: the provider layout is `app/[lang]/(authenticated)/layout.tsx` and the root layout
+  `app/[lang]/layout.tsx`. The hand-rolled provider sample follows the CLI 3.11 structure: a client
+  `DaaSProviderWrapper` and a route-group `app/[lang]/(authenticated)/layout.tsx` without `<html>` or
+  `<body>`, in place of a `RootLayout`.
+- `add-microfrontend-zones/SKILL.md` (text): Every page the Buildpad CLI scaffolds is under
+  `app/[lang]/` since CLI 2.3: the CLI-owned file table, the `basePath` rule (a page serves
+  `{{prefix}}/<lang>/…`, and the CLI's locale redirect leaves out `basePath`) and both file trees.
+- `add-microfrontend-zones/references/pinned-edits.instructions.md` (text): Every page the Buildpad
+  CLI scaffolds is under `app/[lang]/` since CLI 2.3: Z-P1 edits `app/[lang]/login/page.tsx`.
+- `add-microfrontend/SKILL.md` (text): Every page the Buildpad CLI scaffolds is under `app/[lang]/`
+  since CLI 2.3: the CLI-owned file table (P1, E1), the host page paths, the module install note and
+  the file tree name `app/[lang]/…`.
+- `add-microfrontend/assets/microapp/LoginBridge.tsx` (text): Every page the Buildpad CLI scaffolds
+  is under `app/[lang]/` since CLI 2.3: the comment names `app/[lang]/login/page.tsx`.
+- `add-microfrontend/assets/tests/auth.setup.ts` (text): Every page the Buildpad CLI scaffolds is
+  under `app/[lang]/` since CLI 2.3: the comment names `app/[lang]/login/page.tsx`.
+- `add-microfrontend/references/auth-bridge.instructions.md` (text): Every page the Buildpad CLI
+  scaffolds is under `app/[lang]/` since CLI 2.3: pinned edits P1 and E1 and the wrapper rule name
+  `app/[lang]/login/page.tsx` and `app/[lang]/(authenticated)/layout.tsx`.
+- `add-microfrontend/references/troubleshooting.instructions.md` (text): Every page the Buildpad CLI
+  scaffolds is under `app/[lang]/` since CLI 2.3: the P1 and E1 checks name the `app/[lang]/` files.
+- `add-users/SKILL.md` (text): Every page the Buildpad CLI scaffolds is under `app/[lang]/` since
+  CLI 2.3: the authenticated route group is `app/[lang]/(authenticated)/`.
+- `add-workflows/SKILL.md` (text): The `WorkflowButton` note says `CollectionForm` renders the
+  button for `workflow_state`, and no longer says the button needs a transition proxy route (that
+  was Buildpad UI 3.0.0).
+- `buildpad-reference/references/react-components.instructions.md` (text): The content module
+  pattern uses the paths `add content-routes` writes (`app/[lang]/content/…`), `useLocaleRouter` and
+  `stripLocale` as the CLI templates do, and says what the list shows when `/api/permissions/me`
+  fails.
+- `create-api-route/references/api-routes.instructions.md` (text): The workflow transition route is
+  needed only in an app whose `DaaSProvider` has no DaaS URL: from Buildpad UI 3.1.0
+  `WorkflowButton` posts to the DaaS URL itself.
+- `create-collection/SKILL.md` (text): Content pages are the CLI's generic
+  `app/[lang]/content/[collection]/` pages (no page per collection), the list sample uses
+  `useLocaleRouter`, `CollectionList`'s `limit` default is 10, and the workflow next step says
+  `CollectionForm` renders the workflow button.
+- `create-collection/references/standard-fields.instructions.md` (text): The workflow next step says
+  `CollectionForm` renders `workflow_state` as the workflow button, instead of telling the agent to
+  add `WorkflowButton`.
+- `create-form-builder/SKILL.md` (text): Every page the Buildpad CLI scaffolds is under
+  `app/[lang]/` since CLI 2.3: the authenticated route group is `app/[lang]/(authenticated)/`.
+- `create-project/SKILL.md` (text): Every page the Buildpad CLI scaffolds is under `app/[lang]/`
+  since CLI 2.3: the authenticated layout is `app/[lang]/(authenticated)/layout.tsx` and the root
+  layout `app/[lang]/layout.tsx`; an older app is moved with `migrate i18n`.
+- `create-project/references/project-creation.instructions.md` (text): Every page the Buildpad CLI
+  scaffolds is under `app/[lang]/` since CLI 2.3: bootstrap writes `app/[lang]/layout.tsx` and
+  `app/[lang]/(authenticated)/page.tsx`, and pages go under `app/[lang]/`.
+- `create-rbac/SKILL.md` (text): A missing or failed `/api/permissions/me` turns writes off with
+  "Your permissions could not be loaded" and Retry (Buildpad UI 3.4.0 and later), not full access;
+  the route sample matches the CLI's (`getDaasUrl`, `/api/permissions/me`); `hasModuleAccess` gates
+  non-CRUD actions, not `canPerform`; `CollectionForm` does not evaluate a rule's item filter.
+- `create-service/references/get-feedback.instructions.md` (text): Every page the Buildpad CLI
+  scaffolds is under `app/[lang]/` since CLI 2.3: the root layout of a Buildpad app is
+  `app/[lang]/layout.tsx`.
+- `create-workflow/SKILL.md` (text): Step 5 follows Buildpad UI 3.11: `CollectionForm` renders
+  `workflow_state` as the button, so no second `WorkflowButton` on that page; no confirmation
+  dialog; the button offers policy- and key-gated commands to their holders and to administrators;
+  no proxy route with a DaaS URL. From DaaS 0.1.99 an administrator passes every gate. "Protect the
+  State Field from Direct Writes": from DaaS 0.1.99 the items API drops a non-administrator's
+  `workflow_state` and `workflow_instance`, so the filter-extension guard is for 0.1.98 and earlier,
+  and from 0.1.99 a filter hook that throws while the state is written refuses the transition.
+- `create-workflow/references/workflow-components.instructions.md` (text): The `WorkflowButton`
+  props and features follow Buildpad UI 3.11 (the form renders it for `workflow_state`, gated
+  commands filtered, no confirmation dialog, the server's reason on a refusal).
+- `create-workflow/references/workflow-schema.instructions.md` (text): The "Transitions Don't
+  Execute" causes follow Buildpad UI 3.1.0 and later: a read-only state field no longer disables the
+  button, and the 404 comes from an app without a DaaS URL. "Workflow State Not Updating After
+  Transition" says which causes DaaS 0.1.99 fixed (a filter hook's error refuses the transition, the
+  unscoped write, the `warning` in the response) and that administrators pass every gate from 0.1.99.
+- `create-workflow/references/workflow-versioning.instructions.md` (text): The `WorkflowButton`
+  sample drops `canCompare`, which Buildpad UI 3.11 does not have, and says the form renders the
+  button and there is no confirmation dialog.
+- `daas-platform/SKILL.md` (text): Every page the Buildpad CLI scaffolds is under `app/[lang]/`
+  since CLI 2.3: the Bug 22 rule names the root layout `app/[lang]/layout.tsx` and
+  `app/[lang]/(authenticated)/layout.tsx`.
+- `daas-platform/references/nextjs.instructions.md` (text): Every page the Buildpad CLI scaffolds is
+  under `app/[lang]/` since CLI 2.3: the root layout sample is `app/[lang]/layout.tsx`.
+- `grant-module-access/SKILL.md` (text): `WorkflowButton` filters key-gated commands by the user's
+  module access from Buildpad UI 3.1.0, and from DaaS 0.1.99 the transition endpoint lets an
+  administrator pass.
+- `manage-scope/SKILL.md` (text): Every page the Buildpad CLI scaffolds is under `app/[lang]/` since
+  CLI 2.3: the scope picker page is `app/[lang]/select-scope/page.tsx`. The scope picker and
+  `ScopeGuard` samples navigate with the CLI's `useLocaleRouter`, not `useRouter` from
+  `next/navigation`.
+- `manage-scope/references/scope-client.instructions.md` (text): Every page the Buildpad CLI
+  scaffolds is under `app/[lang]/` since CLI 2.3: the scope picker page is
+  `app/[lang]/select-scope/page.tsx`, the root layout `app/[lang]/layout.tsx`, and `ScopeProvider`
+  is shown in the authenticated layout, never the root layout (Bug 22). The picker sample uses
+  `useLocaleRouter` and sits in `app/[lang]/(authenticated)/select-scope/page.tsx`, where
+  `useDaaSContext` has its provider; the missing-scope redirect moves from a root-layout
+  `redirect('/select-scope')`, which loops, to the CLI's middleware; `useScopeErrorHandler` uses
+  `useLocaleRouter`.
+- `worker-http/SKILL.md` (text): `x-buildpad-auth` takes `user`, `key` or `public` (or an array), as
+  the Platform and the worker starter read it: a webhook route is `public` and verifies the
+  provider's signature, and works only when `WORKER_AUTH_PUBLIC` is `true`. The variable table adds
+  `WORKER_AUTH_USER`, `WORKER_AUTH_KEY` and `WORKER_AUTH_PUBLIC`, and Step 2 says the worker
+  starter's `src/http.ts` already implements the contract.
+
 ## v11.1.0
 
 On an Engine project, a JSON-string value for a `json` field is sent JSON-encoded. Install it with

@@ -4,5 +4,17 @@
     "kind": "description",
     "reason": "The description says \"with its schema\" instead of \"with database migration\", so it is true for both kinds of project.",
     "release": "v2.0.0"
+  },
+  {
+    "path": "create-collection/SKILL.md",
+    "kind": "text",
+    "reason": "Content pages are the CLI's generic `app/[lang]/content/[collection]/` pages (no page per collection), the list sample uses `useLocaleRouter`, `CollectionList`'s `limit` default is 10, and the workflow next step says `CollectionForm` renders the workflow button.",
+    "release": "v12.0.0"
+  },
+  {
+    "path": "create-collection/references/standard-fields.instructions.md",
+    "kind": "text",
+    "reason": "The workflow next step says `CollectionForm` renders `workflow_state` as the workflow button, instead of telling the agent to add `WorkflowButton`.",
+    "release": "v12.0.0"
   }
 ]

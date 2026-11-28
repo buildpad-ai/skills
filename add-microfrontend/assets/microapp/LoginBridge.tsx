@@ -2,7 +2,7 @@
 // Backend: before using this file, establish the backend as "Establish the backend first" in this skill's SKILL.md says, keep only the parts for that backend, and copy no marker line into the application.
 // LoginBridge.tsx — what /login renders when the micro-app is inside the host frame.
 //
-// Copy to: components/LoginBridge.tsx, and use it from app/login/page.tsx:
+// Copy to: components/LoginBridge.tsx, and use it from app/[lang]/login/page.tsx:
 //
 //   export default function LoginPage() {
 //     return <LoginBridge fallback={<YourNormalLoginForm />} />;

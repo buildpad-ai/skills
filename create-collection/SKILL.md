@@ -57,9 +57,9 @@ On an Engine project with Customer_Tenants collections, fields, relations, roles
 1. **Schema** — the collection and its fields, created through the Engine's API or MCP tools (an Engine project has no migration file)
 <!-- /buildpad-backend -->
 2. **API Routes** — `app/api/items/[name]/route.ts` + `[id]/route.ts`
-3. **Content Module Pages** — `app/content/[name]/page.tsx` (list) + `[id]/page.tsx` (form)
+3. **Content Module Pages** — none per collection: the CLI's content module (`npx @buildpad/cli@latest add content-routes`) serves every collection at `app/[lang]/content/[collection]/page.tsx` (list) + `app/[lang]/content/[collection]/[id]/page.tsx` (form). Install it if `app/[lang]/content/` is missing. A page of your own for this collection (a dashboard, a custom view) goes under `app/[lang]/(authenticated)/[name]/`
 4. **Form** — Uses `CollectionForm` from Buildpad (NOT custom)
-5. **Layout** — Uses `ContentLayout` + `ContentNavigation` from Buildpad
+5. **Layout** — `app/[lang]/content/layout.tsx` uses `ContentLayout` + `ContentNavigation` from Buildpad
 6. **API Tests** — `tests/api/[name].spec.ts`
 7. **Page Tests** — `tests/pages/[name].spec.ts`
 
@@ -261,7 +261,7 @@ Every page that renders a list of collection records **MUST** use `CollectionLis
 | `enableHeaderMenu`    | `boolean`                              | `true`   | Right-click column header menu                                  |
 | `enableAddField`      | `boolean`                              | `true`   | Inline "+" button for adding columns                            |
 | `enableDelete`        | `boolean`                              | `false`  | Built-in delete with confirmation modal                         |
-| `limit`               | `number`                               | `25`     | Items per page (10, 25, 50, 100)                                |
+| `limit`               | `number`                               | `10`     | Items per page (10, 25, 50, 100)                                |
 | `tableSpacing`        | `"compact" \| "cozy" \| "comfortable"` | `"cozy"` | Row density                                                     |
 | `filter`              | `Record<string, unknown>`              | —        | External DaaS-style filter object                               |
 | `archiveField`        | `string`                               | —        | Enable archive filter UI (e.g. `"status"`)                      |
@@ -277,10 +277,10 @@ Every page that renders a list of collection records **MUST** use `CollectionLis
 ### Standard List Page Pattern (use for EVERY collection)
 
 ```tsx
-// app/content/[collection]/page.tsx — collection list view
+// app/[lang]/content/[collection]/page.tsx — collection list view
 "use client";
 import { use } from "react";
-import { useRouter } from "next/navigation";
+import { useLocaleRouter } from "@/lib/i18n/navigation"; // keeps the /[lang] prefix
 import { CollectionList } from "@/components/ui";
 
 export default function CollectionPage({
@@ -289,7 +289,7 @@ export default function CollectionPage({
   params: Promise<{ collection: string }>;
 }) {
   const { collection } = use(params);
-  const router = useRouter();
+  const router = useLocaleRouter();
 
   return (
     <CollectionList
@@ -314,16 +314,16 @@ export default function CollectionPage({
 ### Content Module Layout
 
 ```tsx
-// app/content/layout.tsx — shared layout with sidebar navigation
+// app/[lang]/content/layout.tsx — shared layout with sidebar navigation
 import { ContentLayout, ContentNavigation } from "@/components/ui";
 import { useCollections } from "@/lib/buildpad/hooks";
 
-// app/content/[collection]/[id]/page.tsx — item form view
+// app/[lang]/content/[collection]/[id]/page.tsx — item form view
 import { CollectionForm } from "@/components/ui";
 import { isNewItem } from "@/lib/buildpad/utils"; // ALWAYS use isNewItem() for new-item detection
 ```
 
-See `buildpad-reference` skill for full content module pattern.
+These are the files `add content-routes` writes; an app scaffolded by a CLI older than 2.3 has them under `app/content/` instead, and `npx @buildpad/cli@latest migrate i18n` moves them (see the `add-i18n` skill). See `buildpad-reference` skill for full content module pattern.
 
 <!-- buildpad-backend: supabase -->
 ## Testing Requirements
@@ -453,7 +453,7 @@ Use `/manage-scope` skill to register the collection through `/api/scope/collect
 
 After creating the collection with its standard fields:
 
-1. **If Group B (Workflow) fields were included** → Invoke the `create-workflow` skill to define the workflow definition, assignment, and add `WorkflowButton` to the item form UI
+1. **If Group B (Workflow) fields were included** → Invoke the `create-workflow` skill to define the workflow definition and assignment. The item form needs no workflow code: `CollectionForm` renders the `workflow_state` field as the workflow button itself
 2. **If Group C (Scope) fields were included** → Invoke the `manage-scope` skill to register the collection in scope config
 3. **Audit logging is automatic** — DaaS logs all item create/update/delete operations to `daas_activity`. Do NOT build custom audit trail code. Query audit data via `GET /api/activity?collection=your_collection`
 

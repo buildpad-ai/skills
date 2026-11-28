@@ -10,16 +10,23 @@ applyTo: "components/**/{workflow,version}*.{ts,tsx}"
 
 Displays current workflow state with available transitions as a dropdown button.
 
+Inside a Buildpad form (`VForm` / `CollectionForm`) the `workflow_state` field (interface `xtr-interface-workflow`) renders this button by itself, with the record key from the form. Place it by hand only where no Buildpad form shows the state field, as in the custom form below; never beside a `CollectionForm` that still shows the field.
+
 ```tsx
 import { WorkflowButton } from '@/components/ui/workflow-button';
 
+// Main props (Buildpad UI 3.11)
 interface WorkflowButtonProps {
   /** Collection name */
-  collection: string;
-  /** Item ID/UUID */
-  itemId: string;
+  collection?: string;
+  /** Item ID/UUID (a form passes it as `primaryKey`; `itemId` wins when both are given) */
+  itemId?: string | number;
   /** Optional version key for version-specific workflows */
   versionKey?: string;
+  /** Called after a successful transition */
+  onTransition?: () => void;
+  /** Turns the button off (a form passes its own `disabled`) */
+  disabled?: boolean;
 }
 
 // Usage
@@ -32,10 +39,10 @@ interface WorkflowButtonProps {
 
 ### Features
 - Display current workflow state with label and icon
-- Dropdown menu showing available commands
-- Click handler for state transitions
+- Dropdown menu of the commands the user may run: open commands, and gated ones for an administrator or a holder of one of the command's `policies` (from `GET /api/policies/me`) or `module_access_keys` (from `GET /api/permissions/me`)
+- A command runs as soon as it is picked: there is no confirmation dialog
 - Loading state while transitioning
-- Error notifications on failed transitions
+- A refused or failed transition shows the server's reason under the button
 
 ## ItemViewWithVersions Component
 
