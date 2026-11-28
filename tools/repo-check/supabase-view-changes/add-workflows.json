@@ -1,1 +1,8 @@
-[]
+[
+  {
+    "path": "add-workflows/SKILL.md",
+    "kind": "text",
+    "reason": "The `WorkflowButton` note says `CollectionForm` renders the button for `workflow_state`, and no longer says the button needs a transition proxy route (that was Buildpad UI 3.0.0).",
+    "release": "v12.0.0"
+  }
+]

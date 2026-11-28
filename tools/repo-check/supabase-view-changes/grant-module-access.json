@@ -1,1 +1,8 @@
-[]
+[
+  {
+    "path": "grant-module-access/SKILL.md",
+    "kind": "text",
+    "reason": "`WorkflowButton` filters key-gated commands by the user's module access from Buildpad UI 3.1.0, and from DaaS 0.1.99 the transition endpoint lets an administrator pass.",
+    "release": "v12.0.0"
+  }
+]

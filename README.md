@@ -22,18 +22,20 @@ Starters downloaded from the Platform carry only their project's text: the other
 ## Install
 
 ```bash
-# Install skills from a release (interactive picker)
-npx skills add buildpad-ai/skills#v11.1.0
+# Install skills from a release (interactive picker: choose the skills and the agents)
+npx skills add buildpad-ai/skills#v12.0.0
 
-# Install everything from a release
-npx skills add buildpad-ai/skills#v11.1.0 --all
+# Install every skill from a release for the agents you use (here Claude Code and Kiro)
+npx skills add buildpad-ai/skills#v12.0.0 --skill '*' -a claude-code -a kiro-cli
 
 # Install a single skill from a release
-npx skills add buildpad-ai/skills#v11.1.0@create-project
-npx skills add https://github.com/buildpad-ai/skills/tree/v11.1.0/create-project
+npx skills add buildpad-ai/skills#v12.0.0@create-project
+npx skills add https://github.com/buildpad-ai/skills/tree/v12.0.0/create-project
 ```
 
-The [skills CLI](https://github.com/vercel-labs/skills) detects your agents and writes each skill to the right location (`.claude/skills/`, `.kiro/skills/`, `.agents/skills/`, …). A tag never moves, so installing `#v11.1.0` always gives the same files. Replace `v11.1.0` with any tag from the [releases](https://github.com/buildpad-ai/skills/releases).
+In the interactive picker, the [skills CLI](https://github.com/vercel-labs/skills) detects the agents installed on your machine and lets you choose which ones get the skills. It writes each skill to that agent's folder (`.claude/skills/`, `.kiro/skills/`, `.agents/skills/`, …). To skip the picker, name the agents with `-a`: `claude-code`, `kiro-cli`, `github-copilot`, `antigravity`, `cursor` (the CLI's [agent list](https://github.com/vercel-labs/skills/blob/main/docs/agents.md) has the rest). Avoid `--all`: it installs every skill to every agent the CLI supports, more than 70 of them, not only the ones you use.
+
+A tag never moves, so installing `#v12.0.0` always gives the same files. Replace `v12.0.0` with any tag from the [releases](https://github.com/buildpad-ai/skills/releases).
 
 ## Stay on the skills as they were before Engine support
 
@@ -41,7 +43,7 @@ Supabase projects can keep the skills exactly as they were before Engine support
 
 ```bash
 npx skills add buildpad-ai/skills#v1.0.0
-npx skills add buildpad-ai/skills#v1.0.0 --all
+npx skills add buildpad-ai/skills#v1.0.0 --skill '*' -a claude-code -a kiro-cli
 ```
 
 The CLI's lock file records the tag, so `npx skills update` keeps you on `v1.0.0`.

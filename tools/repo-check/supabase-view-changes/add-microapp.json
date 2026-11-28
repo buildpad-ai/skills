@@ -4,5 +4,11 @@
     "kind": "text",
     "reason": "Step 1's list of module skills gains add-ai-chat for an AI chat or assistant.",
     "release": "v7.0.0"
+  },
+  {
+    "path": "add-microapp/SKILL.md",
+    "kind": "text",
+    "reason": "Every page the Buildpad CLI scaffolds is under `app/[lang]/` since CLI 2.3: the provider layout is `app/[lang]/(authenticated)/layout.tsx` and the root layout `app/[lang]/layout.tsx`. The hand-rolled provider sample follows the CLI 3.11 structure: a client `DaaSProviderWrapper` and a route-group `app/[lang]/(authenticated)/layout.tsx` without `<html>` or `<body>`, in place of a `RootLayout`.",
+    "release": "v12.0.0"
   }
 ]

@@ -4,5 +4,17 @@
     "kind": "description",
     "reason": "The description now says the skill initializes a Buildpad application on the Buildpad Engine or on Supabase, instead of naming Supabase only.",
     "release": "v2.0.0"
+  },
+  {
+    "path": "create-project/SKILL.md",
+    "kind": "text",
+    "reason": "Every page the Buildpad CLI scaffolds is under `app/[lang]/` since CLI 2.3: the authenticated layout is `app/[lang]/(authenticated)/layout.tsx` and the root layout `app/[lang]/layout.tsx`; an older app is moved with `migrate i18n`.",
+    "release": "v12.0.0"
+  },
+  {
+    "path": "create-project/references/project-creation.instructions.md",
+    "kind": "text",
+    "reason": "Every page the Buildpad CLI scaffolds is under `app/[lang]/` since CLI 2.3: bootstrap writes `app/[lang]/layout.tsx` and `app/[lang]/(authenticated)/page.tsx`, and pages go under `app/[lang]/`.",
+    "release": "v12.0.0"
   }
 ]

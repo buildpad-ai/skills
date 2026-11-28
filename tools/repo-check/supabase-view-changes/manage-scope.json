@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "path": "manage-scope/SKILL.md",
+    "kind": "text",
+    "reason": "Every page the Buildpad CLI scaffolds is under `app/[lang]/` since CLI 2.3: the scope picker page is `app/[lang]/select-scope/page.tsx`. The scope picker and `ScopeGuard` samples navigate with the CLI's `useLocaleRouter`, not `useRouter` from `next/navigation`.",
+    "release": "v12.0.0"
+  },
+  {
+    "path": "manage-scope/references/scope-client.instructions.md",
+    "kind": "text",
+    "reason": "Every page the Buildpad CLI scaffolds is under `app/[lang]/` since CLI 2.3: the scope picker page is `app/[lang]/select-scope/page.tsx`, the root layout `app/[lang]/layout.tsx`, and `ScopeProvider` is shown in the authenticated layout, never the root layout (Bug 22). The picker sample uses `useLocaleRouter` and sits in `app/[lang]/(authenticated)/select-scope/page.tsx`, where `useDaaSContext` has its provider; the missing-scope redirect moves from a root-layout `redirect('/select-scope')`, which loops, to the CLI's middleware; `useScopeErrorHandler` uses `useLocaleRouter`.",
+    "release": "v12.0.0"
+  }
+]

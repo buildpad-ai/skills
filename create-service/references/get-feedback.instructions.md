@@ -26,7 +26,7 @@ The widget is a self-contained IIFE bundle served by the Get Feedback deployment
 In a Next.js App Router app, add it via `next/script` in the root layout so every page gets the button. Render it in a Server Component so the env vars are read server-side and inlined into the HTML:
 
 ```tsx
-// app/layout.tsx (Server Component — no 'use client')
+// app/[lang]/layout.tsx in a Buildpad app, app/layout.tsx elsewhere (Server Component — no 'use client')
 import Script from 'next/script';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

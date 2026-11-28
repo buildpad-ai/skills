@@ -713,7 +713,7 @@ function ArticleContent() {
 
 ### WorkflowButton Component
 
-Displays current workflow state with available transitions.
+Displays current workflow state with available transitions. Inside `VForm` / `CollectionForm` the `workflow_state` field renders it by itself; place it by hand only on a page where no Buildpad form shows that field. A command runs as soon as it is picked (no confirmation dialog).
 
 ```typescript
 import { WorkflowButton } from '@/components/ui/workflow-button';
@@ -721,9 +721,8 @@ import { WorkflowButton } from '@/components/ui/workflow-button';
 <WorkflowButton
   itemId="uuid-123"
   collection="articles"
-  canCompare={true}           // Enable revision comparison
   alwaysVisible={true}        // Show even without active workflow
-  onChange={(value) => {}}    // Called on state change
+  onChange={(command) => {}}  // Called with the command that ran
   onTransition={() => {       // Called after successful transition
     refetch();                // Reload data
   }}

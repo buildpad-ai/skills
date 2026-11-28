@@ -48,7 +48,7 @@ The middleware found no valid session and the handshake did not complete.
    the browser dropped the third-party cookie. Check all three cookie attributes
    (`SameSite=None; Secure; Partitioned`) and test in the same browser profile the
    user reported. Safari and Incognito are the usual reporters.
-4. Check that `app/login/page.tsx` still renders `LoginBridge` (pinned edit P1) — a
+4. Check that `app/[lang]/login/page.tsx` still renders `LoginBridge` (pinned edit P1) — a
    `buildpad upgrade` may have restored the plain form.
 
 ## The micro-app redirects to the HOST's login page inside its own frame
@@ -196,7 +196,7 @@ you write the cookie (see [auth-bridge](auth-bridge.instructions.md)).
 
 ## The frame shows its own sidebar, header, and profile menu (chrome inside chrome)
 
-Pinned edit E1 is missing: the micro-app's `app/(authenticated)/layout.tsx` still
+Pinned edit E1 is missing: the micro-app's `app/[lang]/(authenticated)/layout.tsx` still
 wraps every page in `AuthenticatedShell`. Inside the host frame that renders a second
 shell — and its nav lets the user move the frame to a page the host section does not
 match (the host says Files while the frame shows the micro-app's Home). Apply E1.

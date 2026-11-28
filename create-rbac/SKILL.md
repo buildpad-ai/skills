@@ -286,27 +286,23 @@ On an Engine project a rule that uses any other variable is refused: `$CURRENT_R
 <!-- buildpad-backend: supabase -->
 ## Required: Permissions Proxy Route
 
-> ⚠️ **ALWAYS verify this route exists before testing RBAC.** If it's missing, `CollectionList` and `CollectionForm` fall back to empty permissions and silently grant full UI access to all users — making RBAC appear to have no effect. DaaS still enforces permissions server-side, but the UI won't reflect them.
+> ⚠️ **ALWAYS verify this route exists before testing RBAC.** `CollectionList` and `CollectionForm` read the signed-in user's permissions from it. If it is missing or fails, they show "Your permissions could not be loaded, …" with a **Retry** button, the list keeps its rows, the form is read-only, and create, edit, delete and archive stay off for every user, an administrator included, until a load succeeds (Buildpad UI 3.4.0 and later). DaaS still enforces permissions server-side either way.
 
-Check whether `app/api/permissions/me/route.ts` exists. If not, create it:
+Check whether `app/api/permissions/me/route.ts` exists. The CLI's `api-routes` module writes it. If not, create it (this is the route the Buildpad CLI generates):
 
 ```ts
 // app/api/permissions/me/route.ts
 import { type NextRequest, NextResponse } from "next/server";
-import { getAuthHeaders, getDaaSUrl } from "@/lib/api/auth-headers";
+import { getAuthHeaders, getDaasUrl } from "@/lib/api/auth-headers";
 
 export async function GET(request: NextRequest) {
   try {
-    const daasUrl = getDaaSUrl();
+    const daasUrl = getDaasUrl();
     const headers = await getAuthHeaders();
     const searchParams = request.nextUrl.searchParams.toString();
-    const url = `${daasUrl}/permissions/me${searchParams ? `?${searchParams}` : ""}`;
+    const url = `${daasUrl}/api/permissions/me${searchParams ? `?${searchParams}` : ""}`;
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers,
-      cache: "no-store",
-    });
+    const response = await fetch(url, { headers, cache: "no-store" });
     const data = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
@@ -316,14 +312,14 @@ export async function GET(request: NextRequest) {
 }
 ```
 
-This route proxies `GET /permissions/me` from DaaS using the current user's JWT, so Buildpad components can resolve CRUD permissions without cross-origin requests.
+This route proxies `GET /api/permissions/me` from DaaS using the current user's JWT, so Buildpad components can resolve CRUD permissions without cross-origin requests. DaaS answers `data` (the permissions), `isAdmin` and `moduleAccess`.
 <!-- /buildpad-backend -->
 <!-- buildpad-backend: engine -->
 ## Required: Permissions Proxy Route
 
-> ⚠️ **ALWAYS verify this route exists before testing RBAC.** If it's missing, `CollectionList` and `CollectionForm` fall back to empty permissions and silently grant full UI access to all users — making RBAC appear to have no effect. The Engine still enforces permissions on every request, but the UI won't reflect them.
+> ⚠️ **ALWAYS verify this route exists before testing RBAC.** `CollectionList` and `CollectionForm` read the signed-in user's permissions from it. If it is missing or fails, they show "Your permissions could not be loaded, …" with a **Retry** button, the list keeps its rows, the form is read-only, and create, edit, delete and archive stay off for every user, an administrator included, until a load succeeds (Buildpad UI 3.4.0 and later). The Engine still enforces permissions on every request either way.
 
-Check whether `app/api/permissions/me/route.ts` exists. If not, create it (this is the route the Buildpad CLI generates):
+Check whether `app/api/permissions/me/route.ts` exists. The CLI's `api-routes-engine` module writes it, and its catch-all `app/api/[...path]/route.ts` forwards the path too. If neither is there, create it (this is the route the Buildpad CLI generates):
 
 ```ts
 // app/api/permissions/me/route.ts
@@ -429,7 +425,15 @@ if (!hasModuleAccess('dashboard:manager_stats')) {
 }
 ```
 
-`hasModuleAccess` returns `true` for admins regardless of the policy map.
+`hasModuleAccess` returns `true` for admins regardless of the policy map. It fails closed: it returns `false` while the permissions load and when `/api/permissions/me` fails (show a skeleton while `loading` if the flicker matters).
+
+Use `hasModuleAccess` for every action that is not create, read, update or delete on a collection (approve, export, view a dashboard). `canPerform(collection, action)` answers only whether the user holds a rule for that collection and action; never gate a non-CRUD action on it, and never on `isAdmin`.
+
+### What the Buildpad components check, and what they do not
+
+- **Collection permissions:** `CollectionList` and `CollectionForm` turn create, edit, delete and archive on or off from `/api/permissions/me`, and limit the fields to the rule's `fields`. Do not gate their buttons again.
+- **Item filters:** `CollectionForm` does not evaluate a rule's item filter (`permissions`). A user with any `update` rule on the collection gets an editable form for every item the list shows, and the backend refuses the save of an item outside the update filter (403, shown as the form's save error). When the update filter is narrower than the read filter (an Author who edits only their own articles), test that refusal, and if the page must not offer the edit, check the item against the filter in the page (for example `item.user_created === currentUserId`) before rendering the form.
+- **A failed load:** both components show "Your permissions could not be loaded, …" with a **Retry** button and keep every write off until a load succeeds.
 
 ### Step 4 — Validate (no raw role checks)
 

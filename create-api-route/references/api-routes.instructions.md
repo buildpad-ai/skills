@@ -524,7 +524,7 @@ export async function GET(request: NextRequest) {
 
 ## Workflow Transition Endpoint
 
-Required endpoint for WorkflowButton component:
+`WorkflowButton` (Buildpad UI 3.1.0 and later) posts transitions to the configured DaaS URL itself, so this route is needed only in an app whose `DaaSProvider` has no DaaS URL:
 
 ```typescript
 // app/api/workflow/transition/route.ts

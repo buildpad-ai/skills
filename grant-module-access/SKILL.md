@@ -287,10 +287,10 @@ If the capability controls a workflow state-machine transition, add `module_acce
 
 `policies` and `module_access_keys` are OR'd — the user may execute the command if they satisfy *either* list. Existing workflows with only `policies` are unaffected.
 
-Two things to know when a key gates a workflow command (observed on DaaS 0.1.98 and Buildpad UI 3.0.0):
+Two things to know when a key gates a workflow command:
 
-- **The transition endpoint has no administrator bypass.** Unlike `hasModuleAccess`, it reads the grant map only, so an administrator who does not hold the key is answered 403. Grant the key on the administrators' policy if they must be able to run the command.
-- **`WorkflowButton` does not filter by module access keys.** It offers a key-gated command to every user and the server refuses the ones without the key. Expect that 403 in the UI, or filter the commands yourself with `hasModuleAccess`.
+- **Administrators.** From DaaS 0.1.99 the transition endpoint lets an administrator run every command, as `hasModuleAccess` does. On DaaS 0.1.98 and earlier it read the grant map only, so an administrator who did not hold the key was answered 403: there, grant the key on the administrators' policy if they must be able to run the command.
+- **`WorkflowButton` filters by module access keys** (Buildpad UI 3.1.0 and later). It offers a key-gated command only to an administrator and to users who hold the key (or one of the command's `policies`), and the server checks again. On Buildpad UI 3.0.0 it offered the command to every user and the server refused the ones without the key.
 <!-- /buildpad-backend -->
 <!-- buildpad-backend: engine -->
 If the capability controls a workflow state-machine transition, add `module_access_keys` to the command definition:
@@ -310,7 +310,7 @@ If the capability controls a workflow state-machine transition, add `module_acce
 Two things to know when a key gates a workflow command:
 
 - **An administrator passes every gate.** On an Engine project the transition endpoint lets an administrator run every command, as `hasModuleAccess` does.
-- **`WorkflowButton` does not filter by module access keys** (observed on Buildpad UI 3.0.0). It offers a key-gated command to every user and the server refuses the ones without the key. Expect that 403 in the UI, or filter the commands yourself with `hasModuleAccess`.
+- **`WorkflowButton` filters by module access keys** (Buildpad UI 3.1.0 and later). It offers a key-gated command only to an administrator and to users who hold the key (or one of the command's `policies`), and the Engine checks again. On Buildpad UI 3.0.0 it offered the command to every user and the Engine refused the ones without the key.
 <!-- /buildpad-backend -->
 
 ---

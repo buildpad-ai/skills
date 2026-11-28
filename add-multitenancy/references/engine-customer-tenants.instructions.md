@@ -1042,14 +1042,19 @@ follow from it. They are not choices of the application; tell the developer all 
 
 ### 15.7 The CLI's module
 
-The Buildpad CLI's `external-oauth-engine` module does 15.1 to 15.3 itself in a release that knows
-the mode `customer-tenants`. After installing it (the `add-external-oauth` skill's Step 3), read the
-installed start route and callback: they must resolve the host, answer 404 for an unknown customer
+In the mode `customer-tenants` the Buildpad CLI (3.9.0 and later) installs the module
+`external-oauth-engine-customers` in place of `external-oauth-engine`, and it does 15.1 to 15.3
+itself; `buildpad.json` then lists it in `installedLib`. After installing it (the
+`add-external-oauth` skill's Step 3), read the installed start route and callback: they must resolve the host, answer 404 for an unknown customer
 host before the redirect, build `redirect_uri` from the request's origin, and send the host's
 customer as `X-Tenant-Id`. If they still send `NEXT_PUBLIC_BUILDPAD_TENANT_ID` on every host, the CLI
-is older: update it and install again, or change the two routes as 15.2 and 15.3 show. A release
-that knows the branch variable reads `BUILDPAD_CUSTOMER_HOSTS` itself, the same value as 14.1. With
-an older one, point the module's host lookup at the application's map of section 14.1. Never fill a
+is older, or the project still has `external-oauth-engine` (`upgrade` does not switch modules: run
+the `add` command it prints): update it and install again, or change the two routes as 15.2 and 15.3
+show. From CLI 3.10.0 the module's `lib/customer-hosts.ts` reads `BUILDPAD_CUSTOMER_HOSTS` itself,
+the same value as 14.1; the CLI writes that file once and never overwrites it, so a copy from 3.9.0
+keeps its hand-filled map until it is deleted and written again with
+`npx buildpad upgrade external-oauth-engine-customers`. With an older one, point the module's host
+lookup at the application's map of section 14.1. Never fill a
 lookup with tenant ids by hand.
 
 ### 15.8 Tests

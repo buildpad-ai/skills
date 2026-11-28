@@ -174,11 +174,11 @@ Files this skill touches, and how:
 | `lib/supabase/middleware.ts` | CLI | **Merge** — pinned edits M1–M3 in [auth-bridge](references/auth-bridge.instructions.md) |
 | `middleware.ts` (root) | CLI | **Do not touch** — it sets `Cache-Control: private, no-store`, the only cache header on ~20 session routes |
 | `app/api/auth/logout/route.ts` | CLI | **Merge** — pinned edit L1 (expire the three bridge cookies with `framedCookieOptions(0, …)`, never `delete()`). It has a GET handler the shell navigates to; never drop it |
-| `app/login/page.tsx` | CLI | **Merge** — pinned edit P1 (wrap the form in `LoginBridge`) |
+| `app/[lang]/login/page.tsx` | CLI | **Merge** — pinned edit P1 (wrap the form in `LoginBridge`) |
 | `components/DaaSProviderWrapper.tsx` | CLI | **Merge** — pinned edit W1 (`useMfeToken` as second token source **and** the readiness gate) |
 | `components/ui/file-manager/*`, `components/ui/users-management/*`, module hooks | CLI | **Do not touch** — installed by `buildpad add files-routes` / `add users-routes`. Wrap them; never edit them. This is why `search` cannot be URL-synced (Step 4) |
 | `components/layout/AuthenticatedShell.tsx` | CLI | **Merge** (host only) — pinned edit S1 (`await logoutAllMicroapps()`). Micro-apps leave it untouched: E1 keeps it out of the frame entirely |
-| `app/(authenticated)/layout.tsx` | CLI | **Merge** (micro-app) — pinned edit E1 (skip the shell when framed; content only inside the frame) |
+| `app/[lang]/(authenticated)/layout.tsx` | CLI | **Merge** (micro-app) — pinned edit E1 (skip the shell when framed; content only inside the frame) |
 | `lib/api/auth-headers.ts` | CLI | **Merge** — pinned edit H1 (read `mfe_access_token` before the session) |
 | everything under `lib/bridge/`, `components/Microapp*`, `components/LoginBridge.tsx`, `config/app-urls.ts`, `next.config.ts`, the three bridge auth routes | this skill | **New files** — copy from `assets/` |
 
@@ -266,7 +266,7 @@ Four strings that look alike are independent; write the table before writing pag
 
 | Platform `name` | `MICROAPP_URLS` key | Local directory | Host page file | `path` prop |
 | --- | --- | --- | --- | --- |
-| `users-management` | `'users-management'` | whatever the repo is called | `app/(authenticated)/users/page.tsx` | that micro-app's `DEFAULT_AUTHENTICATED_ROUTE` |
+| `users-management` | `'users-management'` | whatever the repo is called | `app/[lang]/(authenticated)/users/page.tsx` | that micro-app's `DEFAULT_AUTHENTICATED_ROUTE` |
 
 The `path` prop must be a route that **exists in that micro-app** — read its
 `DEFAULT_AUTHENTICATED_ROUTE` from its `config/app-urls.ts`, or verify a page file
@@ -274,13 +274,13 @@ exists at the path you choose. A wrong `path` does not error: it bounces through
 login bridge and looks like it works while every deep link is broken.
 
 **Host pages** live in the authenticated route group — in a Buildpad starter that is
-`app/(authenticated)/`, whose layout mounts `DaaSProviderWrapper` and the app shell.
+`app/[lang]/(authenticated)/`, whose layout mounts `DaaSProviderWrapper` and the app shell.
 A page outside it renders with no auth context and no chrome. The embedding page must
 wrap the frame in `Suspense`: `useMicroappHost` reads `useSearchParams()`, and a
 statically prerendered page without a boundary fails `next build`.
 
 ```tsx
-// app/(authenticated)/users/page.tsx
+// app/[lang]/(authenticated)/users/page.tsx
 import { Suspense } from 'react';
 import { Skeleton } from '@mantine/core';
 import { MicroappIframe } from '@/components/MicroappIframe';
@@ -347,9 +347,9 @@ of hand-writing a page:
 
 A hand-written placeholder page is acceptable ONLY when no module covers the domain.
 
-CLI 1.11.1 installs group-aware — it writes `app/(authenticated)/files/…` directly and
+The CLI installs group-aware (since 1.11.1) and locale-prefixed (since 2.3) — it writes `app/[lang]/(authenticated)/files/…` directly and
 records those paths in `buildpad.json`. Verify where the routes landed; move them under
-`app/(authenticated)/` only if the CLI did not, and never by hand-editing
+`app/[lang]/(authenticated)/` only if the CLI did not, and never by hand-editing
 `buildpad.json`. Run the module's own required proxy routes step only if those routes
 are genuinely missing — bootstrap already installs a large `api-routes` set, and
 re-running it is what reverts merges.
@@ -387,7 +387,7 @@ Apply these only AFTER 4a. Exact hunks in
    `performLogout()`, before `signOut()`, using `framedCookieOptions(0, …)` — a bare
    `delete()` emits an unpartitioned Lax expiry that the cross-site frame rejects.
    Keep the GET handler and the OAuth SLO.
-3. **P1** `app/login/page.tsx` — wrap the CLI form in `LoginBridge` (with `Suspense`).
+3. **P1** `app/[lang]/login/page.tsx` — wrap the CLI form in `LoginBridge` (with `Suspense`).
 4. **W1** `components/DaaSProviderWrapper.tsx` — add `useMfeToken()` as the framed
    token source alongside the Supabase path, **and gate the children on its `ready`
    flag**. Both halves are required. Without the gate the module mounts and fires its
@@ -397,7 +397,7 @@ Apply these only AFTER 4a. Exact hunks in
 5. **H1** `lib/api/auth-headers.ts` — read `mfe_access_token` first, fall back to the
    Supabase session (this single edit fixes all ~16 CLI proxy routes). H1 covers the
    Next proxy routes only. A direct-call module needs W1 (Rule 12).
-6. **E1** `app/(authenticated)/layout.tsx` — render content only when framed
+6. **E1** `app/[lang]/(authenticated)/layout.tsx` — render content only when framed
    (Rule 15's implementation path): skip `AuthenticatedShell`, keep
    `DaaSProviderWrapper`. Standalone keeps the full shell. Decide from the bridge
    cookie; `Sec-Fetch-Dest` alone fails on every RSC re-render. Without this, the frame
@@ -561,7 +561,7 @@ localhost — two localhost ports are the same *site*, so partitioned-cookie fai
 
 ```
 main-app/
-├── app/(authenticated)/{route}/page.tsx   # one page per micro-app, Suspense-wrapped
+├── app/[lang]/(authenticated)/{route}/page.tsx   # one page per micro-app, Suspense-wrapped
 ├── components/MicroappIframe.tsx
 ├── components/layout/AuthenticatedShell.tsx  # CLI-owned — pinned edit S1
 ├── config/app-urls.ts                     # committed
@@ -571,11 +571,11 @@ main-app/
 └── tests/{auth.setup,iframe-composition.spec}.ts
 
 {microapp}/
-├── app/login/page.tsx                     # CLI-owned — pinned edit P1 (LoginBridge)
+├── app/[lang]/login/page.tsx                     # CLI-owned — pinned edit P1 (LoginBridge)
 ├── app/api/auth/logout/route.ts           # CLI-owned — pinned edit L1
 ├── app/api/auth/{set-session,token}/route.ts  # NEW
 ├── components/{MicroappBridgeProvider,LoginBridge}.tsx  # NEW
-├── app/(authenticated)/layout.tsx         # CLI-owned — pinned edit E1 (no shell in frame)
+├── app/[lang]/(authenticated)/layout.tsx         # CLI-owned — pinned edit E1 (no shell in frame)
 ├── components/DaaSProviderWrapper.tsx     # CLI-owned — pinned edit W1
 ├── config/app-urls.ts                     # committed: HOST_ORIGIN + DEFAULT_AUTHENTICATED_ROUTE
 ├── hooks/useQueryParamSync.ts             # NEW — and WIRED on the default route

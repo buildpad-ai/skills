@@ -4,5 +4,11 @@
     "kind": "new-file",
     "reason": "New skill worker-http: an opt-in HTTP endpoint for a runtime worker, when to use it instead of the queue, PORT and /health, /openapi.json extensions, user/key/webhook callers, CORS and SSE streaming rules.",
     "release": "v11.0.0"
+  },
+  {
+    "path": "worker-http/SKILL.md",
+    "kind": "text",
+    "reason": "`x-buildpad-auth` takes `user`, `key` or `public` (or an array), as the Platform and the worker starter read it: a webhook route is `public` and verifies the provider's signature, and works only when `WORKER_AUTH_PUBLIC` is `true`. The variable table adds `WORKER_AUTH_USER`, `WORKER_AUTH_KEY` and `WORKER_AUTH_PUBLIC`, and Step 2 says the worker starter's `src/http.ts` already implements the contract.",
+    "release": "v12.0.0"
   }
 ]

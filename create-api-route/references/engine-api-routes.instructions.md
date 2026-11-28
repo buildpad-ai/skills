@@ -489,7 +489,7 @@ Query parameters pass through untouched: `fields`, `filter`, `search`, `sort`, `
 
 ## Workflow Transition
 
-Required endpoint for the `WorkflowButton` component. The Engine runs the whole transition: it finds the command in the instance's current state, checks the command's gate at the scope the request names, moves the instance, records one history row, and writes the new state back to the item. The route only forwards.
+The endpoint the `WorkflowButton` component posts to. The CLI's catch-all `app/api/[...path]/route.ts` (CLI 3.5.2 and later) already forwards it, and `GET /api/policies/me`, which the button also reads; write this route only in an app without the catch-all. The Engine runs the whole transition: it finds the command in the instance's current state, checks the command's gate at the scope the request names, moves the instance, records one history row, and writes the new state back to the item. The route only forwards.
 
 ```typescript
 // app/api/workflow/transition/route.ts

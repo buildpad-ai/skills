@@ -132,7 +132,7 @@ This skill delivers the project **foundation**. Every feature after that follows
 1. Project scaffolding (Next.js + TypeScript + Mantine v8)
 2. Environment config (`.env.local` with Supabase + DaaS URLs)
 3. Auth proxy routes (login, logout, user, callback) — installed by CLI
-4. **`app/(authenticated)/layout.tsx`** with `DaaSProviderWrapper` + `ScopeProvider` (NOT in root layout)
+4. **`app/[lang]/(authenticated)/layout.tsx`** with `DaaSProviderWrapper` + `ScopeProvider` (NOT in the root layout `app/[lang]/layout.tsx`)
 5. **`DaaSProviderWrapper`** using `onAuthStateChange` (not `getSession`) + `getHeaders` wired to scope cookie
 6. **Logout route** clears `daas_resource_uri` cookie
 7. **DaaS CORS** configured with explicit origins + `cors_allow_credentials: true` + `X-Resource-Uri` in allowed headers
@@ -141,7 +141,7 @@ This skill delivers the project **foundation**. Every feature after that follows
 1. Project scaffolding (Next.js + TypeScript + Mantine v8)
 2. Environment config (`.env.local` with the Engine values of "Required Environment Variables")
 3. Auth proxy routes (login, logout, user) — installed by CLI. An OAuth callback route is a deliverable on an Engine project only when XAppHub sign-in is asked for: then the [add-external-oauth](../add-external-oauth/SKILL.md) skill adds it through the CLI's `external-oauth-engine` module. Sign-in with any other OAuth provider, and the Supabase client's code exchange, are not available there
-4. **`app/(authenticated)/layout.tsx`** with `DaaSProviderWrapper` + `ScopeProvider` (NOT in root layout)
+4. **`app/[lang]/(authenticated)/layout.tsx`** with `DaaSProviderWrapper` + `ScopeProvider` (NOT in the root layout `app/[lang]/layout.tsx`)
 5. **`DaaSProviderWrapper`** using `onAuthStateChange` (not `getSession`) + `getHeaders` wired to scope cookie
 6. **Logout route** clears `daas_resource_uri` cookie
 7. **Cross-origin settings left as provisioned** — nothing to change (see "CORS Configuration")
@@ -282,7 +282,7 @@ export function DaaSProviderWrapper({ children }: { children: ReactNode }) {
 **Authenticated layout structure** (Bug 22 — providers MUST NOT be in root layout):
 
 ```tsx
-// app/(authenticated)/layout.tsx
+// app/[lang]/(authenticated)/layout.tsx
 import { DaaSProviderWrapper } from "@/components/DaaSProviderWrapper";
 import { ScopeProvider } from "@/lib/contexts/ScopeContext";
 
@@ -410,7 +410,7 @@ If any matches are found, **replace them with Buildpad equivalents before procee
 - **User token on every data call**: On an Engine project every data call carries the signed-in user's access token as `Authorization: Bearer <access token>`, from the application's own server route or from the SDK. The Engine accepts no cookie session on its data API. The token in the project's MCP configuration is accepted only on the MCP endpoint `/api/mcp`: never send it, or any other administrator token, to the data API.
 <!-- /buildpad-backend -->
 - **NEVER create files manually** in `components/ui/` or `lib/buildpad/` — CLI only
-- **DaaSProvider in authenticated layout only**: NEVER place `DaaSProviderWrapper` or `ScopeProvider` in the root `app/layout.tsx`. Always place them in `app/(authenticated)/layout.tsx` so they fully unmount on logout and remount fresh on next login (Bug 22)
+- **DaaSProvider in authenticated layout only**: NEVER place `DaaSProviderWrapper` or `ScopeProvider` in the root layout `app/[lang]/layout.tsx`. Always place them in `app/[lang]/(authenticated)/layout.tsx` so they fully unmount on logout and remount fresh on next login (Bug 22). Every page the CLI scaffolds is under `app/[lang]/` since CLI 2.3; an app scaffolded before that has the same files without the `[lang]` segment, and `npx @buildpad/cli@latest migrate i18n` moves them (see the `add-i18n` skill)
 - **Mantine components require `'use client'`**: ANY page or component that renders Mantine must have `'use client'` — Mantine compound components (`Table.Tbody`, `Modal`, `Tabs.Panel`) are `undefined` in React Server Components (Bug 10)
 
 <!-- buildpad-backend: engine -->

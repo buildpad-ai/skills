@@ -1,1 +1,8 @@
-[]
+[
+  {
+    "path": "create-rbac/SKILL.md",
+    "kind": "text",
+    "reason": "A missing or failed `/api/permissions/me` turns writes off with \"Your permissions could not be loaded\" and Retry (Buildpad UI 3.4.0 and later), not full access; the route sample matches the CLI's (`getDaasUrl`, `/api/permissions/me`); `hasModuleAccess` gates non-CRUD actions, not `canPerform`; `CollectionForm` does not evaluate a rule's item filter.",
+    "release": "v12.0.0"
+  }
+]

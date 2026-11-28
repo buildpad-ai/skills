@@ -418,7 +418,7 @@ On an Engine project with Customer_Tenants collections, fields, relations, roles
 <!-- buildpad-backend: supabase -->
 ### Rule: DaaSProvider MUST be in `(authenticated)/layout.tsx`, NEVER in root layout (Bug 22)
 
-Next.js root layouts never unmount during client-side navigation. If `DaaSProviderWrapper` is in `app/layout.tsx`, it stays alive across logout → `/login` → re-login, delivering a stale null token and causing 401 on every DaaS call after the second login. Fix: place it in `app/(authenticated)/layout.tsx` so it fully unmounts when the user navigates to `/login`.
+Next.js root layouts never unmount during client-side navigation. If `DaaSProviderWrapper` is in the root layout (`app/[lang]/layout.tsx`), it stays alive across logout → `/login` → re-login, delivering a stale null token and causing 401 on every DaaS call after the second login. Fix: place it in `app/[lang]/(authenticated)/layout.tsx` so it fully unmounts when the user navigates to `/login`. (An app scaffolded by a CLI older than 2.3 has these layouts without the `[lang]` segment.)
 
 ### Rule: DaaSProviderWrapper must use `onAuthStateChange`, NOT `getSession`, pass `token` as sync prop, and gate `ready` on non-null token (Bug 19 + Bug 27)
 
@@ -506,7 +506,7 @@ useEffect(() => {
 <!-- buildpad-backend: engine -->
 ### Rule: DaaSProvider MUST be in `(authenticated)/layout.tsx`, NEVER in root layout (Bug 22)
 
-Next.js root layouts never unmount during client-side navigation. If `DaaSProviderWrapper` is in `app/layout.tsx`, it stays alive across logout → `/login` → re-login, delivering a stale null token and causing 401 on every Engine call after the second login. Fix: place it in `app/(authenticated)/layout.tsx` so it fully unmounts when the user navigates to `/login`.
+Next.js root layouts never unmount during client-side navigation. If `DaaSProviderWrapper` is in the root layout (`app/[lang]/layout.tsx`), it stays alive across logout → `/login` → re-login, delivering a stale null token and causing 401 on every Engine call after the second login. Fix: place it in `app/[lang]/(authenticated)/layout.tsx` so it fully unmounts when the user navigates to `/login`. (An app scaffolded by a CLI older than 2.3 has these layouts without the `[lang]` segment.)
 
 ### Rule: DaaSProviderWrapper must use `onAuthStateChange`, NOT `getSession`, pass `token` as sync prop, and gate `ready` on non-null token (Bug 19 + Bug 27)
 

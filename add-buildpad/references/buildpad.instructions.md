@@ -1092,7 +1092,7 @@ pnpm test:e2e:ui
 
 The WorkflowButton component provides state machine functionality for content workflows.
 
-**IMPORTANT:** Workflow functionality requires the `WorkflowProvider` context wrapper. The button component handles transitions internally.
+**IMPORTANT:** Inside `VForm` / `CollectionForm` the `workflow_state` field (interface `xtr-interface-workflow`) renders this button by itself: a content form needs no workflow code, and a page that shows the form with that field must not add a second button. Place `WorkflowButton` by hand only where no Buildpad form shows the field. The button reads the item's instance and runs transitions itself; a command runs as soon as it is picked (no confirmation dialog). The `WorkflowProvider` context below is for your own components that read the workflow state.
 
 ### Basic Usage with WorkflowProvider
 
@@ -1114,7 +1114,6 @@ function ArticleEditorInner({ articleId }: { articleId: string }) {
       itemId={articleId}
       collection="articles"
       workflowField="status" // Field to update on transition
-      canCompare={true} // Enable revision comparison
       alwaysVisible={true} // Show even without workflow
       onTransition={() => {
         // Reload data after successful transition

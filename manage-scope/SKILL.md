@@ -606,10 +606,10 @@ async function scopedFetch(url: string, options?: RequestInit) {
 // components/ScopeErrorBoundary.tsx — catch scope permission errors in UI
 'use client';
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
 
 export function ScopeGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
+  const router = useLocaleRouter(); // push('/select-scope') → '/<lang>/select-scope'
 
   useEffect(() => {
     const handler = (event: PromiseRejectionEvent) => {
@@ -693,14 +693,14 @@ Collections without scope config: announcements, help_articles, categories
 When a new user logs in and has no `daas_user_roles` entries with `resource_uri`, `/api/scope/available` returns an empty list. Handle this in the frontend:
 
 ```tsx
-// app/select-scope/page.tsx
+// app/[lang]/select-scope/page.tsx
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
 
 export default function SelectScopePage() {
   const [scopes, setScopes] = useState<{ id: string; name: string; uri_path: string }[]>([]);
-  const router = useRouter();
+  const router = useLocaleRouter(); // replace('/') → '/<lang>', as the CLI's pages navigate
 
   useEffect(() => {
     fetch('/api/scope/available', { credentials: 'include' })
@@ -1303,10 +1303,10 @@ async function scopedFetch(url: string, resourceUri: string | null, options?: Re
 // components/ScopeErrorBoundary.tsx — catch scope permission errors in UI
 'use client';
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
 
 export function ScopeGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
+  const router = useLocaleRouter(); // push('/select-scope') → '/<lang>/select-scope'
 
   useEffect(() => {
     const handler = (event: PromiseRejectionEvent) => {
@@ -1391,14 +1391,14 @@ Collections without a scope setting: announcements, help_articles, categories
 When a new user logs in and holds no role assignment at a scope, `/api/scope/available` returns an empty list. Handle this in the frontend:
 
 ```tsx
-// app/select-scope/page.tsx
+// app/[lang]/select-scope/page.tsx
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
 
 export default function SelectScopePage() {
   const [scopes, setScopes] = useState<{ id: string; name: string; uri_path: string }[]>([]);
-  const router = useRouter();
+  const router = useLocaleRouter(); // replace('/') → '/<lang>', as the CLI's pages navigate
 
   useEffect(() => {
     fetch('/api/scope/available', { credentials: 'include' })

@@ -4,5 +4,11 @@
     "kind": "text",
     "reason": "The Opt-in Modules list gains the AI Chat module's install commands (add ai-chat-routes for browser-direct, add ai-chat-proxy-routes for the server proxy), pointing to add-ai-chat.",
     "release": "v7.0.0"
+  },
+  {
+    "path": "add-buildpad/references/buildpad.instructions.md",
+    "kind": "text",
+    "reason": "The Workflow Button section says `CollectionForm` renders the `workflow_state` field as the button itself, that the button needs no `WorkflowProvider` and has no confirmation dialog, and drops the `canCompare` prop, which Buildpad UI 3.11 does not have.",
+    "release": "v12.0.0"
   }
 ]

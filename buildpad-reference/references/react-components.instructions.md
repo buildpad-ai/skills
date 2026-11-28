@@ -433,12 +433,17 @@ The token given to `DaaSProvider` is the data API's credential. On a Supabase pr
 
 The content module provides a complete DaaS-style data management UI.
 Use `ContentLayout` + `ContentNavigation` + `useCollections` to build it.
+`npx @buildpad/cli@latest add content-routes` writes the three files below under `app/[lang]/content/`
+(every scaffolded page is locale-prefixed since CLI 2.3; an older app has them under `app/content/`,
+and `npx @buildpad/cli@latest migrate i18n` moves them). They serve every collection: add no page per collection.
 
-### Content Layout (app/content/layout.tsx)
+### Content Layout (app/[lang]/content/layout.tsx)
 
 ```tsx
 "use client";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useLocaleRouter } from "@/lib/i18n/navigation";
+import { stripLocale } from "@/lib/i18n/config";
 import { ContentLayout, ContentNavigation } from "@/components/ui";
 import { useCollections } from "@/lib/buildpad/hooks";
 import { useAuth } from "@/lib/buildpad/hooks";
@@ -448,10 +453,10 @@ export default function ContentModuleLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const router = useRouter();
+  const router = useLocaleRouter(); // push("/content/…") keeps the /[lang] prefix
   const pathname = usePathname();
-  // Extract current collection from URL: /content/[collection]/...
-  const currentCollection = pathname.split("/")[2] || undefined;
+  // Extract current collection from URL: /[lang]/content/[collection]/...
+  const currentCollection = stripLocale(pathname).split("/")[2] || undefined;
 
   const {
     rootCollections,
@@ -492,17 +497,19 @@ export default function ContentModuleLayout({
 }
 ```
 
-### Collection List Page (app/content/[collection]/page.tsx)
+### Collection List Page (app/[lang]/content/[collection]/page.tsx)
 
 Every page that renders a list of records MUST use `CollectionList`.
 CollectionList provides an integrated toolbar, FilterPanel, permission-gated
 create/delete actions, and DaaS-style pagination out of the box.
 CRUD permissions are auto-fetched — do not manually gate buttons or pass permission state.
+If `/api/permissions/me` fails, the list keeps its rows, shows "Your permissions could not be loaded, …"
+with a **Retry** button, and keeps create, edit and delete off (for an administrator too) until a load succeeds.
 
 ```tsx
 "use client";
 import { use } from "react";
-import { useRouter } from "next/navigation";
+import { useLocaleRouter } from "@/lib/i18n/navigation";
 import { CollectionList } from "@/components/ui";
 
 export default function CollectionPage({
@@ -511,7 +518,7 @@ export default function CollectionPage({
   params: Promise<{ collection: string }>;
 }) {
   const { collection } = use(params);
-  const router = useRouter();
+  const router = useLocaleRouter();
 
   return (
     <CollectionList
@@ -535,14 +542,14 @@ export default function CollectionPage({
 }
 ```
 
-### Item Edit Page (app/content/[collection]/[id]/page.tsx)
+### Item Edit Page (app/[lang]/content/[collection]/[id]/page.tsx)
 
 > **IMPORTANT**: Always use `isNewItem()` from `@/lib/buildpad/utils` (exported by `@buildpad/utils`) to detect new items. Never write inline `id === "+"` checks — the utility also handles the URL-encoded `%2B` variant that Next.js may produce in dynamic route segments.
 
 ```tsx
 "use client";
 import { use } from "react";
-import { useRouter } from "next/navigation";
+import { useLocaleRouter } from "@/lib/i18n/navigation";
 import { CollectionForm } from "@/components/ui";
 import { isNewItem } from "@/lib/buildpad/utils";
 
@@ -552,7 +559,7 @@ export default function ItemPage({
   params: Promise<{ collection: string; id: string }>;
 }) {
   const { collection, id } = use(params);
-  const router = useRouter();
+  const router = useLocaleRouter();
   const isNew = isNewItem(id);
 
   return (

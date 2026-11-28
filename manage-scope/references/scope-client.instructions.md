@@ -122,19 +122,19 @@ export function ScopeProvider({ children }: { children: React.ReactNode }) {
 export const useScope = () => useContext(ScopeContext);
 ```
 
-**Usage in layout:**
+**Usage in layout** — the authenticated layout, never the root layout `app/[lang]/layout.tsx` (Bug 22 in `daas-platform`):
 
 ```tsx
-// app/layout.tsx
+// app/[lang]/(authenticated)/layout.tsx — add ScopeProvider to the CLI's layout, inside DaaSProviderWrapper;
+// keep its CollectionsRelationalProvider and AuthenticatedShell (left out here)
+import { DaaSProviderWrapper } from '@/components/DaaSProviderWrapper';
 import { ScopeProvider } from '@/lib/contexts/ScopeContext';
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html>
-      <body>
-        <ScopeProvider>{children}</ScopeProvider>
-      </body>
-    </html>
+    <DaaSProviderWrapper>
+      <ScopeProvider>{children}</ScopeProvider>
+    </DaaSProviderWrapper>
   );
 }
 ```
@@ -265,13 +265,15 @@ export function ScopeSelector() {
 
 ## User Onboarding — No Scope Assigned
 
-When a user has no scoped role assignments, `GET /api/scope/available` returns an empty list. Detect this and redirect. Use the pre-built template from `scope-routes` (`app/select-scope/page.tsx`) or create a custom page:
+When a user has no scoped role assignments, `GET /api/scope/available` returns an empty list. Detect this and redirect. Use the pre-built template from `scope-routes` or create a custom page.
+
+The picker reads `useDaaSContext()`, which throws outside a `DaaSProvider`. The provider is mounted by the authenticated layout, `app/[lang]/(authenticated)/layout.tsx`, so put the page inside that route group: `app/[lang]/(authenticated)/select-scope/page.tsx`. Its URL is still `/<lang>/select-scope`. The `scope-routes` module (CLI 3.11) writes its template to `app/[lang]/select-scope/page.tsx`, outside the group: move that file into the group, and keep only one of the two.
 
 ```tsx
-// app/select-scope/page.tsx
+// app/[lang]/(authenticated)/select-scope/page.tsx
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
 import { useDaaSContext } from '@/lib/buildpad/services';
 
 interface ScopeItem {
@@ -283,7 +285,7 @@ interface ScopeItem {
 
 export default function SelectScopePage() {
   const [scopes, setScopes] = useState<ScopeItem[] | null>(null); // null = loading
-  const router = useRouter();
+  const router = useLocaleRouter(); // replace('/') → '/<lang>', as the CLI's pages navigate
   const { buildUrl, getHeaders } = useDaaSContext();
 
   useEffect(() => {
@@ -333,18 +335,59 @@ export default function SelectScopePage() {
 }
 ```
 
-**Redirect logic in middleware or layout:** Check for empty scope early and redirect to `/select-scope`:
+**Redirect logic in the middleware:** check for a missing scope in the CLI's `middleware.ts` (or `proxy.ts`), and send the request to `/<lang>/select-scope`. Do not check in a layout. A layout is not given the request's path, and the root layout `app/[lang]/layout.tsx` (like the authenticated layout, once the picker is inside its group) also renders `/select-scope`. A redirect there would send the picker to itself in a loop.
 
-```tsx
-// app/layout.tsx (server component)
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+Add the check after `updateSession`, so that a signed-out user still goes to the login page first:
 
-// Only enforce on protected routes, not on /login or /select-scope
-const resourceUri = (await cookies()).get('daas_resource_uri')?.value;
-if (!resourceUri && !isPublicRoute(pathname)) {
-  redirect('/select-scope');
+```ts
+// middleware.ts — the CLI's file, with the scope check added
+import { NextResponse, type NextRequest } from 'next/server';
+import { updateSession } from '@/lib/supabase/middleware';
+import { publicOrigin } from '@/lib/origin';
+import { getLocaleFromPathname, stripLocale } from '@/lib/i18n/config';
+import { negotiateLocale } from '@/lib/i18n/negotiate';
+
+// Pages a user without an active scope may open (compared without the locale prefix).
+const NO_SCOPE_ROUTES = ['/login', '/signup', '/auth', '/select-scope'];
+
+export async function middleware(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
+
+  // Page request without a locale prefix → redirect to the negotiated locale (unchanged).
+  if (!pathname.startsWith('/api') && !getLocaleFromPathname(pathname)) {
+    const locale = negotiateLocale(request);
+    const url = new URL(`/${locale}${pathname === '/' ? '' : pathname}`, publicOrigin(request));
+    url.search = search;
+    const redirect = NextResponse.redirect(url);
+    redirect.headers.set('Cache-Control', 'private, no-store, must-revalidate');
+    redirect.headers.set('Vary', 'Accept-Language, Cookie');
+    return redirect;
+  }
+
+  const response = await updateSession(request);
+  response.headers.set('Cache-Control', 'private, no-store, must-revalidate');
+
+  // A page request with no active scope → the scope picker of the same locale.
+  const rest = stripLocale(pathname); // "/en/content" → "/content"
+  const open = NO_SCOPE_ROUTES.some((route) => rest === route || rest.startsWith(`${route}/`));
+  if (
+    !pathname.startsWith('/api') &&
+    !open &&
+    !response.headers.has('location') && // updateSession already sent a signed-out user to login
+    !request.cookies.get('daas_resource_uri')?.value
+  ) {
+    const locale = getLocaleFromPathname(pathname); // set: the locale redirect above ran first
+    const redirect = NextResponse.redirect(new URL(`/${locale}/select-scope`, publicOrigin(request)));
+    // Keep the session cookies updateSession refreshed.
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    redirect.headers.set('Cache-Control', 'private, no-store, must-revalidate');
+    return redirect;
+  }
+
+  return response;
 }
+
+// Keep the CLI's `config` (matcher) export unchanged.
 ```
 
 ---
@@ -483,12 +526,12 @@ export async function scopedFetch(url: string, resourceUri: string | null, optio
 ```tsx
 // lib/hooks/useScopeError.ts
 'use client';
-import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
 import { ScopeError } from '@/lib/api';
 
 export function useScopeErrorHandler() {
-  const router = useRouter();
+  const router = useLocaleRouter(); // push('/login') → '/<lang>/login'
 
   return useCallback((error: unknown) => {
     if (!(error instanceof ScopeError)) return false; // not a scope error

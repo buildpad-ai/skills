@@ -4,5 +4,11 @@
     "kind": "description",
     "reason": "The description names both kinds of project: on an Engine project the Skill writes routes that forward the signed-in user's session to the Engine, and on a Supabase project the Supabase auth routes it wrote before.",
     "release": "v2.0.0"
+  },
+  {
+    "path": "create-api-route/references/api-routes.instructions.md",
+    "kind": "text",
+    "reason": "The workflow transition route is needed only in an app whose `DaaSProvider` has no DaaS URL: from Buildpad UI 3.1.0 `WorkflowButton` posts to the DaaS URL itself.",
+    "release": "v12.0.0"
   }
 ]
